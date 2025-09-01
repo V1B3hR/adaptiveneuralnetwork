@@ -9,9 +9,9 @@ import threading
 import logging
 
 # Import your API modules
-from api_integrations.human_api import fetch_human_signal
-from api_integrations.ai_api import fetch_ai_signal  
-from api_integrations.world_api import fetch_world_signal
+from api_integration.human_api import fetch_human_signal
+from api_integration.ai import fetch_ai_signal  
+from api_integration.world_api import fetch_world_signal
 
 class NetworkMetrics:
     """Tracks network-wide performance and health metrics"""
