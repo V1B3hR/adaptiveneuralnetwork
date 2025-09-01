@@ -4,6 +4,9 @@ from collections import deque
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple, Set
 
+# Import AI Ethics Framework
+from core.ai_ethics import get_ethics_framework, audit_decision_simple
+
 @dataclass
 class Memory:
     """Structured memory with importance weighting"""
@@ -68,6 +71,9 @@ class AliveLoopNode:
         # New: LTP/LTD factors for plasticity
         self.ltp_factor = 1.0
         self.ltd_factor = 1.0
+        
+        # AI Ethics Framework integration
+        self.ethics_framework = get_ethics_framework()
     
     def step_phase(self, current_time):
         """Enhanced phase management with circadian rhythms, sleep debt, and neuromodulators"""
@@ -153,12 +159,42 @@ class AliveLoopNode:
         
         self.velocity *= movement_factor
         
+        # AI Ethics Framework: Audit movement decision
+        proposed_velocity = self.velocity.copy()
+        vel_mag = np.linalg.norm(proposed_velocity)
+        
+        node_state = {
+            "energy": self.energy,
+            "anxiety": self.anxiety,
+            "phase": self.phase,
+            "current_speed": vel_mag
+        }
+        has_violations, violation_messages = audit_decision_simple(
+            action_type="move",
+            actor_id=f"node_{self.node_id}",
+            velocity=proposed_velocity.tolist(),
+            movement_factor=movement_factor,
+            environment_state=node_state,
+            logged=True,
+            verified=True
+        )
+        
+        if has_violations:
+            # Log violations and potentially adjust movement
+            print(f"Node {self.node_id} - Ethics violations in movement: {violation_messages}")
+            for msg in violation_messages:
+                if "MEDIUM" in msg or "HIGH" in msg:
+                    # Reduce movement speed for safety
+                    proposed_velocity *= 0.7
+                    print(f"Node {self.node_id} - Reducing movement speed due to ethics concerns")
+        
         # Energy-efficient speed limiting
-        vel_mag = np.linalg.norm(self.velocity)
+        vel_mag = np.linalg.norm(proposed_velocity)
         max_speed = 3.0 + 2.0 * self.energy_efficiency
         if vel_mag > max_speed:
-            self.velocity = self.velocity / vel_mag * max_speed
+            proposed_velocity = proposed_velocity / vel_mag * max_speed
         
+        self.velocity = proposed_velocity
         self.position += self.velocity
         
         # Deduct movement energy cost
@@ -215,6 +251,31 @@ class AliveLoopNode:
         if effective_distance < threshold:
             energy_difference = self.energy - capacitor.energy
             
+            # AI Ethics Framework: Audit capacitor interaction decision
+            node_state = {
+                "energy": self.energy,
+                "anxiety": self.anxiety,
+                "phase": self.phase,
+                "capacitor_energy": capacitor.energy
+            }
+            has_violations, violation_messages = audit_decision_simple(
+                action_type="interact_with_capacitor",
+                actor_id=f"node_{self.node_id}",
+                energy_difference=energy_difference,
+                distance=distance,
+                environment_state=node_state,
+                logged=True,
+                verified=True
+            )
+            
+            if has_violations:
+                print(f"Node {self.node_id} - Ethics violations in capacitor interaction: {violation_messages}")
+                # For high anxiety states that could lead to unpredictable behavior, be more cautious
+                for msg in violation_messages:
+                    if "anxiety" in msg.lower():
+                        threshold *= 1.5  # Require closer proximity for interaction
+                        print(f"Node {self.node_id} - Increased interaction threshold due to anxiety concerns")
+            
             # More sophisticated transfer calculation
             base_transfer = 0.1 * energy_difference
             efficiency_multiplier = 0.5 + 0.5 * self.energy_efficiency
@@ -260,6 +321,34 @@ class AliveLoopNode:
 
     def absorb_external_signal(self, signal_energy, signal_type="human", source_id=None):
         """Enhanced signal processing with trust and efficiency"""
+        
+        # AI Ethics Framework: Audit signal absorption decision
+        node_state = {
+            "energy": self.energy,
+            "anxiety": self.anxiety,
+            "phase": self.phase,
+            "trust_network_size": len(self.trust_network)
+        }
+        has_violations, violation_messages = audit_decision_simple(
+            action_type="absorb_external_signal",
+            actor_id=f"node_{self.node_id}",
+            signal_energy=signal_energy,
+            signal_type=signal_type,
+            source_id=source_id,
+            environment_state=node_state,
+            logged=True,
+            verified=True
+        )
+        
+        if has_violations:
+            # Log violations but don't completely halt normal operation
+            print(f"Node {self.node_id} - Ethics violations in signal absorption: {violation_messages}")
+            # For critical violations, we might reduce signal processing
+            for msg in violation_messages:
+                if "CRITICAL" in msg:
+                    signal_energy = min(signal_energy, 5.0)  # Cap dangerous signal energy
+                    print(f"Node {self.node_id} - CRITICAL violation, capping signal energy to 5.0")
+        
         processing_cost = self.signal_processing_cost
         if self.energy < processing_cost:
             return  # Can't process if too low on energy

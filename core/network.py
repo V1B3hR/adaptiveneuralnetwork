@@ -13,6 +13,9 @@ from api_integration.human_api import fetch_human_signal
 from api_integration.ai import fetch_ai_signal  
 from api_integration.world_api import fetch_world_signal
 
+# Import AI Ethics Framework
+from core.ai_ethics import get_ethics_framework, audit_decision_simple
+
 class NetworkMetrics:
     """Tracks network-wide performance and health metrics"""
     def __init__(self):
@@ -90,9 +93,13 @@ class TunedAdaptiveFieldNetwork:
             "logging": True,  # Enable detailed logging
             "max_workers": 4,  # Thread pool size for parallel processing
             "signal_batching": True,  # Batch process signals for efficiency
-            "network_optimization": True  # Enable network-wide optimizations
+            "network_optimization": True,  # Enable network-wide optimizations
+            "ethics_auditing": True  # Enable AI ethics framework auditing
         }
         self.config = {**default_config, **(config or {})}
+        
+        # AI Ethics Framework integration
+        self.ethics_framework = get_ethics_framework() if self.config["ethics_auditing"] else None
         
         # Performance tracking
         self.step_times = deque(maxlen=100)
@@ -337,6 +344,31 @@ class TunedAdaptiveFieldNetwork:
         step_start_time = time.time()
         interactions_this_step = 0
         signals_processed = 0
+        
+        # AI Ethics Framework: Audit network step decision
+        if self.ethics_framework:
+            network_state = {
+                "time": self.time,
+                "health_score": self.metrics.get_health_score(),
+                "emergency_state": self.emergency_state,
+                "node_count": len(self.nodes),
+                "capacitor_count": len(self.capacitors)
+            }
+            has_violations, violation_messages = audit_decision_simple(
+                action_type="network_step",
+                actor_id="network",
+                external_streams=external_streams is not None,
+                environment_state=network_state,
+                logged=True,
+                verified=True
+            )
+            
+            if has_violations:
+                self.logger.warning(f"Ethics violations in network step: {violation_messages}")
+                # In critical cases, we might want to halt or alert
+                for msg in violation_messages:
+                    if "CRITICAL" in msg:
+                        self.logger.error(f"CRITICAL ethics violation detected: {msg}")
         
         self.time += 1
         
