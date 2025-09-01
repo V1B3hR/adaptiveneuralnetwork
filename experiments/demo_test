@@ -1,0 +1,38 @@
+from core.alive_node import AliveLoopNode
+from core.capacitor import CapacitorInSpace
+from core.network import TunedAdaptiveFieldNetwork
+
+def test_tuned_network():
+    nodes = [
+        AliveLoopNode(position=[0, 0], velocity=[0.15, 0], initial_energy=10, field_strength=1.0, node_id=0),
+        AliveLoopNode(position=[1, 2], velocity=[-0.08, 0.03], initial_energy=5, field_strength=1.2, node_id=1),
+        AliveLoopNode(position=[-1, -1], velocity=[0.05, 0.09], initial_energy=7, field_strength=0.9, node_id=2)
+    ]
+    capacitors = [
+        CapacitorInSpace(position=[0.5, 0.5], capacity=4),
+        CapacitorInSpace(position=[-0.5, -0.5], capacity=6),
+        CapacitorInSpace(position=[2, 2], capacity=5)
+    ]
+    network = TunedAdaptiveFieldNetwork(nodes, capacitors)
+
+    external_streams = {
+        0: ("human", 3.2),
+        1: ("AI", 2.1),
+        2: ("world", 4.5)
+    }
+
+    print("Initial State:")
+    network.print_states()
+
+    print("\nSimulating 15 steps with real external streams every 5 steps...\n")
+    for step in range(15):
+        if step % 5 == 0:
+            network.step(external_streams)
+        else:
+            network.step()
+        network.print_states()
+
+    print("\nTest complete. Nodes should show staged sleep, anxiety relief, memory replay/sharing, and phase mixing.")
+
+if __name__ == "__main__":
+    test_tuned_network()
