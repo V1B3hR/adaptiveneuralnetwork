@@ -1,4 +1,4 @@
-nodes: 9
+nodes: 3
 topology: grid
 external_signal_interval: 5
 api_endpoints:
