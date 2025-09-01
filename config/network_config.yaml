@@ -1,0 +1,7 @@
+nodes: 9
+topology: grid
+external_signal_interval: 5
+api_endpoints:
+  human: "https://example.com/human_signal"
+  ai: "https://example.com/ai_signal"
+  world: "https://example.com/world_signal"
