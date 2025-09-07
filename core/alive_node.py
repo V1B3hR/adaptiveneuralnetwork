@@ -3,13 +3,18 @@ import random
 from collections import deque
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple, Any
-from scipy import stats
 import uuid
+import logging
+from core.ai_ethics import audit_decision
+
+# Setup logger for alive_node module
+logger = logging.getLogger('alive_node')
+logger.setLevel(logging.WARNING)  # Only show warnings and errors
 
 
 @dataclass
 class Memory:
-    """Structured memory with importance weighting"""
+    """Structured memory with importance weighting and privacy controls"""
     content: Any
     importance: float
     timestamp: int
@@ -19,11 +24,39 @@ class Memory:
     access_count: int = 0
     source_node: Optional[int] = None  # Who shared this memory (if applicable)
     validation_count: int = 0  # How many nodes have validated this memory
+    
+    # Privacy controls
+    private: bool = False  # Whether this memory should not be shared
+    classification: str = "public"  # "public", "protected", "private", "confidential"
+    retention_limit: Optional[int] = None  # Time steps before auto-deletion
+    audit_log: List[str] = None  # Track access without storing content
+    
+    def __post_init__(self):
+        if self.audit_log is None:
+            self.audit_log = []
 
     def age(self):
         self.importance *= self.decay_rate
         if abs(self.emotional_valence) > 0.7:
             self.decay_rate = min(0.997, 0.97 + (abs(self.emotional_valence) - 0.7) * 0.1)
+        
+        # Check retention limit
+        if self.retention_limit is not None and self.timestamp + self.retention_limit < self.timestamp:
+            self.importance = 0  # Mark for deletion
+    
+    def access(self, accessor_id: int) -> Any:
+        """Access memory content with audit logging"""
+        self.access_count += 1
+        self.audit_log.append(f"accessed_by_{accessor_id}_at_{self.timestamp}")
+        
+        # Redaction for shared memories based on classification
+        if self.classification == "private" and accessor_id != self.source_node:
+            return "[REDACTED]"
+        elif self.classification == "protected":
+            # Return summary instead of full content
+            return f"[SUMMARY: {str(self.content)[:50]}...]"
+        
+        return self.content
 
 
 class SocialSignal:
@@ -92,10 +125,27 @@ class AliveLoopNode:
             "formality": 0.3,   # 0.0 (casual) to 1.0 (formal)
             "expressiveness": 0.6  # 0.0 (reserved) to 1.0 (expressive)
         }
+        
+        # Missing attributes initialization
+        self.communication_range = 2.0  # Default communication range
+        self.emotional_state = {
+            "valence": 0.0,  # -1 (negative) to +1 (positive)
+            "arousal": 0.0   # 0 (calm) to 1 (excited)
+        }
+        
+        # Memory and communication bounds
+        self.max_memory_size = 1000  # Maximum memories to keep
+        self.max_communications_per_step = 5  # Rate limiting
+        self.communications_this_step = 0
+        self.last_step_time = 0
 
     def send_signal(self, target_nodes: List['AliveLoopNode'], signal_type: str, 
                    content: Any, urgency: float = 0.5, requires_response: bool = False):
-        """Send a signal to other nodes"""
+        """Send a signal to other nodes with rate limiting"""
+        # Rate limiting check
+        if self.communications_this_step >= self.max_communications_per_step:
+            return []  # Hit rate limit
+            
         if self.energy < 1.0 or self.phase == "sleep":
             return []  # Not enough energy or asleep to communicate
             
@@ -108,6 +158,9 @@ class AliveLoopNode:
         
         responses = []
         for target in target_nodes:
+            if self.communications_this_step >= self.max_communications_per_step:
+                break  # Hit rate limit
+                
             if self._can_communicate_with(target):
                 # Adjust signal based on relationship with target
                 adjusted_signal = self._adjust_signal_for_target(signal, target)
@@ -117,6 +170,7 @@ class AliveLoopNode:
                     
                 # Update trust based on communication
                 self._update_trust_after_communication(target, signal_type)
+                self.communications_this_step += 1
         
         self.signal_history.append(signal)
         return responses
@@ -172,7 +226,9 @@ class AliveLoopNode:
         )
         
         self.memory.append(shared_memory)
-        self.collaborative_memories[shared_memory.content] = shared_memory
+        # Use memory timestamp and source as key instead of content
+        memory_key = f"{signal.source_id}_{shared_memory.timestamp}_{shared_memory.memory_type}"
+        self.collaborative_memories[memory_key] = shared_memory
         
         # Update knowledge diversity
         unique_sources = len(set(m.source_node for m in self.memory if m.source_node is not None))
@@ -364,6 +420,19 @@ class AliveLoopNode:
         valuable_memories.sort(key=lambda m: m.importance, reverse=True)
         memory_to_share = valuable_memories[0]
         
+        # Ethics check before sharing memory
+        ethics_result = audit_decision({
+            "action": "memory_sharing",
+            "preserve_life": True,  # Memory sharing doesn't harm life
+            "absolute_honesty": True,  # Sharing truthful memories
+            "privacy": not hasattr(memory_to_share, 'private') or not memory_to_share.private,
+            "human_authority": True,  # Respecting human oversight
+            "proportionality": True  # Sharing valuable information is proportional
+        })
+        
+        if not ethics_result.get("compliant", True):
+            return []  # Don't share if ethics violation
+        
         # Share with nodes that would find it most valuable
         recipients = []
         for node in nodes:
@@ -388,6 +457,26 @@ class AliveLoopNode:
         # Generally, share with nodes we have high trust with
         return self.trust_network.get(node.node_id, 0.5) > 0.7
 
+    def _cleanup_memory(self):
+        """Clean up memory to prevent unbounded growth"""
+        # Remove memories that have decayed too much or hit retention limits
+        self.memory = [m for m in self.memory if m.importance > 0.1]
+        
+        # If still too many memories, remove oldest with lowest importance
+        if len(self.memory) > self.max_memory_size:
+            self.memory.sort(key=lambda m: (m.importance, -m.timestamp))
+            self.memory = self.memory[-self.max_memory_size:]
+        
+        # Age all memories
+        for memory in self.memory:
+            memory.age()
+    
+    def _reset_rate_limits(self, current_time: int):
+        """Reset communication rate limits if new time step"""
+        if current_time != self.last_step_time:
+            self.communications_this_step = 0
+            self.last_step_time = current_time
+
     # [Previous methods remain the same]
 
     def move(self):
@@ -402,6 +491,13 @@ class AliveLoopNode:
         """Enhanced phase management with circadian rhythms"""
         self._time = current_time
         self.circadian_cycle = current_time % 24
+        
+        # Reset communication rate limits for new time step
+        self._reset_rate_limits(current_time)
+        
+        # Clean up memory periodically
+        if current_time % 10 == 0:  # Every 10 steps
+            self._cleanup_memory()
         
         # Phase transitions based on energy, anxiety, and time
         if self.energy < 3.0 or self.circadian_cycle > 20:
@@ -505,7 +601,7 @@ def run_social_simulation():
     
     # Run simulation
     for t in range(50):
-        print(f"\n--- Time step {t} ---")
+        logger.info(f"Time step {t}")
         
         for node in nodes:
             node.step_phase(t)
@@ -522,7 +618,7 @@ def run_social_simulation():
             node.move()
             
             # Display social status
-            print(f"Node {node.node_id}: Trust network: {node.trust_network}")
+            logger.debug(f"Node {node.node_id}: Trust network: {node.trust_network}")
 
 if __name__ == "__main__":
     run_social_simulation()

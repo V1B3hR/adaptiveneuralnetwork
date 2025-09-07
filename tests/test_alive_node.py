@@ -1,11 +1,15 @@
 import unittest
 import numpy as np
 from core.alive_node import AliveLoopNode
+from tests.test_utils import set_seed, run_with_seed, get_test_seed
 
 
 class TestAliveLoopNode(unittest.TestCase):
     def setUp(self):
         """Initialize an AliveLoopNode instance for testing"""
+        # Set deterministic seed for reproducible tests
+        set_seed(get_test_seed())
+        
         self.node = AliveLoopNode(
             position=(0, 0),
             velocity=(1, 1),
@@ -62,6 +66,33 @@ class TestAliveLoopNode(unittest.TestCase):
         self.node.anxiety = 10
         self.node.clear_anxiety()
         self.assertLess(self.node.anxiety, 10)  # Anxiety reduces after deep sleep
+    
+    @run_with_seed(123)
+    def test_reproducible_behavior(self):
+        """Test that behavior is reproducible with same seed"""
+        # Run simulation steps and record state
+        states_run1 = []
+        for step in range(5):
+            self.node.step_phase(step)
+            states_run1.append((self.node.phase, self.node.energy, tuple(self.node.position)))
+        
+        # Reset node to initial state and run again with same seed
+        set_seed(123)
+        node2 = AliveLoopNode(
+            position=(0, 0),
+            velocity=(1, 1),
+            initial_energy=10.0,
+            field_strength=1.0,
+            node_id=1
+        )
+        
+        states_run2 = []
+        for step in range(5):
+            node2.step_phase(step)
+            states_run2.append((node2.phase, node2.energy, tuple(node2.position)))
+        
+        # Should be identical
+        self.assertEqual(states_run1, states_run2, "Behavior should be reproducible with same seed")
 
 
 if __name__ == "__main__":

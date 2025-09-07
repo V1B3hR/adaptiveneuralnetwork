@@ -1,9 +1,21 @@
+import sys
+import random
+import numpy as np
 from config.network_config import load_network_config
 from core.alive_node import AliveLoopNode
 from core.capacitor import CapacitorInSpace
 from core.network import TunedAdaptiveFieldNetwork
 
-def main():
+def set_seed(seed=42):
+    """Set random seed for reproducible simulations"""
+    random.seed(seed)
+    np.random.seed(seed)
+
+def main(seed=None):
+    if seed is not None:
+        set_seed(seed)
+        print(f"Using seed: {seed}")
+    
     cfg = load_network_config("config/network_config.yaml")
     nodes = [
         AliveLoopNode(
@@ -50,4 +62,12 @@ def main():
     print("\nTest complete.")
 
 if __name__ == "__main__":
-    main()
+    # Check for seed argument
+    seed = None
+    if len(sys.argv) > 1:
+        try:
+            seed = int(sys.argv[1])
+        except ValueError:
+            print("Invalid seed value. Using default.")
+    
+    main(seed)
