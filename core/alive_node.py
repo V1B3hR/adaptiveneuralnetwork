@@ -226,7 +226,9 @@ class AliveLoopNode:
         )
         
         self.memory.append(shared_memory)
-        self.collaborative_memories[shared_memory.content] = shared_memory
+        # Use memory timestamp and source as key instead of content
+        memory_key = f"{signal.source_id}_{shared_memory.timestamp}_{shared_memory.memory_type}"
+        self.collaborative_memories[memory_key] = shared_memory
         
         # Update knowledge diversity
         unique_sources = len(set(m.source_node for m in self.memory if m.source_node is not None))
