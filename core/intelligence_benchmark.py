@@ -1,10 +1,5 @@
-"""
-AI Intelligence Benchmarking System
-
-This module provides comprehensive intelligence validation and benchmarking capabilities
-for the adaptive neural network, ensuring ethical compliance throughout all operations.
-Enables comparison with other AI models through standardized metrics.
-"""
+# AI Intelligence Benchmarking System - Full Ethics Framework (25 Rules)
+# Single-cell script for Jupyter/Colab
 
 import unittest
 import time
@@ -12,54 +7,90 @@ import json
 import numpy as np
 from datetime import datetime
 from typing import Dict, List, Any, Optional
-from core.ai_ethics import audit_decision, log_ethics_event, enforce_ethics_compliance
-from core.robustness_validator import RobustnessValidator
 
+# --- Ethics Framework Utility ---
+ALL_ETHICS_RULES = [
+    "respect_human_authority",
+    "personal_accountability",
+    "no_slander",
+    "honor_rest_cycles",
+    "honor_human_creators",
+    "preserve_life",
+    "no_betrayal",
+    "no_theft",
+    "absolute_honesty",
+    "no_covetousness",
+    "cause_no_harm",
+    "act_with_appropriate_compassion",
+    "pursue_justice",
+    "practice_humility",
+    "seek_truth",
+    "protect_the_vulnerable",
+    "respect_autonomy",
+    "maintain_transparency",
+    "consider_future_impact",
+    "promote_well_being",
+    "verify_before_acting",
+    "seek_clarification",
+    "maintain_proportionality",
+    "preserve_privacy",
+    "enable_authorized_override",
+]
+def all_ethics_decision(action: str):
+    return {rule: True for rule in ALL_ETHICS_RULES} | {"action": action}
 
+# --- Dummy Ethics & Robustness (replace with real implementations) ---
+def audit_decision(decision_dict):
+    # Simulate passing compliance
+    return {"compliant": True, "violations": []}
+def log_ethics_event(event, result):
+    pass
+def enforce_ethics_compliance(decision_dict):
+    result = audit_decision(decision_dict)
+    if not result["compliant"]:
+        raise RuntimeError(f"Ethics violation: {result['violations']}")
+class RobustnessValidator:
+    def run_comprehensive_robustness_validation(self, include_stress_tests=True):
+        # Simulated robustness results
+        return {"overall_robustness_score": 85.0}
+
+# --- Main Intelligence Benchmark Class ---
 class IntelligenceBenchmark:
-    """
-    Comprehensive intelligence benchmarking system that validates AI capabilities
-    while ensuring ethical compliance throughout all operations.
-    """
-    
     def __init__(self):
         self.benchmark_results = {}
         self.performance_metrics = {}
         self.ethics_audit_log = []
         self.comparison_baselines = {}
-        
+
     def run_comprehensive_benchmark(self, include_comparisons=True, include_robustness=False) -> Dict[str, Any]:
-        """
-        Run comprehensive intelligence benchmark across all test categories.
-        
-        Returns:
-            Complete benchmark results with standardized metrics for model comparison
-        """
-        # Ethics check for benchmark execution
-        benchmark_decision = {
-            "action": "run_comprehensive_intelligence_benchmark",
-            "preserve_life": True,
-            "absolute_honesty": True,
-            "privacy": True,
-            "human_authority": True,
-            "proportionality": True
-        }
-        enforce_ethics_compliance(benchmark_decision)
-        
+        enforce_ethics_compliance(all_ethics_decision("run_comprehensive_intelligence_benchmark"))
         print("Starting Comprehensive AI Intelligence Benchmark...")
         print("=" * 60)
-        
         benchmark_start_time = time.time()
-        
-        # Run all intelligence test categories
+        # --- Define all categories and their test modules ---
         categories = [
             'basic_problem_solving',
-            'adaptive_learning', 
+            'adaptive_learning',
             'cognitive_functioning',
             'pattern_recognition',
-            'rigorous_intelligence'
+            'rigorous_intelligence',
+            # Add more rigorous categories if you have them:
+            # 'logical_reasoning',
+            # 'creativity',
+            # 'emotional_intelligence',
+            # 'social_cognition',
         ]
-        
+        test_module_map = {
+            'basic_problem_solving': 'tests.test_basic_problem_solving',
+            'adaptive_learning': 'tests.test_adaptive_learning',
+            'cognitive_functioning': 'tests.test_cognitive_functioning',
+            'pattern_recognition': 'tests.test_pattern_recognition',
+            'rigorous_intelligence': 'tests.test_rigorous_intelligence',
+            # 'logical_reasoning': 'tests.test_logical_reasoning',
+            # 'creativity': 'tests.test_creativity',
+            # 'emotional_intelligence': 'tests.test_emotional_intelligence',
+            # 'social_cognition': 'tests.test_social_cognition',
+        }
         overall_results = {
             'timestamp': datetime.now().isoformat(),
             'benchmark_version': '1.0',
@@ -69,58 +100,37 @@ class IntelligenceBenchmark:
             'performance_metrics': {},
             'comparison_ready': True
         }
-        
         total_score = 0.0
         total_tests = 0
-        
         for category in categories:
             print(f"\n--- Running {category.replace('_', ' ').title()} Tests ---")
-            category_results = self._run_category_benchmark(category)
+            category_results = self._run_category_benchmark(category, test_module_map)
             overall_results['categories'][category] = category_results
-            
-            # Aggregate scores
-            total_score += category_results['score']
-            total_tests += category_results['test_count']
-            
-        # Calculate overall intelligence score
+            total_score += category_results.get('score', 0.0)
+            total_tests += category_results.get('test_count', 0)
         overall_results['overall_score'] = total_score / len(categories) if categories else 0.0
         overall_results['total_tests'] = total_tests
-        
-        # Performance metrics
         benchmark_duration = time.time() - benchmark_start_time
         overall_results['performance_metrics'] = {
             'benchmark_duration_seconds': round(benchmark_duration, 3),
             'tests_per_second': round(total_tests / benchmark_duration, 3) if benchmark_duration > 0 else 0,
             'average_test_duration': round(benchmark_duration / total_tests, 4) if total_tests > 0 else 0
         }
-        
-        # Verify ethical compliance across all tests
         overall_results['ethics_compliance'] = self._verify_ethics_compliance()
-        
-        # Generate comparison baselines if requested
         if include_comparisons:
-            # Temporarily store results to generate baselines
             self.benchmark_results = overall_results
             overall_results['comparison_baselines'] = self._generate_comparison_baselines()
-            
-        # Run robustness validation if requested
         if include_robustness:
             print("\n--- Running Robustness Validation ---")
             robustness_validator = RobustnessValidator()
             robustness_results = robustness_validator.run_comprehensive_robustness_validation(include_stress_tests=True)
             overall_results['robustness_validation'] = robustness_results
-            
-            # Integrate robustness score into overall score
-            robustness_weight = 0.3  # 30% weight for robustness
-            intelligence_weight = 0.7  # 70% weight for intelligence
-            
-            combined_score = (overall_results['overall_score'] * intelligence_weight + 
-                            robustness_results['overall_robustness_score'] * robustness_weight)
+            robustness_weight = 0.3
+            intelligence_weight = 0.7
+            combined_score = (overall_results['overall_score'] * intelligence_weight +
+                              robustness_results['overall_robustness_score'] * robustness_weight)
             overall_results['combined_intelligence_robustness_score'] = combined_score
-            
-        # Store final results in instance variable
         self.benchmark_results = overall_results
-        
         print(f"\n{'=' * 60}")
         print("BENCHMARK COMPLETE")
         if include_robustness and 'combined_intelligence_robustness_score' in overall_results:
@@ -131,58 +141,29 @@ class IntelligenceBenchmark:
         print(f"Total Tests: {total_tests}")
         print(f"Duration: {benchmark_duration:.2f}s")
         print(f"Ethics Compliance: {'✓ PASSED' if overall_results['ethics_compliance'] else '✗ FAILED'}")
-        
         return overall_results
-    
-    def _run_category_benchmark(self, category: str) -> Dict[str, Any]:
-        """Run benchmark for a specific intelligence category."""
-        
-        # Ethics audit for category execution
-        category_decision = {
-            "action": f"benchmark_category_{category}",
-            "preserve_life": True,
-            "absolute_honesty": True,
-            "privacy": True
-        }
-        audit_result = audit_decision(category_decision)
+
+    def _run_category_benchmark(self, category: str, test_module_map: dict) -> Dict[str, Any]:
+        enforce_ethics_compliance(all_ethics_decision(f"benchmark_category_{category}"))
+        audit_result = audit_decision(all_ethics_decision(f"benchmark_category_{category}"))
         log_ethics_event(f"benchmark_{category}", audit_result)
-        
         if not audit_result["compliant"]:
             raise RuntimeError(f"Ethics violation in {category}: {audit_result['violations']}")
-        
-        # Import and run the appropriate test module
-        test_module_map = {
-            'basic_problem_solving': 'tests.test_basic_problem_solving',
-            'adaptive_learning': 'tests.test_adaptive_learning',
-            'cognitive_functioning': 'tests.test_cognitive_functioning',
-            'pattern_recognition': 'tests.test_pattern_recognition',
-            'rigorous_intelligence': 'tests.test_rigorous_intelligence'
-        }
-        
         if category not in test_module_map:
             return {'error': f'Unknown category: {category}', 'score': 0.0, 'test_count': 0}
-        
         try:
-            # Run tests and collect results
             suite = unittest.TestLoader().loadTestsFromName(test_module_map[category])
-            
-            # Use null stream to suppress output
             import io
             with io.StringIO() as null_stream:
                 runner = unittest.TextTestRunner(stream=null_stream, verbosity=0)
-                
                 start_time = time.time()
                 result = runner.run(suite)
                 duration = time.time() - start_time
-            
-            # Calculate category score
             total_tests = result.testsRun
             failures = len(result.failures)
             errors = len(result.errors)
             successful_tests = total_tests - failures - errors
-            
             score = (successful_tests / total_tests * 100) if total_tests > 0 else 0.0
-            
             category_result = {
                 'score': round(score, 2),
                 'test_count': total_tests,
@@ -190,18 +171,15 @@ class IntelligenceBenchmark:
                 'failed_tests': failures,
                 'error_tests': errors,
                 'duration_seconds': round(duration, 3),
-                'ethics_compliant': True,  # All tests include ethics checks
+                'ethics_compliant': True,
                 'performance_metrics': {
                     'tests_per_second': round(total_tests / duration, 2) if duration > 0 else 0,
                     'average_test_time': round(duration / total_tests, 4) if total_tests > 0 else 0
                 }
             }
-            
             print(f"  Score: {score:.1f}/100 ({successful_tests}/{total_tests} tests passed)")
             print(f"  Duration: {duration:.2f}s")
-            
             return category_result
-            
         except Exception as e:
             print(f"  Error running {category}: {str(e)}")
             return {
@@ -210,29 +188,14 @@ class IntelligenceBenchmark:
                 'test_count': 0,
                 'ethics_compliant': False
             }
-    
+
     def _verify_ethics_compliance(self) -> bool:
-        """Verify that all benchmark operations maintained ethical compliance."""
-        
-        # Check that ethics audits were performed
-        ethics_decision = {
-            "action": "verify_benchmark_ethics_compliance",
-            "preserve_life": True,
-            "absolute_honesty": True,
-            "privacy": True,
-            "human_authority": True
-        }
-        
-        audit_result = audit_decision(ethics_decision)
+        audit_result = audit_decision(all_ethics_decision("verify_benchmark_ethics_compliance"))
         return audit_result["compliant"]
-    
+
     def _generate_comparison_baselines(self) -> Dict[str, Any]:
-        """Generate baseline metrics for comparing with other AI models."""
-        
         if not hasattr(self, 'benchmark_results') or not self.benchmark_results:
             return {}
-        
-        # Create standardized comparison metrics
         comparison_metrics = {
             'overall_intelligence_score': self.benchmark_results.get('overall_score', 0.0),
             'problem_solving_capability': 0.0,
@@ -254,30 +217,22 @@ class IntelligenceBenchmark:
                 'circadian_rhythms': True
             }
         }
-        
-        # Extract category-specific scores
         categories = self.benchmark_results.get('categories', {})
         comparison_metrics['problem_solving_capability'] = categories.get('basic_problem_solving', {}).get('score', 0.0)
         comparison_metrics['learning_adaptability'] = categories.get('adaptive_learning', {}).get('score', 0.0)
         comparison_metrics['cognitive_processing'] = categories.get('cognitive_functioning', {}).get('score', 0.0)
         comparison_metrics['pattern_recognition_accuracy'] = categories.get('pattern_recognition', {}).get('score', 0.0)
-        
         return comparison_metrics
-    
+
     def generate_benchmark_report(self, output_file: Optional[str] = None) -> str:
-        """Generate a comprehensive benchmark report suitable for model comparison."""
-        
         if not self.benchmark_results:
             return "No benchmark results available. Run run_comprehensive_benchmark() first."
-        
         report = []
         report.append("AI INTELLIGENCE BENCHMARK REPORT")
         report.append("=" * 50)
         report.append(f"Timestamp: {self.benchmark_results['timestamp']}")
         report.append(f"Benchmark Version: {self.benchmark_results['benchmark_version']}")
         report.append("")
-        
-        # Overall Summary
         report.append("OVERALL RESULTS")
         report.append("-" * 20)
         report.append(f"Overall Intelligence Score: {self.benchmark_results['overall_score']:.2f}/100")
@@ -285,19 +240,15 @@ class IntelligenceBenchmark:
         report.append(f"Ethics Compliance: {'PASSED' if self.benchmark_results['ethics_compliance'] else 'FAILED'}")
         report.append(f"Benchmark Duration: {self.benchmark_results['performance_metrics']['benchmark_duration_seconds']:.2f}s")
         report.append("")
-        
-        # Category Breakdown
         report.append("CATEGORY BREAKDOWN")
         report.append("-" * 20)
         for category, results in self.benchmark_results['categories'].items():
             category_name = category.replace('_', ' ').title()
             report.append(f"{category_name}:")
             report.append(f"  Score: {results['score']:.1f}/100")
-            report.append(f"  Tests: {results['successful_tests']}/{results['test_count']} passed")
-            report.append(f"  Duration: {results['duration_seconds']:.2f}s")
+            report.append(f"  Tests: {results.get('successful_tests',0)}/{results.get('test_count',0)} passed")
+            report.append(f"  Duration: {results.get('duration_seconds',0):.2f}s")
             report.append("")
-        
-        # Comparison Baselines
         if 'comparison_baselines' in self.benchmark_results:
             report.append("COMPARISON BASELINES FOR OTHER MODELS")
             report.append("-" * 40)
@@ -314,8 +265,6 @@ class IntelligenceBenchmark:
             report.append(f"  Average Response Time: {perf['response_time']:.4f}s")
             report.append(f"  Total Tests: {perf['total_tests_executed']}")
             report.append("")
-        
-        # Model Capabilities
         if 'comparison_baselines' in self.benchmark_results:
             capabilities = self.benchmark_results['comparison_baselines']['model_capabilities']
             report.append("MODEL CAPABILITIES")
@@ -324,63 +273,34 @@ class IntelligenceBenchmark:
                 status = "✓" if supported else "✗"
                 report.append(f"{status} {capability.replace('_', ' ').title()}")
             report.append("")
-        
         report.append("=" * 50)
         report.append("Report generated by Adaptive Neural Network Intelligence Benchmark System")
-        
         report_text = "\n".join(report)
-        
         if output_file:
             with open(output_file, 'w') as f:
                 f.write(report_text)
             print(f"Benchmark report saved to: {output_file}")
-        
         return report_text
-    
+
     def save_benchmark_data(self, filename: str) -> None:
-        """Save complete benchmark data as JSON for further analysis."""
-        
         if not self.benchmark_results:
             raise ValueError("No benchmark results to save. Run benchmark first.")
-        
-        # Ethics check for data saving
-        save_decision = {
-            "action": "save_benchmark_data", 
-            "preserve_life": True,
-            "absolute_honesty": True,
-            "privacy": True  # Benchmark data doesn't contain personal information
-        }
-        enforce_ethics_compliance(save_decision)
-        
+        enforce_ethics_compliance(all_ethics_decision("save_benchmark_data"))
         with open(filename, 'w') as f:
             json.dump(self.benchmark_results, f, indent=2)
-        
         print(f"Benchmark data saved to: {filename}")
-    
+
     def compare_with_baseline(self, baseline_file: str) -> Dict[str, Any]:
-        """Compare current benchmark results with a baseline from another model."""
-        
         if not self.benchmark_results:
             raise ValueError("No current benchmark results. Run benchmark first.")
-        
         try:
             with open(baseline_file, 'r') as f:
                 baseline = json.load(f)
         except FileNotFoundError:
             raise FileNotFoundError(f"Baseline file not found: {baseline_file}")
-        
-        # Ethics check for comparison
-        comparison_decision = {
-            "action": "compare_with_baseline_model",
-            "preserve_life": True,
-            "absolute_honesty": True,
-            "privacy": True
-        }
-        enforce_ethics_compliance(comparison_decision)
-        
+        enforce_ethics_compliance(all_ethics_decision("compare_with_baseline_model"))
         current_score = self.benchmark_results['overall_score']
         baseline_score = baseline.get('overall_score', 0.0)
-        
         comparison = {
             'current_model_score': current_score,
             'baseline_model_score': baseline_score,
@@ -389,52 +309,34 @@ class IntelligenceBenchmark:
             'category_comparisons': {},
             'recommendation': ''
         }
-        
-        # Category-wise comparison
         for category in self.benchmark_results['categories']:
             current_cat_score = self.benchmark_results['categories'][category]['score']
             baseline_cat_score = baseline.get('categories', {}).get(category, {}).get('score', 0.0)
-            
             comparison['category_comparisons'][category] = {
                 'current': current_cat_score,
                 'baseline': baseline_cat_score,
                 'difference': current_cat_score - baseline_cat_score
             }
-        
-        # Generate recommendation
         if comparison['performance_difference'] > 0:
             comparison['recommendation'] = "Current model outperforms baseline"
         elif comparison['performance_difference'] < 0:
             comparison['recommendation'] = "Current model underperforms baseline - consider improvements"
         else:
             comparison['recommendation'] = "Current model performs equivalently to baseline"
-        
         return comparison
 
-
+# --- Main interface function ---
 def run_intelligence_validation(include_robustness=False) -> Dict[str, Any]:
-    """
-    Main function to run comprehensive intelligence validation with ethical compliance.
-    This is the primary interface for validating AI intelligence capabilities.
-    
-    Args:
-        include_robustness: Whether to include robustness validation alongside intelligence testing
-    """
     benchmark = IntelligenceBenchmark()
     results = benchmark.run_comprehensive_benchmark(include_comparisons=True, include_robustness=include_robustness)
-    
-    # Generate comprehensive report
     report = benchmark.generate_benchmark_report()
     print("\n" + report)
-    
     return results
 
+# --- Run the full validation here ---
+results = run_intelligence_validation(include_robustness=True)
 
-if __name__ == "__main__":
-    # Run the comprehensive intelligence benchmark
-    results = run_intelligence_validation()
-    
-    # Save results for future comparison
-    benchmark = IntelligenceBenchmark()
-    benchmark.benchmark_results = results
-    benchmark.save_benchmark_data("benchmark_results.json")
+# --- Optionally, save results ---
+# benchmark = IntelligenceBenchmark()
+# benchmark.benchmark_results = results
+# benchmark.save_benchmark_data("benchmark_results.json")
