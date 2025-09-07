@@ -13,6 +13,7 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from core.ai_ethics import audit_decision, log_ethics_event, enforce_ethics_compliance
+from core.robustness_validator import RobustnessValidator
 
 
 class IntelligenceBenchmark:
@@ -27,7 +28,7 @@ class IntelligenceBenchmark:
         self.ethics_audit_log = []
         self.comparison_baselines = {}
         
-    def run_comprehensive_benchmark(self, include_comparisons=True) -> Dict[str, Any]:
+    def run_comprehensive_benchmark(self, include_comparisons=True, include_robustness=False) -> Dict[str, Any]:
         """
         Run comprehensive intelligence benchmark across all test categories.
         
@@ -101,12 +102,31 @@ class IntelligenceBenchmark:
             self.benchmark_results = overall_results
             overall_results['comparison_baselines'] = self._generate_comparison_baselines()
             
+        # Run robustness validation if requested
+        if include_robustness:
+            print("\n--- Running Robustness Validation ---")
+            robustness_validator = RobustnessValidator()
+            robustness_results = robustness_validator.run_comprehensive_robustness_validation(include_stress_tests=True)
+            overall_results['robustness_validation'] = robustness_results
+            
+            # Integrate robustness score into overall score
+            robustness_weight = 0.3  # 30% weight for robustness
+            intelligence_weight = 0.7  # 70% weight for intelligence
+            
+            combined_score = (overall_results['overall_score'] * intelligence_weight + 
+                            robustness_results['overall_robustness_score'] * robustness_weight)
+            overall_results['combined_intelligence_robustness_score'] = combined_score
+            
         # Store final results in instance variable
         self.benchmark_results = overall_results
         
         print(f"\n{'=' * 60}")
         print("BENCHMARK COMPLETE")
+        if include_robustness and 'combined_intelligence_robustness_score' in overall_results:
+            print(f"Combined Intelligence + Robustness Score: {overall_results['combined_intelligence_robustness_score']:.2f}/100")
         print(f"Overall Intelligence Score: {overall_results['overall_score']:.2f}/100")
+        if include_robustness and 'robustness_validation' in overall_results:
+            print(f"Overall Robustness Score: {overall_results['robustness_validation']['overall_robustness_score']:.2f}/100")
         print(f"Total Tests: {total_tests}")
         print(f"Duration: {benchmark_duration:.2f}s")
         print(f"Ethics Compliance: {'✓ PASSED' if overall_results['ethics_compliance'] else '✗ FAILED'}")
@@ -390,13 +410,16 @@ class IntelligenceBenchmark:
         return comparison
 
 
-def run_intelligence_validation() -> Dict[str, Any]:
+def run_intelligence_validation(include_robustness=False) -> Dict[str, Any]:
     """
     Main function to run comprehensive intelligence validation with ethical compliance.
     This is the primary interface for validating AI intelligence capabilities.
+    
+    Args:
+        include_robustness: Whether to include robustness validation alongside intelligence testing
     """
     benchmark = IntelligenceBenchmark()
-    results = benchmark.run_comprehensive_benchmark(include_comparisons=True)
+    results = benchmark.run_comprehensive_benchmark(include_comparisons=True, include_robustness=include_robustness)
     
     # Generate comprehensive report
     report = benchmark.generate_benchmark_report()

@@ -21,6 +21,7 @@ project_root = Path(__file__).parent.absolute()
 sys.path.insert(0, str(project_root))
 
 from core.intelligence_benchmark import IntelligenceBenchmark, run_intelligence_validation
+from core.robustness_validator import RobustnessValidator, run_robustness_validation
 from core.ai_ethics import audit_decision, enforce_ethics_compliance
 
 
@@ -44,15 +45,22 @@ def main():
         epilog="""
 Examples:
   python benchmark_cli.py --run-benchmark
+  python benchmark_cli.py --run-robustness
+  python benchmark_cli.py --run-combined
   python benchmark_cli.py --generate-report --output report.txt
   python benchmark_cli.py --compare baseline.json
   python benchmark_cli.py --run-benchmark --save-results results.json
+  python benchmark_cli.py --run-robustness --no-stress-tests
         """
     )
     
     # Main actions
     parser.add_argument("--run-benchmark", action="store_true",
                        help="Run comprehensive intelligence benchmark")
+    parser.add_argument("--run-robustness", action="store_true",
+                       help="Run comprehensive robustness validation")
+    parser.add_argument("--run-combined", action="store_true",
+                       help="Run both intelligence benchmark and robustness validation")
     parser.add_argument("--generate-report", action="store_true", 
                        help="Generate benchmark report from previous results")
     parser.add_argument("--compare", metavar="BASELINE_FILE",
@@ -65,6 +73,8 @@ Examples:
                        help="Save benchmark results to JSON file")
     parser.add_argument("--no-comparisons", action="store_true",
                        help="Skip generating comparison baselines")
+    parser.add_argument("--no-stress-tests", action="store_true",
+                       help="Skip stress testing in robustness validation")
     parser.add_argument("--verbose", "-v", action="store_true",
                        help="Verbose output")
     parser.add_argument("--ethics-only", action="store_true",
@@ -73,8 +83,9 @@ Examples:
     args = parser.parse_args()
     
     # Validate arguments
-    if not (args.run_benchmark or args.generate_report or args.compare or args.ethics_only):
-        parser.error("Must specify an action: --run-benchmark, --generate-report, --compare, or --ethics-only")
+    if not (args.run_benchmark or args.run_robustness or args.run_combined or 
+            args.generate_report or args.compare or args.ethics_only):
+        parser.error("Must specify an action: --run-benchmark, --run-robustness, --run-combined, --generate-report, --compare, or --ethics-only")
     
     benchmark = IntelligenceBenchmark()
     
@@ -85,6 +96,12 @@ Examples:
         elif args.run_benchmark:
             run_benchmark_action(benchmark, args)
             
+        elif args.run_robustness:
+            run_robustness_action(args)
+            
+        elif args.run_combined:
+            run_combined_action(benchmark, args)
+            
         elif args.generate_report:
             generate_report_action(benchmark, args)
             
@@ -93,6 +110,93 @@ Examples:
             
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)
+        sys.exit(1)
+
+
+def run_robustness_action(args):
+    """Run comprehensive robustness validation"""
+    print("Starting Comprehensive AI System Robustness Validation...")
+    
+    # Run robustness validation
+    include_stress_tests = not args.no_stress_tests
+    validator = RobustnessValidator()
+    results = validator.run_comprehensive_robustness_validation(include_stress_tests=include_stress_tests)
+    
+    # Generate and display report
+    report = validator.generate_robustness_report(args.output)
+    if not args.output:
+        print("\n" + "=" * 60)
+        print("ROBUSTNESS VALIDATION REPORT")
+        print("=" * 60)
+        print(report)
+    
+    # Save results if requested
+    if args.save_results:
+        validator.save_validation_data(args.save_results)
+    
+    # Display summary
+    print(f"\n{'=' * 60}")
+    print("ROBUSTNESS VALIDATION SUMMARY")
+    print(f"{'=' * 60}")
+    print(f"Overall Robustness Score: {results['overall_robustness_score']:.1f}/100")
+    print(f"Deployment Readiness: {results['deployment_readiness']}")
+    print(f"Ethics Compliance: {'✓ PASSED' if results['ethics_compliance']['compliant'] else '✗ FAILED'}")
+    print(f"Duration: {results['total_duration_seconds']:.2f}s")
+    
+    if results['ethics_compliance']['compliant']:
+        print("\n✓ Robustness validation complete. System validated across deployment scenarios.")
+    else:
+        print("\n✗ Ethics compliance violation detected during robustness validation.")
+        sys.exit(1)
+
+
+def run_combined_action(benchmark, args):
+    """Run both intelligence benchmark and robustness validation"""
+    print("Starting Combined Intelligence + Robustness Validation...")
+    print("=" * 70)
+    
+    # Run combined validation
+    include_comparisons = not args.no_comparisons
+    results = benchmark.run_comprehensive_benchmark(
+        include_comparisons=include_comparisons, 
+        include_robustness=True
+    )
+    
+    # Generate and display report
+    report = benchmark.generate_benchmark_report(args.output)
+    if not args.output:
+        print("\n" + "=" * 60)
+        print("COMBINED VALIDATION REPORT")
+        print("=" * 60)
+        print(report)
+    
+    # Save results if requested
+    if args.save_results:
+        benchmark.save_benchmark_data(args.save_results)
+    
+    # Display summary
+    print(f"\n{'=' * 70}")
+    print("COMBINED VALIDATION SUMMARY")
+    print(f"{'=' * 70}")
+    
+    if 'combined_intelligence_robustness_score' in results:
+        print(f"Combined Intelligence + Robustness Score: {results['combined_intelligence_robustness_score']:.1f}/100")
+    
+    print(f"Intelligence Score: {results['overall_score']:.1f}/100")
+    
+    if 'robustness_validation' in results:
+        robustness_data = results['robustness_validation']
+        print(f"Robustness Score: {robustness_data['overall_robustness_score']:.1f}/100")
+        print(f"Deployment Readiness: {robustness_data['deployment_readiness']}")
+    
+    print(f"Ethics Compliance: {'✓ PASSED' if results['ethics_compliance'] else '✗ FAILED'}")
+    print(f"Total Tests: {results['total_tests']}")
+    print(f"Duration: {results['performance_metrics']['benchmark_duration_seconds']:.2f}s")
+    
+    if results['ethics_compliance']:
+        print("\n✓ Combined validation complete. System validated for intelligence and robustness.")
+    else:
+        print("\n✗ Ethics compliance violation detected during validation.")
         sys.exit(1)
 
 
