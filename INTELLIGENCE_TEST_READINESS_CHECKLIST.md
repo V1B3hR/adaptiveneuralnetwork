@@ -58,6 +58,12 @@ Use this checklist before running any intelligence test in the adaptive neural n
 - [x] **Ethics Check**: ✅ Compliant
 - [x] **Status**: All tests passing
 
+### Rigorous Intelligence Tests
+- [x] **File**: `tests/test_rigorous_intelligence.py`
+- [x] **Tests**: Nested puzzles, ambiguous decisions, nonlinear outcomes, incremental learning, out-of-distribution generalization, catastrophic forgetting resistance, sparse pattern recall, temporal sequences, conflicting memory resolution, multi-agent consensus, social signal ambiguity, adversarial influence resistance, subtle ethics violations, ethical dilemmas, audit bypass detection
+- [x] **Ethics Check**: ✅ Compliant
+- [x] **Status**: All tests passing
+
 ## Pre-Test Verification Commands
 
 ### Environment Check

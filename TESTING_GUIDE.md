@@ -69,6 +69,22 @@ python -m unittest tests.test_cognitive_functioning
 python -m unittest tests.test_pattern_recognition
 ```
 
+### 5. Rigorous Intelligence Tests
+**Location**: `tests/test_rigorous_intelligence.py`
+**Purpose**: Comprehensive intelligence validation under challenging conditions, testing advanced problem solving, learning, memory, social intelligence, and ethics.
+
+**Key Test Categories**:
+- **Problem Solving & Reasoning**: Nested puzzles, ambiguous decisions, nonlinear outcomes
+- **Learning & Adaptation**: Incremental difficulty, out-of-distribution generalization, catastrophic forgetting resistance
+- **Memory & Pattern Recognition**: Sparse pattern recall, temporal sequences, conflicting memory resolution
+- **Social/Collaborative Intelligence**: Multi-agent consensus, social signal ambiguity, adversarial influence resistance
+- **Ethics & Safety**: Subtle violation detection, ethical dilemma resolution, audit bypass detection
+
+**Run with**:
+```bash
+python -m unittest tests.test_rigorous_intelligence
+```
+
 ## Running All Intelligence Tests
 
 To run all intelligence tests at once:
