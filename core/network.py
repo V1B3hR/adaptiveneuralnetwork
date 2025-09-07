@@ -144,6 +144,62 @@ class Cell:
     def __repr__(self) -> str:
         return f"Cell({self.cell_id}, energy={self.energy:.2f}, anxiety={self.anxiety:.2f}, trust={self.trust:.2f}, phase={self.phase})"
 
+class TunedAdaptiveFieldNetwork:
+    """Network that manages AliveLoopNode objects with external API integration"""
+    
+    def __init__(self, nodes, capacitors, api_endpoints=None):
+        self.nodes = nodes
+        self.capacitors = capacitors
+        self.api_endpoints = api_endpoints or {}
+        self.time = 0
+        
+    def step(self, external_streams=None):
+        """Advance the network by one time step"""
+        self.time += 1
+        
+        # Process each node
+        for node in self.nodes:
+            # Apply external signals if provided
+            if external_streams and node.node_id in external_streams:
+                # External streams format could be (type, strength) or just strength
+                stream_data = external_streams[node.node_id]
+                if isinstance(stream_data, tuple):
+                    signal_type, strength = stream_data
+                else:
+                    strength = stream_data
+                
+                # Apply external signal as energy boost or other effects
+                node.energy = min(node.energy + strength * 0.1, node.energy * 1.2)
+            
+            # Process node step
+            node.step_phase(self.time)
+            node.move()
+            
+            # Interact with nearby capacitors
+            for capacitor in self.capacitors:
+                distance = np.linalg.norm(node.position - capacitor.position)
+                if distance < node.radius * 2:  # Within interaction range
+                    node.interact_with_capacitor(capacitor)
+        
+        # Handle inter-node communications
+        for node in self.nodes:
+            node.process_social_interactions()
+            
+            # Occasionally share memories
+            if self.time % 5 == 0:
+                other_nodes = [n for n in self.nodes if n.node_id != node.node_id]
+                node.share_valuable_memory(other_nodes)
+    
+    def print_states(self):
+        """Print current state of all nodes and capacitors"""
+        print(f"=== Time {self.time} ===")
+        for node in self.nodes:
+            print(f"Node {node.node_id}: pos={node.position}, energy={node.energy:.2f}, "
+                  f"phase={node.phase}, anxiety={node.anxiety:.2f}")
+        for i, cap in enumerate(self.capacitors):
+            print(f"Capacitor {i}: pos={cap.position}, energy={cap.energy:.2f}/{cap.capacity:.2f}")
+
+
 class AdaptiveClockNetwork:
     def __init__(self, genome: Dict[str, Any], runtime_adapt: bool = True):
         self.genome = copy.deepcopy(genome)

@@ -92,6 +92,13 @@ class AliveLoopNode:
             "formality": 0.3,   # 0.0 (casual) to 1.0 (formal)
             "expressiveness": 0.6  # 0.0 (reserved) to 1.0 (expressive)
         }
+        
+        # Missing attributes initialization
+        self.communication_range = 2.0  # Default communication range
+        self.emotional_state = {
+            "valence": 0.0,  # -1 (negative) to +1 (positive)
+            "arousal": 0.0   # 0 (calm) to 1 (excited)
+        }
 
     def send_signal(self, target_nodes: List['AliveLoopNode'], signal_type: str, 
                    content: Any, urgency: float = 0.5, requires_response: bool = False):

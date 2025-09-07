@@ -1,23 +1,8 @@
 import numpy as np
 import random
 from collections import deque
-from dataclasses import dataclass
 from typing import Any
-
-@dataclass
-class Memory:
-    """Structured memory with importance weighting"""
-    content: Any
-    importance: float
-    timestamp: int
-    memory_type: str  # 'reward', 'shared', 'prediction', 'pattern'
-    decay_rate: float = 0.95
-    
-    def age(self):
-        # Debug: Log importance before and after aging
-        print(f"[DEBUG] Memory importance before aging: {self.importance}")
-        self.importance *= self.decay_rate
-        print(f"[DEBUG] Memory importance after aging: {self.importance}")
+from core.alive_node import Memory
 
 class CapacitorInSpace:
     def __init__(self, position, capacity=5.0, initial_energy=0.0):
