@@ -56,7 +56,8 @@ class IntelligenceBenchmark:
             'basic_problem_solving',
             'adaptive_learning', 
             'cognitive_functioning',
-            'pattern_recognition'
+            'pattern_recognition',
+            'rigorous_intelligence'
         ]
         
         overall_results = {
@@ -154,7 +155,8 @@ class IntelligenceBenchmark:
             'basic_problem_solving': 'tests.test_basic_problem_solving',
             'adaptive_learning': 'tests.test_adaptive_learning',
             'cognitive_functioning': 'tests.test_cognitive_functioning',
-            'pattern_recognition': 'tests.test_pattern_recognition'
+            'pattern_recognition': 'tests.test_pattern_recognition',
+            'rigorous_intelligence': 'tests.test_rigorous_intelligence'
         }
         
         if category not in test_module_map:

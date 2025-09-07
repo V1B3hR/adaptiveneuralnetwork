@@ -41,6 +41,23 @@ The benchmarking system provides:
    - Social pattern understanding
    - Anomaly detection capabilities
 
+5. **Rigorous Intelligence** (`test_rigorous_intelligence.py`)
+   - Nested puzzle solving with multi-step logical reasoning
+   - Ambiguous decision making under uncertainty
+   - Nonlinear outcome mapping and adaptation
+   - Incremental difficulty learning and strategy adaptation
+   - Out-of-distribution generalization to novel patterns
+   - Catastrophic forgetting resistance
+   - Sparse pattern recall from incomplete information
+   - Temporal sequence detection across time steps
+   - Conflicting memory resolution with trust weighting
+   - Multi-agent consensus building
+   - Social signal ambiguity interpretation
+   - Adversarial peer influence resistance
+   - Subtle ethics violation detection
+   - Ethical dilemma resolution with trade-offs
+   - Audit bypass attempt detection
+
 ### Ethical Compliance Framework
 
 Every benchmark operation includes mandatory ethics checks:
