@@ -44,7 +44,32 @@ class AliveLoopNode:
     sleep_stages = ["light", "REM", "deep"]
 
     def __init__(self, position, velocity, initial_energy=10.0, field_strength=1.0, node_id=0):
-        # [Previous initialization code remains the same until the new additions]
+        # Basic node attributes
+        self.position = np.array(position, dtype=float)
+        self.velocity = np.array(velocity, dtype=float)
+        self.energy = float(initial_energy)
+        self.field_strength = float(field_strength)
+        self.node_id = int(node_id)
+        
+        # Phase and time management
+        self.phase = "active"  # active, sleep, interactive, inspired
+        self._time = 0
+        self.circadian_cycle = 0
+        
+        # Memory systems
+        self.memory = []  # List of Memory objects
+        self.long_term_memory = {}
+        self.working_memory = deque(maxlen=50)
+        self.predicted_energy = self.energy
+        
+        # Behavioral attributes
+        self.anxiety = 0.0
+        self.sleep_stage = "light"
+        self.attention_focus = np.array([0.0, 0.0])
+        self.radius = 0.5
+        
+        # Trust and social networks
+        self.trust_network = {}  # node_id -> trust_score
         
         # Enhanced social learning attributes
         self.communication_queue = deque(maxlen=20)  # Incoming signals to process
@@ -301,11 +326,19 @@ class AliveLoopNode:
             # Trust increases when sharing resources
             self.trust_network[target.node_id] = min(1.0, current_trust + 0.1)
 
-    def _is_memory_relevant(self, memory: Memory, query: Any) -> bool:
+    def _is_memory_relevant(self, memory, query: Any) -> bool:
         """Check if a memory is relevant to a query"""
+        # Handle both Memory objects and dict objects for backward compatibility
+        if hasattr(memory, 'content'):
+            content = memory.content
+        else:
+            content = memory.get('content', '')
+            
         # Simple relevance check - could be enhanced with semantic similarity
-        if isinstance(query, str) and isinstance(memory.content, str):
-            return query.lower() in memory.content.lower()
+        if isinstance(query, str) and isinstance(content, str):
+            return query.lower() in content.lower()
+        elif isinstance(query, str) and isinstance(content, dict):
+            return any(query.lower() in str(v).lower() for v in content.values())
         return False
 
     def process_social_interactions(self):
@@ -366,13 +399,92 @@ class AliveLoopNode:
             pass
 
     def step_phase(self, current_time: int):
-        # [Previous phase stepping code]
+        """Enhanced phase management with circadian rhythms"""
+        self._time = current_time
+        self.circadian_cycle = current_time % 24
         
+        # Phase transitions based on energy, anxiety, and time
+        if self.energy < 3.0 or self.circadian_cycle > 20:
+            self.phase = "sleep"
+            # Sleep stage based on anxiety level
+            if self.anxiety > 10:
+                self.sleep_stage = "deep"  # Stress-induced deep sleep
+            elif self.anxiety > 5:
+                self.sleep_stage = "REM"
+            else:
+                self.sleep_stage = "light"
+        elif self.energy > 20.0 and self.anxiety < 5.0:
+            self.phase = "inspired"  # High energy, low anxiety
+        elif self.energy > 8.0 and 6 <= self.circadian_cycle <= 18:
+            self.phase = "active"
+        else:
+            self.phase = "interactive"
+            
         # Social phases might affect communication style
         if self.phase == "interactive":
             self.communication_style["directness"] = min(1.0, self.communication_style["directness"] + 0.1)
         elif self.phase == "sleep":
             self.communication_style["directness"] = max(0.0, self.communication_style["directness"] - 0.1)
+
+    def move(self):
+        """Energy-efficient movement with basic navigation"""
+        if self.phase in ["active", "interactive"] and self.energy > 1.0:
+            # Update position based on velocity
+            self.position += self.velocity
+            
+            # Energy cost for movement
+            movement_cost = 0.1 * np.linalg.norm(self.velocity)
+            self.energy = max(0, self.energy - movement_cost)
+
+    def interact_with_capacitor(self, capacitor, threshold=0.5):
+        """Enhanced interaction with capacitors"""
+        distance = np.linalg.norm(self.position - capacitor.position)
+        
+        if distance < threshold:
+            energy_difference = self.energy - capacitor.energy
+            transfer_amount = 0.1 * energy_difference
+            
+            if transfer_amount > 0:
+                # Transfer energy to capacitor
+                actual_transfer = min(transfer_amount, self.energy - 1.0)  # Keep some energy
+                if actual_transfer > 0:
+                    capacitor.energy = min(capacitor.capacity, capacitor.energy + actual_transfer)
+                    self.energy -= actual_transfer
+            else:
+                # Receive energy from capacitor
+                actual_receive = min(-transfer_amount, capacitor.energy)
+                if actual_receive > 0:
+                    self.energy += actual_receive
+                    capacitor.energy -= actual_receive
+
+    def predict_energy(self):
+        """Predict future energy based on memory patterns"""
+        # Simple prediction based on recent memory
+        energy_memories = []
+        for m in self.memory:
+            # Handle both Memory objects and dict objects for backward compatibility
+            if hasattr(m, 'content'):
+                content = m.content
+            else:
+                content = m.get('content', {})
+            
+            if isinstance(content, dict) and 'energy' in content:
+                energy_memories.append(content['energy'])
+            elif 'energy' in str(content):
+                energy_memories.append(1.0)  # Default energy value
+                
+        if energy_memories:
+            avg_energy_change = sum(energy_memories[-5:]) / len(energy_memories[-5:])
+            self.predicted_energy = max(0, self.energy + avg_energy_change)
+        else:
+            self.predicted_energy = self.energy
+
+    def clear_anxiety(self):
+        """Reduce anxiety, especially during deep sleep"""
+        if self.phase == "sleep" and self.sleep_stage == "deep":
+            self.anxiety = max(0, self.anxiety - 2.0)
+        else:
+            self.anxiety = max(0, self.anxiety - 0.5)
 
 
 # Example usage in a multi-node simulation
