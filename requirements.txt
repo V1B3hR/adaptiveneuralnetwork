@@ -1,3 +1,14 @@
-numpy
-scipy
-matplotlib
+# Core dependencies for Adaptive Neural Network
+# Pin versions for reproducibility
+
+# Scientific computing
+numpy>=1.24,<2.0
+scipy>=1.10,<1.13
+matplotlib>=3.8,<3.9
+
+# Optional dependencies for extended functionality:
+# - pytest: for extended testing (see dev-requirements.txt)
+# - coverage: for test coverage analysis (see dev-requirements.txt)
+# - mypy: for type checking (see dev-requirements.txt)
+# - black: for code formatting (see dev-requirements.txt)
+# - isort: for import sorting (see dev-requirements.txt)

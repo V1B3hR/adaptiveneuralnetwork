@@ -1,0 +1,24 @@
+# Development dependencies for Adaptive Neural Network
+# These are optional dependencies for development and testing
+
+# Testing framework (alternative to unittest)
+pytest>=7.0,<8.0
+pytest-cov>=4.0,<5.0
+
+# Code coverage analysis
+coverage>=7.0,<8.0
+
+# Type checking
+mypy>=1.0,<2.0
+
+# Code formatting
+black>=23.0,<24.0
+
+# Import sorting
+isort>=5.12,<6.0
+
+# Additional development tools
+flake8>=6.0,<7.0  # Linting
+pre-commit>=3.0,<4.0  # Git hooks for code quality
+
+# Install with: pip install -r dev-requirements.txt
