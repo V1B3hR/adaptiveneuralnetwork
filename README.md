@@ -1,21 +1,24 @@
-# adaptiveneuralnetwork
-a biologically-inspired network of nodes (“AliveLoopNode”) interacting with capacitors and external data streams, featuring: - Staged sleep (light, REM, deep) - Mixed phases (active, inspired, interactive) - Anxiety and restorative behaviour
-# Adaptive Network
+# Adaptive Neural Network
 
-This project implements an adaptive neural network inspired by brain states, integrating staged sleep, mixed phases, anxiety management, memory replay/sharing, and external signal adaptation.
+A biologically-inspired network of nodes (“AliveLoopNode”) interacting with capacitors and external data streams, featuring:
+- Staged sleep (light, REM, deep)
+- Mixed/overlapping phases (active, inspired, interactive)
+- Anxiety and restorative behaviour
+- Memory replay/sharing during sleep
+- External signal adaptation
 
-## Structure
+## Project Structure
 
-- `core/`: Main model classes (`alive_node.py`, `capacitor.py`, `network.py`)
-- `experiments/`: Testing and demonstration scripts (`demo_test.py`)
-- `run_simulation.py`: Entry point for running the demo
-- `README.md`: Project overview and instructions
+- `core/` — Main model classes (`alive_node.py`, `capacitor.py`, `network.py`)
+- `experiments/` — Testing and demonstration scripts (`demo_test.py`)
+- `run_simulation.py` — Entry point for running the demo
+- `README.md` — Project overview and instructions
 
 ## Getting Started
 
 1. Install requirements (`numpy`).
 2. Run the demo simulation:
-   ```
+   ```bash
    python run_simulation.py
    ```
 
@@ -37,3 +40,5 @@ This project implements an adaptive neural network inspired by brain states, int
 ---
 
 Contributions welcome!
+
+License: GNU GPL v3.0
