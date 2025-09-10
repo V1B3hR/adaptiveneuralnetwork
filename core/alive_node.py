@@ -149,6 +149,8 @@ class AliveLoopNode:
         self.anxiety_unload_capacity = 2.0  # How much anxiety can be unloaded per interaction
         self.received_help_this_period = False  # Track if received help recently
         self.anxiety_history = deque(maxlen=20)  # Track anxiety over time
+        self.calm_history = deque(maxlen=20)  # Track calm levels over time
+        self.energy_history = deque(maxlen=20)  # Track energy levels over time
 
     def send_signal(self, target_nodes: List['AliveLoopNode'], signal_type: str, 
                    content: Any, urgency: float = 0.5, requires_response: bool = False):
@@ -539,9 +541,17 @@ class AliveLoopNode:
             
         # Anxiety management and safety protocol
         self.anxiety_history.append(self.anxiety)
+        self.calm_history.append(self.calm)
+        self.energy_history.append(self.energy)
         
         # Apply natural calm effect
         self.apply_calm_effect()
+        
+        # Check for proactive interventions based on trend analysis
+        if len(self.anxiety_history) >= 5:  # Only after we have enough history
+            intervention_result = self.apply_proactive_intervention()
+            if intervention_result["applied_interventions"]:
+                logger.info(f"Node {self.node_id}: Applied proactive interventions: {intervention_result['applied_interventions']}")
         
         # Reset help signal limits periodically
         if current_time % 50 == 0:  # Every 50 time steps
@@ -817,11 +827,167 @@ class AliveLoopNode:
         self.help_signals_sent = 0
         self.received_help_this_period = False
         
+    def analyze_trend(self, history: deque, window_size: int = 5) -> Dict[str, Any]:
+        """Analyze trend in a given history for proactive intervention
+        
+        Args:
+            history: deque containing historical values
+            window_size: number of recent entries to analyze for trend
+            
+        Returns:
+            Dict containing trend analysis results
+        """
+        if len(history) < 2:
+            return {
+                "trend": "insufficient_data",
+                "slope": 0.0,
+                "recent_avg": 0.0,
+                "volatility": 0.0,
+                "intervention_needed": False
+            }
+            
+        # Convert deque to list for analysis
+        values = list(history)
+        
+        # Calculate recent average
+        recent_values = values[-min(window_size, len(values)):]
+        recent_avg = np.mean(recent_values)
+        
+        # Calculate trend (slope)
+        if len(recent_values) >= 2:
+            x = np.arange(len(recent_values))
+            slope = np.polyfit(x, recent_values, 1)[0]
+        else:
+            slope = 0.0
+            
+        # Calculate volatility (standard deviation)
+        volatility = np.std(recent_values) if len(recent_values) > 1 else 0.0
+        
+        # Determine trend direction
+        if abs(slope) < 0.1:
+            trend = "stable"
+        elif slope > 0:
+            trend = "increasing"
+        else:
+            trend = "decreasing"
+            
+        return {
+            "trend": trend,
+            "slope": float(slope),
+            "recent_avg": float(recent_avg),
+            "volatility": float(volatility),
+            "values_count": len(values),
+            "recent_values": recent_values
+        }
+        
+    def detect_intervention_needs(self) -> Dict[str, Any]:
+        """Detect if proactive intervention is needed based on trend analysis
+        
+        Returns:
+            Dict containing intervention recommendations
+        """
+        anxiety_trend = self.analyze_trend(self.anxiety_history)
+        calm_trend = self.analyze_trend(self.calm_history)
+        energy_trend = self.analyze_trend(self.energy_history)
+        
+        interventions_needed = []
+        urgency_level = "low"
+        
+        # Anxiety trend analysis
+        if anxiety_trend["trend"] == "increasing" and anxiety_trend["slope"] > 0.5:
+            interventions_needed.append("anxiety_management")
+            if anxiety_trend["recent_avg"] > 8.0:
+                urgency_level = "high"
+            elif anxiety_trend["recent_avg"] > 5.0:
+                urgency_level = "medium"
+                
+        # Calm trend analysis
+        if calm_trend["trend"] == "decreasing" and calm_trend["slope"] < -0.3:
+            interventions_needed.append("calm_restoration")
+            if calm_trend["recent_avg"] < 1.0:
+                urgency_level = max(urgency_level, "medium", key=lambda x: ["low", "medium", "high"].index(x))
+                
+        # Energy trend analysis  
+        if energy_trend["trend"] == "decreasing" and energy_trend["slope"] < -0.5:
+            interventions_needed.append("energy_conservation")
+            if energy_trend["recent_avg"] < 3.0:
+                urgency_level = max(urgency_level, "high", key=lambda x: ["low", "medium", "high"].index(x))
+                
+        # Combined risk assessment
+        combined_risk = False
+        if (anxiety_trend["recent_avg"] > 6.0 and 
+            calm_trend["recent_avg"] < 2.0 and 
+            energy_trend["recent_avg"] < 5.0):
+            interventions_needed.append("comprehensive_support")
+            urgency_level = "high"
+            combined_risk = True
+            
+        return {
+            "interventions_needed": interventions_needed,
+            "urgency_level": urgency_level,
+            "combined_risk": combined_risk,
+            "anxiety_trend": anxiety_trend,
+            "calm_trend": calm_trend,
+            "energy_trend": energy_trend,
+            "timestamp": self._time
+        }
+        
+    def apply_proactive_intervention(self) -> Dict[str, Any]:
+        """Apply proactive interventions based on trend analysis
+        
+        Returns:
+            Dict containing applied interventions and their effects
+        """
+        intervention_analysis = self.detect_intervention_needs()
+        applied_interventions = []
+        
+        for intervention_type in intervention_analysis["interventions_needed"]:
+            if intervention_type == "anxiety_management":
+                # Increase calm and apply breathing technique simulation
+                calm_boost = min(1.0, 5.0 - self.calm)
+                self.calm += calm_boost
+                self.anxiety = max(0, self.anxiety - calm_boost * 0.5)
+                applied_interventions.append(f"anxiety_management: +{calm_boost:.2f} calm")
+                
+            elif intervention_type == "calm_restoration":
+                # Deep relaxation technique
+                calm_restore = min(2.0, 5.0 - self.calm)
+                self.calm += calm_restore
+                applied_interventions.append(f"calm_restoration: +{calm_restore:.2f} calm")
+                
+            elif intervention_type == "energy_conservation":
+                # Switch to more conservative phase and reduce activity
+                if self.phase == "active":
+                    self.phase = "interactive"
+                    applied_interventions.append("energy_conservation: reduced activity phase")
+                    
+            elif intervention_type == "comprehensive_support":
+                # Apply multiple interventions
+                self.calm = min(5.0, self.calm + 1.5)
+                self.anxiety = max(0, self.anxiety - 1.0)
+                if self.energy < 3.0:
+                    self.energy += 1.0  # Emergency energy boost
+                applied_interventions.append("comprehensive_support: multiple systems boosted")
+                
+        return {
+            "applied_interventions": applied_interventions,
+            "intervention_analysis": intervention_analysis,
+            "node_state_after": {
+                "anxiety": self.anxiety,
+                "calm": self.calm,
+                "energy": self.energy,
+                "phase": self.phase
+            }
+        }
+        
     def get_anxiety_status(self) -> Dict[str, Any]:
         """Get comprehensive anxiety and help status"""
+        intervention_analysis = self.detect_intervention_needs() if len(self.anxiety_history) >= 2 else None
+        
         return {
             "anxiety_level": self.anxiety,
             "calm_level": self.calm,
+            "energy_level": self.energy,
             "is_overwhelmed": self.check_anxiety_overwhelm(),
             "can_send_help": self.can_send_help_signal(),
             "help_signals_sent": self.help_signals_sent,
@@ -829,7 +995,13 @@ class AliveLoopNode:
             "received_help_recently": self.received_help_this_period,
             "anxiety_threshold": self.anxiety_threshold,
             "trust_network_size": len(self.trust_network),
-            "avg_trust_level": np.mean(list(self.trust_network.values())) if self.trust_network else 0.0
+            "avg_trust_level": np.mean(list(self.trust_network.values())) if self.trust_network else 0.0,
+            "history_lengths": {
+                "anxiety": len(self.anxiety_history),
+                "calm": len(self.calm_history),
+                "energy": len(self.energy_history)
+            },
+            "intervention_analysis": intervention_analysis
         }
 
 
