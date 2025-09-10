@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime, timedelta
+from core.time_manager import get_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ class TimeSeriesTracker:
             timestamp: Optional timestamp (uses current time if None)
         """
         if timestamp is None:
-            timestamp = datetime.now().timestamp()
+            timestamp = get_timestamp()
             
         with self._lock:
             for variable_name, value in state_data.items():
@@ -351,7 +352,7 @@ class TimeSeriesTracker:
         if variables is None:
             variables = self.DEFAULT_VARIABLES
             
-        end_time = datetime.now().timestamp()
+        end_time = get_timestamp()
         start_time = end_time - (time_range_hours * 3600)
         
         query = TimeSeriesQuery(
@@ -432,7 +433,7 @@ class TimeSeriesTracker:
         Returns:
             matplotlib Figure object
         """
-        end_time = datetime.now().timestamp()
+        end_time = get_timestamp()
         start_time = end_time - (time_range_hours * 3600)
         
         query = TimeSeriesQuery(
@@ -534,7 +535,7 @@ class TimeSeriesTracker:
         
     def cleanup_old_data(self, keep_hours: float = 168):  # Default: keep 1 week
         """Remove old data to manage storage size"""
-        cutoff_time = datetime.now().timestamp() - (keep_hours * 3600)
+        cutoff_time = get_timestamp() - (keep_hours * 3600)
         
         # Clean memory store
         with self._lock:

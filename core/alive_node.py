@@ -7,6 +7,7 @@ from typing import List, Dict, Optional, Tuple, Any
 import uuid
 import logging
 from core.ai_ethics import audit_decision
+from core.time_manager import get_time_manager, get_timestamp
 
 # Setup logger for alive_node module
 logger = logging.getLogger('alive_node')
@@ -163,7 +164,7 @@ class AliveLoopNode:
         self.anxiety_history = deque(maxlen=20)# Rolling history for trend analysis
 
         # Initialize period boundaries if needed
-        self._help_period_start = time.time()
+        self._help_period_start = get_timestamp()
         self.help_period_duration = 60  # seconds (adjust as needed)
 
     def send_signal(self, target_nodes: List['AliveLoopNode'], signal_type: str, 
@@ -518,16 +519,25 @@ class AliveLoopNode:
             # Potential extension: move toward most trusted nodes
             pass
 
-    def step_phase(self, current_time: int):
-        """Enhanced phase management with circadian rhythms"""
-        self._time = current_time
-        self.circadian_cycle = current_time % 24
+    def step_phase(self, current_time: Optional[int] = None):
+        """Enhanced phase management with circadian rhythms using centralized time management"""
+        # Use centralized time manager for simulation time, but allow override for backward compatibility
+        time_manager = get_time_manager()
+        if current_time is not None:
+            # Backward compatibility: set time manager to match provided time
+            # Reset and advance to the desired time
+            if current_time != time_manager.simulation_step:
+                time_manager.reset()
+                time_manager.advance_simulation(current_time)
+        
+        self._time = time_manager.simulation_step
+        self.circadian_cycle = time_manager.circadian_time
         
         # Reset communication rate limits for new time step
-        self._reset_rate_limits(current_time)
+        self._reset_rate_limits(self._time)
         
         # Clean up memory periodically
-        if current_time % 10 == 0:  # Every 10 steps
+        if self._time % 10 == 0:  # Every 10 steps
             self._cleanup_memory()
         
         # Phase transitions based on energy, anxiety, and time
@@ -560,7 +570,7 @@ class AliveLoopNode:
         self.apply_calm_effect()
         
         # Reset help signal limits periodically
-        if current_time % 50 == 0:  # Every 50 time steps
+        if self._time % 50 == 0:  # Every 50 time steps
             self.reset_help_signal_limits()
             
         # Automatic anxiety help signal for overwhelm
@@ -852,7 +862,7 @@ class AliveLoopNode:
 
     def record_suspicious_event(self, event):
         """Record a suspicious event and evaluate whether mitigation should trigger."""
-        self.suspicious_events.append((time.time(), event))
+        self.suspicious_events.append((get_timestamp(), event))
         if len(self.suspicious_events) >= self.attack_detection_threshold:
             self.handle_attack_detection()
 
@@ -873,7 +883,7 @@ class AliveLoopNode:
         # Apply drain resistance as a safeguard
         effective_amount = amount * (1.0 - (1.0 - self.energy_drain_resistance))
         self.energy_sharing_history.append({
-            "t": time.time(),
+            "t": get_timestamp(),
             "recipient": recipient_id,
             "requested": amount,
             "transferred": effective_amount
@@ -886,7 +896,7 @@ class AliveLoopNode:
         # Convert 'calm' into an implicit anxiety measure if needed
         # For clarity, treat 'calm' as a stabilizer: higher calm reduces net anxiety accumulation.
         adjusted = delta - (0.1 * self.calm)
-        timestamp = time.time()
+        timestamp = get_timestamp()
         self.anxiety_history.append((timestamp, adjusted))
         # Optionally derive a rolling anxiety score
         rolling_anxiety = sum(v for _, v in self.anxiety_history)
@@ -895,7 +905,7 @@ class AliveLoopNode:
 
     def try_send_help_signal(self):
         """Attempt to send a help signal respecting cooldown and rate limits."""
-        now = time.time()
+        now = get_timestamp()
         # Reset period if expired
         if now - self._help_period_start >= self.help_period_duration:
             self._help_period_start = now

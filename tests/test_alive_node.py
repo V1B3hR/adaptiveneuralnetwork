@@ -20,6 +20,10 @@ class TestAliveLoopNode(unittest.TestCase):
 
     def test_step_phase(self):
         """Validate phase transitions under different conditions"""
+        # Reset time manager for consistent test behavior
+        from core.time_manager import get_time_manager
+        get_time_manager().reset()
+        
         self.node.energy = 1
         self.node.anxiety = 16
         self.node.step_phase(current_time=23)
