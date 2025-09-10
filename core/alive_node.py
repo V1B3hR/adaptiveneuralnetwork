@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import time
 from collections import deque
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple, Any
@@ -139,16 +140,31 @@ class AliveLoopNode:
         self.communications_this_step = 0
         self.last_step_time = 0
         
+        # Enhanced attack resilience features
+        # These attributes support robustness against adversarial or resource-exhaustion behaviors.
+        self.energy_sharing_enabled = True              # Allow distributed energy sharing
+        self.energy_sharing_history = deque(maxlen=20)  # Track energy transactions (tuples or dicts)
+        self.attack_detection_threshold = 3             # Suspicious event count to trigger detection
+        self.suspicious_events = deque(maxlen=10)       # Recent suspicious activity records
+        self.energy_drain_resistance = 0.7              # Resistance factor (0.0 - 1.0)
+        self.signal_redundancy_level = 2                # Number of redundant communication channels
+        self.jamming_detection_sensitivity = 0.3        # Lower = less sensitive, higher = more false positives
+
         # Anxiety overwhelm safety protocol attributes
-        self.anxiety_threshold = 8.0  # Threshold for activating help protocol
-        self.calm = 1.0  # Calm level (0.0 to 5.0)
-        self.help_signals_sent = 0  # Count of help signals sent this time period
-        self.max_help_signals_per_period = 3  # Maximum help requests per time period
-        self.help_signal_cooldown = 10  # Cooldown period between help requests
-        self.last_help_signal_time = 0  # Time of last help signal
-        self.anxiety_unload_capacity = 2.0  # How much anxiety can be unloaded per interaction
-        self.received_help_this_period = False  # Track if received help recently
-        self.anxiety_history = deque(maxlen=20)  # Track anxiety over time
+        # Supports internal emotional / load regulation and cooperative help signaling.
+        self.anxiety_threshold = 8.0           # Threshold for activating help protocol
+        self.calm = 1.0                        # Calm level (0.0 to 5.0); higher = more regulated
+        self.help_signals_sent = 0             # Count of help signals sent in current period
+        self.max_help_signals_per_period = 3   # Cap to prevent spam
+        self.help_signal_cooldown = 10         # Seconds between allowed help requests
+        self.last_help_signal_time = 0         # Timestamp of last help signal
+        self.anxiety_unload_capacity = 2.0     # How much anxiety can be reduced per assistance interaction
+        self.received_help_this_period = False # Flag to avoid redundant requests
+        self.anxiety_history = deque(maxlen=20)# Rolling history for trend analysis
+
+        # Initialize period boundaries if needed
+        self._help_period_start = time.time()
+        self.help_period_duration = 60  # seconds (adjust as needed)
 
     def send_signal(self, target_nodes: List['AliveLoopNode'], signal_type: str, 
                    content: Any, urgency: float = 0.5, requires_response: bool = False):
@@ -831,6 +847,87 @@ class AliveLoopNode:
             "trust_network_size": len(self.trust_network),
             "avg_trust_level": np.mean(list(self.trust_network.values())) if self.trust_network else 0.0
         }
+
+    # Example helper methods (add or adapt depending on existing architecture)
+
+    def record_suspicious_event(self, event):
+        """Record a suspicious event and evaluate whether mitigation should trigger."""
+        self.suspicious_events.append((time.time(), event))
+        if len(self.suspicious_events) >= self.attack_detection_threshold:
+            self.handle_attack_detection()
+
+    def handle_attack_detection(self):
+        """Trigger defensive adaptations when suspicious activity surpasses threshold."""
+        # Example placeholder logic:
+        # - Increase redundancy
+        # - Throttle external interactions
+        # - Flag node state
+        if self.signal_redundancy_level < 5:
+            self.signal_redundancy_level += 1
+        # Optional: escalate logging, broadcast alert, etc.
+
+    def share_energy(self, amount, recipient_id):
+        """Log and authorize an energy-sharing interaction."""
+        if not self.energy_sharing_enabled or amount <= 0:
+            return False
+        # Apply drain resistance as a safeguard
+        effective_amount = amount * (1.0 - (1.0 - self.energy_drain_resistance))
+        self.energy_sharing_history.append({
+            "t": time.time(),
+            "recipient": recipient_id,
+            "requested": amount,
+            "transferred": effective_amount
+        })
+        # Implement actual energy transfer logic elsewhere
+        return True
+
+    def update_anxiety(self, delta):
+        """Adjust anxiety (inverse of calm) and record history."""
+        # Convert 'calm' into an implicit anxiety measure if needed
+        # For clarity, treat 'calm' as a stabilizer: higher calm reduces net anxiety accumulation.
+        adjusted = delta - (0.1 * self.calm)
+        timestamp = time.time()
+        self.anxiety_history.append((timestamp, adjusted))
+        # Optionally derive a rolling anxiety score
+        rolling_anxiety = sum(v for _, v in self.anxiety_history)
+        if rolling_anxiety >= self.anxiety_threshold:
+            self.try_send_help_signal()
+
+    def try_send_help_signal(self):
+        """Attempt to send a help signal respecting cooldown and rate limits."""
+        now = time.time()
+        # Reset period if expired
+        if now - self._help_period_start >= self.help_period_duration:
+            self._help_period_start = now
+            self.help_signals_sent = 0
+            self.received_help_this_period = False
+
+        if self.received_help_this_period:
+            return False
+        if self.help_signals_sent >= self.max_help_signals_per_period:
+            return False
+        if now - self.last_help_signal_time < self.help_signal_cooldown:
+            return False
+
+        # Perform help signal action here (broadcast, queue event, etc.)
+        self.help_signals_sent += 1
+        self.last_help_signal_time = now
+        return True
+
+    def receive_help(self, assistance_value=1.0):
+        """Reduce accumulated anxiety through cooperative interaction."""
+        unload = min(self.anxiety_unload_capacity, assistance_value)
+        # Adjust calm upward (bounded)
+        self.calm = min(5.0, self.calm + unload * 0.2)
+        self.received_help_this_period = True
+        # Optionally prune anxiety history to simulate relief
+        if self.anxiety_history:
+            trimmed = []
+            for ts, val in self.anxiety_history:
+                trimmed.append((ts, val * 0.7))  # decay past anxiety
+            self.anxiety_history.clear()
+            self.anxiety_history.extend(trimmed)
+        return unload
 
 
 # Example usage in a multi-node simulation
