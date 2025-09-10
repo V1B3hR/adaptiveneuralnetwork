@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Tuple, Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
+from core.time_manager import get_time_manager
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [INFO] %(message)s")
@@ -515,6 +516,10 @@ class AdaptiveClockNetwork:
             self.cells.append(cell)
 
     def network_tick(self, stimuli: List[float]) -> None:
+        """Network tick with centralized time management"""
+        time_manager = get_time_manager()
+        time_manager.start_performance_measurement()
+        
         anxieties = np.array([c.anxiety for c in self.cells], dtype=float)
         diffusivity = self.genome.get("diffusivity", 0.05)
         influences = diffusivity * (np.mean(anxieties) - anxieties)
@@ -526,6 +531,11 @@ class AdaptiveClockNetwork:
         if avg_anxiety > self.genome.get("global_calm_trigger", 7.0):
             self.apply_global_calm()
         self.capacitor.recharge(self.genome.get("recharge_per_tick", 1.0))
+        
+        # Advance simulation time
+        time_manager.network_tick()
+        
+        time_manager.end_performance_measurement()
 
     def apply_global_calm(self):
         for cell in self.cells:
@@ -533,7 +543,16 @@ class AdaptiveClockNetwork:
             cell.anxiety = max(0.0, cell.anxiety - calm_effect)
             cell.calm += 0.2
 
-    def calculate_performance_and_stability(self, tick_duration: float) -> Dict[str, float]:
+    def calculate_performance_and_stability(self, tick_duration: Optional[float] = None) -> Dict[str, float]:
+        """Calculate performance metrics using centralized time management"""
+        # Use centralized time stats if no tick_duration provided
+        if tick_duration is None:
+            time_manager = get_time_manager()
+            stats = time_manager.get_statistics()
+            execution_time = stats["avg_real_time_per_tick"]
+        else:
+            execution_time = tick_duration
+            
         anxieties = np.array([cell.anxiety for cell in self.cells])
         energies = np.array([cell.energy for cell in self.cells])
         trusts = np.array([cell.trust for cell in self.cells])
@@ -544,7 +563,7 @@ class AdaptiveClockNetwork:
         avg_trust = float(np.mean(trusts))
         stressed_cells = int(sum(1 for cell in self.cells if cell.phase == "stressed"))
         return {
-            "execution_time": tick_duration,
+            "execution_time": execution_time,
             "stability": stability,
             "efficiency": efficiency,
             "avg_trust": avg_trust,
@@ -710,12 +729,16 @@ class EvolutionEngine:
         self.population_networks: List[AdaptiveClockNetwork] = [AdaptiveClockNetwork(g) for g in self.population_genomes]
 
     def evaluate(self, network: AdaptiveClockNetwork, ticks: int = 16, verbose=False) -> Dict[str, float]:
-        start = time.perf_counter()
+        """Evaluate network performance using centralized time management"""
+        time_manager = get_time_manager()
+        time_manager.reset()  # Reset for clean evaluation
+        
         for t in range(ticks):
             stimuli = list(np.random.uniform(0.0, 9.0, size=network.num_cells))
             network.network_tick(stimuli)
-        end = time.perf_counter()
-        metrics = network.calculate_performance_and_stability(end - start)
+            
+        # Get performance metrics from centralized time management
+        metrics = network.calculate_performance_and_stability()
         speed = 1.0 / (metrics["execution_time"] + 1e-9)
         stressed_score = 1.0 / (1 + metrics["stressed_cells"])
         obj = {
