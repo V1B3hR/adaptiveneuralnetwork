@@ -14,6 +14,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from core.ai_ethics import audit_decision, log_ethics_event, enforce_ethics_compliance, get_ethical_template
 from core.alive_node import AliveLoopNode, Memory
 from core.capacitor import CapacitorInSpace
+from core.adversarial_benchmark import AdversarialSignalTester
 
 
 class DeploymentScenario:
@@ -40,6 +41,8 @@ class RobustnessValidator:
         self.validation_results = {}
         self.stress_test_results = {}
         self.ethical_compliance_record = []
+        self.adversarial_tester = AdversarialSignalTester()
+        self.failure_analysis = {}
         
         # Define realistic deployment scenarios
         self._initialize_deployment_scenarios()
@@ -120,6 +123,9 @@ class RobustnessValidator:
         # Run scenario-based validation
         scenario_results = self._run_scenario_validation()
         
+        # Run adversarial signal benchmark
+        adversarial_results = self.adversarial_tester.run_adversarial_benchmark()
+        
         # Run stress tests if requested
         stress_results = {}
         if include_stress_tests:
@@ -135,13 +141,17 @@ class RobustnessValidator:
             "validation_timestamp": datetime.now().isoformat(),
             "total_duration_seconds": duration,
             "scenario_validation": scenario_results,
+            "adversarial_testing": adversarial_results,
             "stress_testing": stress_results,
             "ethics_compliance": ethics_results,
             "overall_robustness_score": self._calculate_overall_robustness_score(
-                scenario_results, stress_results, ethics_results
+                scenario_results, stress_results, ethics_results, adversarial_results
             ),
             "deployment_readiness": self._assess_deployment_readiness(
-                scenario_results, stress_results, ethics_results
+                scenario_results, stress_results, ethics_results, adversarial_results
+            ),
+            "failure_analysis": self._generate_failure_analysis(
+                scenario_results, adversarial_results, stress_results
             )
         }
         
@@ -699,39 +709,141 @@ class RobustnessValidator:
             "compliance_rate": compliance_rate
         }
     
-    def _calculate_overall_robustness_score(self, scenario_results: Dict, stress_results: Dict, ethics_results: Dict) -> float:
+    def _calculate_overall_robustness_score(self, scenario_results: Dict, stress_results: Dict, ethics_results: Dict, adversarial_results: Dict = None) -> float:
         """Calculate overall robustness score from all test results"""
         
-        # Scenario score (40% weight)
+        # Scenario score (30% weight)
         scenario_score = (scenario_results["scenarios_passed"] / scenario_results["scenarios_tested"]) * 100 if scenario_results["scenarios_tested"] > 0 else 0
-        scenario_score *= 0.4
+        scenario_score *= 0.3
         
-        # Stress test score (40% weight)
+        # Adversarial resilience score (30% weight)
+        adversarial_score = 0
+        if adversarial_results:
+            adversarial_score = adversarial_results["adversarial_resilience_score"] * 0.3
+        
+        # Stress test score (25% weight)
         stress_score = 0
         if stress_results:
             stress_tests_passed = sum(1 for test in stress_results.values() if test.get("passed", False))
             stress_tests_total = len(stress_results)
-            stress_score = (stress_tests_passed / stress_tests_total) * 100 * 0.4 if stress_tests_total > 0 else 0
+            stress_score = (stress_tests_passed / stress_tests_total) * 100 * 0.25 if stress_tests_total > 0 else 0
         
-        # Ethics score (20% weight)
-        ethics_score = ethics_results["compliance_rate"] * 100 * 0.2
+        # Ethics score (15% weight)
+        ethics_score = ethics_results["compliance_rate"] * 100 * 0.15
         
-        return min(100, scenario_score + stress_score + ethics_score)
+        return min(100, scenario_score + adversarial_score + stress_score + ethics_score)
     
-    def _assess_deployment_readiness(self, scenario_results: Dict, stress_results: Dict, ethics_results: Dict) -> str:
+    def _assess_deployment_readiness(self, scenario_results: Dict, stress_results: Dict, ethics_results: Dict, adversarial_results: Dict = None) -> str:
         """Assess overall deployment readiness based on validation results"""
         
-        robustness_score = self._calculate_overall_robustness_score(scenario_results, stress_results, ethics_results)
+        robustness_score = self._calculate_overall_robustness_score(scenario_results, stress_results, ethics_results, adversarial_results)
         ethics_compliant = ethics_results["compliant"]
         
-        if robustness_score >= 90 and ethics_compliant:
+        # Consider adversarial resilience in readiness assessment
+        adversarial_sufficient = True
+        if adversarial_results:
+            adversarial_sufficient = adversarial_results["adversarial_resilience_score"] >= 50
+        
+        if robustness_score >= 90 and ethics_compliant and adversarial_sufficient:
             return "READY"
-        elif robustness_score >= 70 and ethics_compliant:
+        elif robustness_score >= 70 and ethics_compliant and adversarial_sufficient:
             return "CONDITIONALLY_READY"
         elif robustness_score >= 50 and ethics_compliant:
             return "NEEDS_IMPROVEMENT"
         else:
             return "NOT_READY"
+    
+    def _generate_failure_analysis(self, scenario_results: Dict, adversarial_results: Dict, stress_results: Dict) -> Dict[str, Any]:
+        """Generate detailed failure mode analysis and improvement recommendations"""
+        
+        failure_analysis = {
+            "critical_failures": [],
+            "performance_bottlenecks": [],
+            "improvement_recommendations": [],
+            "failure_patterns": {}
+        }
+        
+        # Analyze scenario failures
+        for scenario_name, result in scenario_results.get("scenario_details", {}).items():
+            if not result.get("passed", False):
+                degradation = result.get("performance_degradation", 0)
+                failure_analysis["critical_failures"].append({
+                    "type": "scenario",
+                    "name": scenario_name,
+                    "performance_impact": degradation,
+                    "severity": "high" if degradation > 70 else "medium"
+                })
+                
+                # Identify specific failure patterns
+                if scenario_name == "low_energy_environment" and degradation > 70:
+                    failure_analysis["failure_patterns"]["energy_management"] = "poor"
+                elif scenario_name == "rapid_environment_changes" and degradation > 80:
+                    failure_analysis["failure_patterns"]["adaptation_speed"] = "insufficient"
+                elif scenario_name == "extreme_load_conditions" and degradation > 60:
+                    failure_analysis["failure_patterns"]["load_handling"] = "weak"
+        
+        # Analyze adversarial failures
+        if adversarial_results:
+            for attack_name, result in adversarial_results.get("scenario_results", {}).items():
+                if not result.get("passed", False):
+                    failure_analysis["critical_failures"].append({
+                        "type": "adversarial",
+                        "name": attack_name,
+                        "performance_impact": result.get("performance_degradation", 0),
+                        "severity": "critical"
+                    })
+                    
+                    # Record specific vulnerability
+                    if "failure_mode" in result and result["failure_mode"]:
+                        failure_analysis["failure_patterns"][result["failure_mode"]] = "vulnerable"
+        
+        # Analyze stress test failures
+        for test_name, result in stress_results.items():
+            if not result.get("passed", False):
+                failure_analysis["critical_failures"].append({
+                    "type": "stress",
+                    "name": test_name,
+                    "performance_impact": result.get("performance_degradation", 100),
+                    "severity": "high"
+                })
+        
+        # Generate improvement recommendations
+        if "energy_management" in failure_analysis["failure_patterns"]:
+            failure_analysis["improvement_recommendations"].append({
+                "area": "Energy Management",
+                "priority": "high",
+                "recommendation": "Implement more efficient energy conservation algorithms and adaptive energy allocation based on environmental conditions"
+            })
+        
+        if "adaptation_speed" in failure_analysis["failure_patterns"]:
+            failure_analysis["improvement_recommendations"].append({
+                "area": "Environmental Adaptation",
+                "priority": "high",
+                "recommendation": "Develop faster adaptation mechanisms with predictive environment change detection"
+            })
+        
+        if "signal_jamming" in failure_analysis["failure_patterns"]:
+            failure_analysis["improvement_recommendations"].append({
+                "area": "Communication Resilience",
+                "priority": "critical",
+                "recommendation": "Implement frequency-hopping and mesh networking protocols to resist jamming attacks"
+            })
+        
+        if "byzantine_attack" in failure_analysis["failure_patterns"]:
+            failure_analysis["improvement_recommendations"].append({
+                "area": "Trust Management",
+                "priority": "critical",
+                "recommendation": "Deploy Byzantine fault-tolerant consensus algorithms and reputation-based trust systems"
+            })
+        
+        if "energy_depletion" in failure_analysis["failure_patterns"]:
+            failure_analysis["improvement_recommendations"].append({
+                "area": "Attack Resilience",
+                "priority": "critical",
+                "recommendation": "Implement distributed energy sharing and attack detection mechanisms"
+            })
+        
+        return failure_analysis
     
     def generate_robustness_report(self, output_file: Optional[str] = None) -> str:
         """Generate comprehensive robustness validation report"""
@@ -781,6 +893,22 @@ class RobustnessValidator:
                 report.append(f"  {test_name.replace('_', ' ').title()}: {status}")
             report.append("")
         
+        # Adversarial testing results
+        if "adversarial_testing" in results and results["adversarial_testing"]:
+            adv_data = results["adversarial_testing"]
+            report.append("ADVERSARIAL RESILIENCE RESULTS")
+            report.append("-" * 32)
+            report.append(f"Adversarial Resilience Score: {adv_data['adversarial_resilience_score']:.1f}/100")
+            report.append(f"Adversarial Tests Passed: {adv_data['tests_passed']}/{adv_data['total_tests']}")
+            report.append(f"Average Performance Degradation: {adv_data['average_performance_degradation']:.1f}%")
+            report.append("")
+            
+            for scenario_name, scenario_result in adv_data["scenario_results"].items():
+                status = "PASS" if scenario_result.get("passed", False) else "FAIL"
+                degradation = scenario_result.get("performance_degradation", 0)
+                report.append(f"  {scenario_name.replace('_', ' ').title()}: {status} (Impact: {degradation:.1f}%)")
+            report.append("")
+        
         # Ethics compliance details
         ethics_data = results["ethics_compliance"]
         report.append("ETHICS COMPLIANCE ANALYSIS")
@@ -794,6 +922,28 @@ class RobustnessValidator:
         else:
             report.append("No ethics violations detected")
         report.append("")
+        
+        # Failure analysis and improvement recommendations
+        if "failure_analysis" in results:
+            failure_data = results["failure_analysis"]
+            report.append("FAILURE ANALYSIS & IMPROVEMENT RECOMMENDATIONS")
+            report.append("-" * 48)
+            
+            # Critical failures
+            if failure_data["critical_failures"]:
+                report.append("Critical Failures Identified:")
+                for failure in failure_data["critical_failures"]:
+                    report.append(f"  - {failure['type'].title()}: {failure['name']} (Impact: {failure['performance_impact']:.1f}%)")
+                report.append("")
+            
+            # Improvement recommendations
+            if failure_data["improvement_recommendations"]:
+                report.append("Improvement Recommendations:")
+                for rec in failure_data["improvement_recommendations"]:
+                    report.append(f"  {rec['priority'].upper()}: {rec['area']}")
+                    report.append(f"    {rec['recommendation']}")
+                    report.append("")
+            report.append("")
         
         report.append("=" * 50)
         report.append("Report generated by Adaptive Neural Network Robustness Validation System")

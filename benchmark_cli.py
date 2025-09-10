@@ -22,6 +22,8 @@ sys.path.insert(0, str(project_root))
 
 from core.intelligence_benchmark import IntelligenceBenchmark, run_intelligence_validation
 from core.robustness_validator import RobustnessValidator, run_robustness_validation
+from core.adversarial_benchmark import AdversarialSignalTester
+from core.benchmark_documentor import BenchmarkDocumentor
 from core.ai_ethics import audit_decision, enforce_ethics_compliance
 
 
@@ -59,8 +61,12 @@ Examples:
                        help="Run comprehensive intelligence benchmark")
     parser.add_argument("--run-robustness", action="store_true",
                        help="Run comprehensive robustness validation")
+    parser.add_argument("--run-adversarial", action="store_true",
+                       help="Run adversarial signal benchmark tests")
     parser.add_argument("--run-combined", action="store_true",
                        help="Run both intelligence benchmark and robustness validation")
+    parser.add_argument("--generate-comprehensive-docs", action="store_true",
+                       help="Generate comprehensive benchmark documentation")
     parser.add_argument("--generate-report", action="store_true", 
                        help="Generate benchmark report from previous results")
     parser.add_argument("--compare", metavar="BASELINE_FILE",
@@ -83,9 +89,9 @@ Examples:
     args = parser.parse_args()
     
     # Validate arguments
-    if not (args.run_benchmark or args.run_robustness or args.run_combined or 
-            args.generate_report or args.compare or args.ethics_only):
-        parser.error("Must specify an action: --run-benchmark, --run-robustness, --run-combined, --generate-report, --compare, or --ethics-only")
+    if not (args.run_benchmark or args.run_robustness or args.run_adversarial or args.run_combined or 
+            args.generate_report or args.generate_comprehensive_docs or args.compare or args.ethics_only):
+        parser.error("Must specify an action: --run-benchmark, --run-robustness, --run-adversarial, --run-combined, --generate-report, --generate-comprehensive-docs, --compare, or --ethics-only")
     
     benchmark = IntelligenceBenchmark()
     
@@ -99,8 +105,14 @@ Examples:
         elif args.run_robustness:
             run_robustness_action(args)
             
+        elif args.run_adversarial:
+            run_adversarial_action(args)
+            
         elif args.run_combined:
             run_combined_action(benchmark, args)
+        
+        elif args.generate_comprehensive_docs:
+            run_comprehensive_docs_action(args)
             
         elif args.generate_report:
             generate_report_action(benchmark, args)
@@ -331,6 +343,74 @@ def compare_action(benchmark, args):
         print(f"  Current: {scores['current']:.1f}/100")
         print(f"  Baseline: {scores['baseline']:.1f}/100")
         print(f"  Difference: {scores['difference']:+.1f}")
+
+
+def run_adversarial_action(args):
+    """Run adversarial signal benchmark tests"""
+    print("Starting Adversarial Signal Benchmark Tests...")
+    print("=" * 60)
+    
+    # Run adversarial testing
+    adversarial_tester = AdversarialSignalTester()
+    results = adversarial_tester.run_adversarial_benchmark()
+    
+    # Display summary
+    print(f"\n{'=' * 60}")
+    print("ADVERSARIAL BENCHMARK SUMMARY")
+    print(f"{'=' * 60}")
+    print(f"Adversarial Resilience Score: {results['adversarial_resilience_score']:.1f}/100")
+    print(f"Tests Passed: {results['tests_passed']}/{results['total_tests']}")
+    print(f"Average Performance Degradation: {results['average_performance_degradation']:.1f}%")
+    
+    if results['failure_modes']:
+        print("\nFailure Modes Detected:")
+        for scenario, mode in results['failure_modes'].items():
+            print(f"  - {scenario}: {mode}")
+    
+    # Save results if requested
+    if args.save_results:
+        import json
+        with open(args.save_results, 'w') as f:
+            json.dump(results, f, indent=2, default=str)
+        print(f"\nResults saved to: {args.save_results}")
+    
+    print(f"\n✓ Adversarial benchmark complete.")
+
+
+def run_comprehensive_docs_action(args):
+    """Generate comprehensive benchmark documentation"""
+    print("Generating Comprehensive Benchmark Documentation...")
+    print("=" * 60)
+    
+    # Check if results file is provided
+    if not args.save_results:
+        print("Error: --save-results must be specified to provide benchmark data for documentation")
+        sys.exit(1)
+    
+    try:
+        # Load benchmark results
+        import json
+        with open(args.save_results, 'r') as f:
+            results = json.load(f)
+        
+        # Generate comprehensive documentation
+        documentor = BenchmarkDocumentor()
+        output_dir = documentor.document_benchmark_results(results)
+        
+        print(f"✓ Comprehensive documentation generated in: {output_dir}")
+        print("\nGenerated reports:")
+        print("  - main_report_*.md: Executive summary and key findings")
+        print("  - failure_analysis_*.md: Detailed failure mode analysis")
+        print("  - improvement_proposals_*.md: Actionable improvement recommendations")
+        print("  - trends_analysis_*.md: Performance trends and future recommendations")
+        print("  - raw_data_*.json: Complete benchmark data")
+        
+    except FileNotFoundError:
+        print(f"Error: Results file '{args.save_results}' not found")
+        sys.exit(1)
+    except json.JSONDecodeError:
+        print(f"Error: Invalid JSON in results file '{args.save_results}'")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
