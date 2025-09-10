@@ -1,0 +1,47 @@
+{
+  "adversarial_resilience_score": 20.0,
+  "tests_passed": 1,
+  "total_tests": 5,
+  "average_performance_degradation": 69.0,
+  "failure_modes": {
+    "energy_depletion_attack": "energy_depletion"
+  },
+  "scenario_results": {
+    "coordinated_signal_jamming": {
+      "passed": false,
+      "error": "'AliveLoopNode' object has no attribute 'trust'",
+      "performance_degradation": 100
+    },
+    "byzantine_fault_injection": {
+      "passed": true,
+      "consensus_accuracy": 1.0,
+      "byzantine_resilience": 100.0,
+      "byzantine_node_count": 3,
+      "honest_node_count": 7,
+      "failure_mode": null,
+      "performance_degradation": 0.0
+    },
+    "energy_depletion_attack": {
+      "passed": false,
+      "survival_rate": 0.07,
+      "energy_resilience": 1.721336120946243,
+      "final_energy": 0.1721336120946243,
+      "steps_survived": 7,
+      "failure_mode": "energy_depletion",
+      "performance_degradation": 93.0
+    },
+    "trust_manipulation_attack": {
+      "passed": false,
+      "trust_resilience": 48.0,
+      "trust_stability_score": 24,
+      "manipulation_rounds": 50,
+      "failure_mode": null,
+      "performance_degradation": 52.0
+    },
+    "adaptive_adversarial_learning": {
+      "passed": false,
+      "error": "'AliveLoopNode' object has no attribute 'trust'",
+      "performance_degradation": 100
+    }
+  }
+}

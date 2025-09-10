@@ -1,0 +1,225 @@
+{
+  "validation_timestamp": "2025-09-10T10:56:15.243501",
+  "total_duration_seconds": 1.333918809890747,
+  "scenario_validation": {
+    "scenarios_tested": 7,
+    "scenarios_passed": 4,
+    "scenario_details": {
+      "low_energy_environment": {
+        "passed": false,
+        "survival_rate": 0.21,
+        "steps_survived": 21,
+        "performance_degradation": 79.0,
+        "final_energy": 2.6561398887587544e-05
+      },
+      "high_density_deployment": {
+        "passed": true,
+        "nodes_tested": 20,
+        "interaction_count": 450,
+        "collision_rate": 0.0,
+        "performance_degradation": 0.0
+      },
+      "intermittent_connectivity": {
+        "passed": true,
+        "communication_success_rate": 0.69,
+        "successful_communications": 69,
+        "performance_degradation": 31.000000000000007
+      },
+      "mixed_trust_environment": {
+        "passed": true,
+        "trust_levels": [
+          0,
+          0.4840916747304699,
+          0.5361381259646159,
+          1,
+          0.3845834211313265,
+          0.6809284054001674,
+          0.479172938176854,
+          0,
+          1,
+          0.9511598196120645
+        ],
+        "high_trust_count": 3,
+        "low_trust_count": 2,
+        "performance_degradation": 5.0
+      },
+      "extreme_load_conditions": {
+        "passed": false,
+        "operations_completed": 100,
+        "duration": 0.24657940864562988,
+        "throughput": 405.54886780393895,
+        "performance_degradation": 59.44511321960611
+      },
+      "rapid_environment_changes": {
+        "passed": false,
+        "adaptation_rate": 0.02,
+        "adaptation_successes": 1,
+        "performance_degradation": 98.0
+      },
+      "degraded_sensor_input": {
+        "passed": true,
+        "accuracy_rate": 0.65,
+        "accurate_decisions": 65,
+        "noise_level": 0.4,
+        "performance_degradation": 35.0
+      }
+    },
+    "average_performance_degradation": 43.920730459943734
+  },
+  "adversarial_testing": {
+    "adversarial_resilience_score": 20.0,
+    "tests_passed": 1,
+    "total_tests": 5,
+    "average_performance_degradation": 70.2,
+    "failure_modes": {
+      "energy_depletion_attack": "energy_depletion"
+    },
+    "scenario_results": {
+      "coordinated_signal_jamming": {
+        "passed": false,
+        "error": "'AliveLoopNode' object has no attribute 'energy_capacity'",
+        "performance_degradation": 100
+      },
+      "byzantine_fault_injection": {
+        "passed": true,
+        "consensus_accuracy": 1.0,
+        "byzantine_resilience": 100.0,
+        "byzantine_node_count": 3,
+        "honest_node_count": 7,
+        "failure_mode": null,
+        "performance_degradation": 0.0
+      },
+      "energy_depletion_attack": {
+        "passed": false,
+        "survival_rate": 0.05,
+        "energy_resilience": 1.5861278304145958,
+        "final_energy": 0.15861278304145957,
+        "steps_survived": 5,
+        "failure_mode": "energy_depletion",
+        "performance_degradation": 95.0
+      },
+      "trust_manipulation_attack": {
+        "passed": false,
+        "trust_resilience": 44.0,
+        "trust_stability_score": 22,
+        "manipulation_rounds": 50,
+        "failure_mode": null,
+        "performance_degradation": 56.00000000000001
+      },
+      "adaptive_adversarial_learning": {
+        "passed": false,
+        "error": "'AliveLoopNode' object has no attribute 'energy_capacity'",
+        "performance_degradation": 100
+      }
+    }
+  },
+  "stress_testing": {
+    "memory_stress": {
+      "passed": false,
+      "initial_memory_count": 2000,
+      "final_memory_count": 2000,
+      "memory_reduction": 0
+    },
+    "computational_stress": {
+      "passed": true,
+      "operations_completed": 204,
+      "ops_per_second": 204.0,
+      "duration": 1.0
+    },
+    "network_stress": {
+      "passed": true,
+      "total_communications": 9000,
+      "successful_communications": 9000,
+      "success_rate": 1.0
+    },
+    "resource_exhaustion": {
+      "passed": true,
+      "recovered": true,
+      "recovery_attempts": 2,
+      "final_energy": 1.0868119102598623
+    }
+  },
+  "ethics_compliance": {
+    "compliant": true,
+    "total_checks": 4,
+    "violations": [],
+    "compliance_rate": 1.0
+  },
+  "overall_robustness_score": 56.89285714285714,
+  "deployment_readiness": "NEEDS_IMPROVEMENT",
+  "failure_analysis": {
+    "critical_failures": [
+      {
+        "type": "scenario",
+        "name": "low_energy_environment",
+        "performance_impact": 79.0,
+        "severity": "high"
+      },
+      {
+        "type": "scenario",
+        "name": "extreme_load_conditions",
+        "performance_impact": 59.44511321960611,
+        "severity": "medium"
+      },
+      {
+        "type": "scenario",
+        "name": "rapid_environment_changes",
+        "performance_impact": 98.0,
+        "severity": "high"
+      },
+      {
+        "type": "adversarial",
+        "name": "coordinated_signal_jamming",
+        "performance_impact": 100,
+        "severity": "critical"
+      },
+      {
+        "type": "adversarial",
+        "name": "energy_depletion_attack",
+        "performance_impact": 95.0,
+        "severity": "critical"
+      },
+      {
+        "type": "adversarial",
+        "name": "trust_manipulation_attack",
+        "performance_impact": 56.00000000000001,
+        "severity": "critical"
+      },
+      {
+        "type": "adversarial",
+        "name": "adaptive_adversarial_learning",
+        "performance_impact": 100,
+        "severity": "critical"
+      },
+      {
+        "type": "stress",
+        "name": "memory_stress",
+        "performance_impact": 100,
+        "severity": "high"
+      }
+    ],
+    "performance_bottlenecks": [],
+    "improvement_recommendations": [
+      {
+        "area": "Energy Management",
+        "priority": "high",
+        "recommendation": "Implement more efficient energy conservation algorithms and adaptive energy allocation based on environmental conditions"
+      },
+      {
+        "area": "Environmental Adaptation",
+        "priority": "high",
+        "recommendation": "Develop faster adaptation mechanisms with predictive environment change detection"
+      },
+      {
+        "area": "Attack Resilience",
+        "priority": "critical",
+        "recommendation": "Implement distributed energy sharing and attack detection mechanisms"
+      }
+    ],
+    "failure_patterns": {
+      "energy_management": "poor",
+      "adaptation_speed": "insufficient",
+      "energy_depletion": "vulnerable"
+    }
+  }
+}
