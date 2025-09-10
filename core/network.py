@@ -21,9 +21,11 @@ import argparse
 from typing import Any, Dict, List, Tuple, Optional
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [INFO] %(message)s")
+logger = logging.getLogger(__name__)
 
 # ------------- Core simulation classes -------------
 class Capacitor:
@@ -145,31 +147,95 @@ class Cell:
         return f"Cell({self.cell_id}, energy={self.energy:.2f}, anxiety={self.anxiety:.2f}, trust={self.trust:.2f}, phase={self.phase})"
 
 class TunedAdaptiveFieldNetwork:
-    """Network that manages AliveLoopNode objects with external API integration"""
+    """Enhanced network that manages AliveLoopNode objects with comprehensive external API integration"""
     
-    def __init__(self, nodes, capacitors, api_endpoints=None):
+    def __init__(self, nodes, capacitors, api_endpoints=None, enable_time_series=True, enable_security=True):
         self.nodes = nodes
         self.capacitors = capacitors
         self.api_endpoints = api_endpoints or {}
         self.time = 0
         
-    def step(self, external_streams=None):
-        """Advance the network by one time step"""
+        # Initialize signal adapters for external data integration
+        self.enable_security = enable_security
+        
+        # Import signal managers (delayed import to avoid circular dependencies)
+        from api_integration.signal_adapter import SignalAdapter
+        from api_integration.human_api import HumanSignalManager
+        from api_integration.world_api import EnvironmentalSignalManager
+        from api_integration.ai_api import AISignalManager
+        
+        # Import time series tracking function
+        try:
+            from core.time_series_tracker import TimeSeriesTracker, track_node_automatically
+        except ImportError:
+            logger.warning("Could not import time series tracker")
+            enable_time_series = False
+        
+        self.signal_adapter = SignalAdapter(security_enabled=enable_security)
+        self.human_signals = HumanSignalManager(security_enabled=enable_security)
+        self.environmental_signals = EnvironmentalSignalManager(security_enabled=enable_security)
+        self.ai_signals = AISignalManager(security_enabled=enable_security)
+        
+        # Initialize time series tracking
+        self.enable_time_series = enable_time_series
+        if enable_time_series:
+            self.time_series_tracker = TimeSeriesTracker()
+        
+        # Network-level anxiety monitoring
+        self.network_anxiety_threshold = 6.0  # Average anxiety threshold for network alerts
+        self.anxiety_alert_history = []
+        
+        # Performance metrics
+        self.performance_metrics = {
+            "total_help_signals": 0,
+            "successful_anxiety_reductions": 0,
+            "average_network_anxiety": 0.0,
+            "network_stability_score": 1.0
+        }
+        
+    def step(self, external_streams=None, location_params=None):
+        """Enhanced step function with comprehensive external signal integration"""
         self.time += 1
         
+        # Fetch external signals for all signal types
+        external_signals = {}
+        
+        try:
+            # Fetch human signals
+            human_changes = self.human_signals.fetch_human_state_changes(params=location_params)
+            if human_changes:
+                external_signals["human"] = human_changes
+                
+            # Fetch environmental signals  
+            env_changes = self.environmental_signals.fetch_environmental_state_changes(location_params=location_params)
+            if env_changes:
+                external_signals["environmental"] = env_changes
+                
+            # Fetch AI system signals
+            ai_changes = self.ai_signals.fetch_ai_state_changes(system_params=location_params)
+            if ai_changes:
+                external_signals["ai"] = ai_changes
+                
+        except Exception as e:
+            logger.warning(f"Failed to fetch external signals: {e}")
+            
         # Process each node
+        network_anxiety_sum = 0.0
+        overwhelmed_nodes = []
+        
         for node in self.nodes:
-            # Apply external signals if provided
+            # Apply legacy external streams if provided
             if external_streams and node.node_id in external_streams:
-                # External streams format could be (type, strength) or just strength
                 stream_data = external_streams[node.node_id]
                 if isinstance(stream_data, tuple):
                     signal_type, strength = stream_data
                 else:
                     strength = stream_data
                 
-                # Apply external signal as energy boost or other effects
                 node.energy = min(node.energy + strength * 0.1, node.energy * 1.2)
+            
+            # Apply new external signals to node state variables
+            self._apply_external_signals_to_node(node, external_signals)
             
             # Process node step
             node.step_phase(self.time)
@@ -177,10 +243,32 @@ class TunedAdaptiveFieldNetwork:
             
             # Interact with nearby capacitors
             for capacitor in self.capacitors:
-                distance = np.linalg.norm(node.position - capacitor.position)
-                if distance < node.radius * 2:  # Within interaction range
-                    node.interact_with_capacitor(capacitor)
+                if hasattr(capacitor, 'position'):
+                    distance = np.linalg.norm(node.position - capacitor.position)
+                    if distance < node.radius * 2:
+                        node.interact_with_capacitor(capacitor)
+            
+            # Track anxiety and check for overwhelm
+            network_anxiety_sum += node.anxiety
+            if node.check_anxiety_overwhelm():
+                overwhelmed_nodes.append(node)
+                
+            # Record time series data
+            if self.enable_time_series:
+                try:
+                    from core.time_series_tracker import track_node_automatically
+                    track_node_automatically(self.time_series_tracker, node, self.time)
+                except (ImportError, NameError) as e:
+                    logger.warning(f"Could not track node data: {e}")
         
+        # Calculate network-level metrics
+        avg_network_anxiety = network_anxiety_sum / len(self.nodes) if self.nodes else 0.0
+        self.performance_metrics["average_network_anxiety"] = avg_network_anxiety
+        
+        # Handle anxiety overwhelm protocol
+        if overwhelmed_nodes:
+            self._handle_network_anxiety_overwhelm(overwhelmed_nodes)
+            
         # Handle inter-node communications
         for node in self.nodes:
             node.process_social_interactions()
@@ -189,6 +277,209 @@ class TunedAdaptiveFieldNetwork:
             if self.time % 5 == 0:
                 other_nodes = [n for n in self.nodes if n.node_id != node.node_id]
                 node.share_valuable_memory(other_nodes)
+                
+        # Network stability assessment
+        self._assess_network_stability()
+        
+    def _apply_external_signals_to_node(self, node, external_signals):
+        """Apply external signal changes to node state variables"""
+        from api_integration.signal_adapter import StateVariable
+        
+        for signal_source, changes in external_signals.items():
+            for state_var, value in changes.items():
+                try:
+                    if state_var == StateVariable.ENERGY:
+                        node.energy = max(0, min(node.energy + value, 25.0))
+                    elif state_var == StateVariable.ANXIETY:
+                        node.anxiety = max(0, node.anxiety + value)
+                    elif state_var == StateVariable.CALM and hasattr(node, 'calm'):
+                        node.calm = max(0, min(node.calm + value, 5.0))
+                    elif state_var == StateVariable.TRUST:
+                        # Apply to general trust baseline
+                        for trust_node_id in node.trust_network:
+                            current_trust = node.trust_network[trust_node_id]
+                            node.trust_network[trust_node_id] = max(0, min(current_trust + value * 0.1, 1.0))
+                    elif state_var == StateVariable.EMOTIONAL_VALENCE:
+                        node.emotional_state["valence"] = max(-1.0, min(value, 1.0))
+                    elif state_var == StateVariable.AROUSAL:
+                        node.emotional_state["arousal"] = max(0.0, min(value, 1.0))
+                    elif state_var == StateVariable.ATTENTION_FOCUS:
+                        # Modify attention focus direction
+                        node.attention_focus = np.array([value, 0.0])
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to apply {state_var} change to node {node.node_id}: {e}")
+                    
+    def _handle_network_anxiety_overwhelm(self, overwhelmed_nodes):
+        """Handle anxiety overwhelm at the network level"""
+        logger.info(f"Network anxiety overwhelm detected: {len(overwhelmed_nodes)} nodes affected")
+        
+        for overwhelmed_node in overwhelmed_nodes:
+            # Find nearby nodes that can help
+            nearby_helpers = []
+            for other_node in self.nodes:
+                if (other_node.node_id != overwhelmed_node.node_id and
+                    other_node.anxiety < 6.0 and
+                    other_node.energy >= 3.0):
+                    
+                    distance = np.linalg.norm(overwhelmed_node.position - other_node.position)
+                    if distance <= overwhelmed_node.communication_range:
+                        nearby_helpers.append(other_node)
+            
+            # Send help signal
+            if nearby_helpers:
+                helped_by = overwhelmed_node.send_help_signal(nearby_helpers)
+                if helped_by:
+                    self.performance_metrics["total_help_signals"] += 1
+                    self.performance_metrics["successful_anxiety_reductions"] += 1
+                    
+        # Record network-level anxiety event
+        self.anxiety_alert_history.append({
+            "timestamp": self.time,
+            "affected_nodes": [n.node_id for n in overwhelmed_nodes],
+            "average_anxiety": np.mean([n.anxiety for n in overwhelmed_nodes])
+        })
+        
+    def _assess_network_stability(self):
+        """Assess overall network stability"""
+        if not self.nodes:
+            return
+            
+        # Calculate various stability metrics
+        anxiety_levels = [node.anxiety for node in self.nodes]
+        energy_levels = [node.energy for node in self.nodes]
+        
+        # Stability factors
+        anxiety_stability = 1.0 - (np.std(anxiety_levels) / (np.mean(anxiety_levels) + 1e-6))
+        energy_stability = 1.0 - (np.std(energy_levels) / (np.mean(energy_levels) + 1e-6))
+        
+        # Communication health
+        total_communications = sum(len(node.signal_history) for node in self.nodes)
+        comm_health = min(1.0, total_communications / (len(self.nodes) * 10))  # Target 10 comms per node
+        
+        # Trust network health
+        trust_scores = []
+        for node in self.nodes:
+            if node.trust_network:
+                trust_scores.extend(node.trust_network.values())
+        avg_trust = np.mean(trust_scores) if trust_scores else 0.5
+        
+        # Overall stability score
+        self.performance_metrics["network_stability_score"] = np.mean([
+            anxiety_stability, energy_stability, comm_health, avg_trust
+        ])
+        
+    def get_network_status(self):
+        """Get comprehensive network status"""
+        if not self.nodes:
+            return {"error": "No nodes in network"}
+            
+        status = {
+            "time": self.time,
+            "node_count": len(self.nodes),
+            "capacitor_count": len(self.capacitors),
+            "performance_metrics": self.performance_metrics.copy(),
+            "nodes": {},
+            "external_signals": {
+                "human": self.human_signals.get_privacy_report(),
+                "environmental": self.environmental_signals.get_environmental_summary(),
+                "ai": self.ai_signals.get_ai_system_status() if hasattr(self.ai_signals, 'get_ai_system_status') else {}
+            }
+        }
+        
+        # Add individual node status
+        for node in self.nodes:
+            if hasattr(node, 'get_anxiety_status'):
+                status["nodes"][node.node_id] = node.get_anxiety_status()
+            else:
+                status["nodes"][node.node_id] = {
+                    "energy": node.energy,
+                    "anxiety": node.anxiety,
+                    "phase": node.phase
+                }
+        
+        return status
+        
+    def visualize_network_timeseries(self, time_range_hours=24, save_path=None):
+        """Create comprehensive visualization of network time series data"""
+        if not self.enable_time_series:
+            logger.warning("Time series tracking is disabled")
+            return None
+            
+        # Create multi-panel visualization
+        node_ids = [node.node_id for node in self.nodes[:4]]  # Limit to first 4 nodes for readability
+        
+        fig = plt.figure(figsize=(15, 10))
+        
+        # Individual node anxiety levels
+        plt.subplot(2, 2, 1)
+        for node_id in node_ids:
+            figure = self.time_series_tracker.compare_nodes([node_id], "anxiety", time_range_hours)
+            
+        # Network-wide energy comparison
+        plt.subplot(2, 2, 2)
+        figure = self.time_series_tracker.compare_nodes(node_ids, "energy", time_range_hours)
+        
+        # Trust network evolution
+        plt.subplot(2, 2, 3)
+        figure = self.time_series_tracker.compare_nodes(node_ids, "avg_trust", time_range_hours)
+        
+        # Communication activity
+        plt.subplot(2, 2, 4)
+        figure = self.time_series_tracker.compare_nodes(node_ids, "communication_count", time_range_hours)
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            logger.info(f"Saved network visualization to {save_path}")
+            
+        return fig
+        
+    def export_network_data(self, format="json", output_path="network_export"):
+        """Export comprehensive network data"""
+        export_data = {
+            "network_status": self.get_network_status(),
+            "performance_metrics": self.performance_metrics,
+            "anxiety_alert_history": self.anxiety_alert_history
+        }
+        
+        if self.enable_time_series:
+            # Export time series data for all nodes
+            from core.time_series_tracker import TimeSeriesQuery
+            
+            query = TimeSeriesQuery(
+                node_ids=[node.node_id for node in self.nodes],
+                start_time=self.time - 100,  # Last 100 time steps
+                end_time=self.time
+            )
+            
+            timeseries_path = self.time_series_tracker.export_data(query, format, f"{output_path}_timeseries")
+            export_data["timeseries_file"] = timeseries_path
+            
+        # Export main network data
+        if format.lower() == "json":
+            import json
+            file_path = f"{output_path}.json"
+            with open(file_path, 'w') as f:
+                json.dump(export_data, f, indent=2, default=str)
+        else:
+            raise ValueError(f"Unsupported export format for network data: {format}")
+            
+        logger.info(f"Exported network data to {file_path}")
+        return file_path
+        
+    def cleanup_resources(self):
+        """Clean up network resources and old data"""
+        if self.enable_time_series:
+            self.time_series_tracker.cleanup_old_data()
+            
+        # Clean up signal adapters
+        self.human_signals.cleanup_private_data()
+        self.environmental_signals.adapter.cleanup_expired_data()
+        self.ai_signals.adapter.cleanup_expired_data()
+        
+        logger.info("Cleaned up network resources")
     
     def print_states(self):
         """Print current state of all nodes and capacitors"""

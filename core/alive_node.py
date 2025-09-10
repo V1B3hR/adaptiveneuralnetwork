@@ -138,6 +138,17 @@ class AliveLoopNode:
         self.max_communications_per_step = 5  # Rate limiting
         self.communications_this_step = 0
         self.last_step_time = 0
+        
+        # Anxiety overwhelm safety protocol attributes
+        self.anxiety_threshold = 8.0  # Threshold for activating help protocol
+        self.calm = 1.0  # Calm level (0.0 to 5.0)
+        self.help_signals_sent = 0  # Count of help signals sent this time period
+        self.max_help_signals_per_period = 3  # Maximum help requests per time period
+        self.help_signal_cooldown = 10  # Cooldown period between help requests
+        self.last_help_signal_time = 0  # Time of last help signal
+        self.anxiety_unload_capacity = 2.0  # How much anxiety can be unloaded per interaction
+        self.received_help_this_period = False  # Track if received help recently
+        self.anxiety_history = deque(maxlen=20)  # Track anxiety over time
 
     def send_signal(self, target_nodes: List['AliveLoopNode'], signal_type: str, 
                    content: Any, urgency: float = 0.5, requires_response: bool = False):
@@ -197,6 +208,10 @@ class AliveLoopNode:
             self._process_warning_signal(signal)
         elif signal.signal_type == "resource":
             self._process_resource_signal(signal)
+        elif signal.signal_type == "anxiety_help":
+            response = self._process_anxiety_help_signal(signal)
+        elif signal.signal_type == "anxiety_help_response":
+            self._process_anxiety_help_response(signal)
             
         # Emotional contagion
         if hasattr(signal.content, 'emotional_valence'):
@@ -521,6 +536,19 @@ class AliveLoopNode:
             self.communication_style["directness"] = min(1.0, self.communication_style["directness"] + 0.1)
         elif self.phase == "sleep":
             self.communication_style["directness"] = max(0.0, self.communication_style["directness"] - 0.1)
+            
+        # Anxiety management and safety protocol
+        self.anxiety_history.append(self.anxiety)
+        
+        # Apply natural calm effect
+        self.apply_calm_effect()
+        
+        # Reset help signal limits periodically
+        if current_time % 50 == 0:  # Every 50 time steps
+            self.reset_help_signal_limits()
+            
+        # Automatic anxiety help signal for overwhelm
+        # Note: This will be called by the network when it has access to nearby nodes
 
     def move(self):
         """Energy-efficient movement with basic navigation"""
@@ -581,6 +609,228 @@ class AliveLoopNode:
             self.anxiety = max(0, self.anxiety - 2.0)
         else:
             self.anxiety = max(0, self.anxiety - 0.5)
+            
+    # Anxiety Overwhelm Safety Protocol Methods
+    
+    def check_anxiety_overwhelm(self) -> bool:
+        """Check if node is experiencing anxiety overwhelm"""
+        return self.anxiety >= self.anxiety_threshold
+        
+    def can_send_help_signal(self) -> bool:
+        """Check if node can send a help signal (respects cooldown and limits)"""
+        current_time = self._time
+        
+        # Check cooldown period
+        if current_time - self.last_help_signal_time < self.help_signal_cooldown:
+            return False
+            
+        # Check help signal limits
+        if self.help_signals_sent >= self.max_help_signals_per_period:
+            return False
+            
+        # Must have minimum energy to send help signals
+        if self.energy < 2.0:
+            return False
+            
+        return True
+        
+    def send_help_signal(self, nearby_nodes: List['AliveLoopNode']) -> List['AliveLoopNode']:
+        """
+        Send help signal to nearby trusted nodes when experiencing anxiety overwhelm.
+        
+        Args:
+            nearby_nodes: List of nodes within communication range
+            
+        Returns:
+            List of nodes that responded to help signal
+        """
+        if not self.check_anxiety_overwhelm() or not self.can_send_help_signal():
+            return []
+            
+        # Create help signal content
+        help_content = {
+            "type": "anxiety_help_request",
+            "anxiety_level": self.anxiety,
+            "energy_level": self.energy,
+            "urgency": min(1.0, self.anxiety / 10.0),
+            "requesting_node": self.node_id,
+            "timestamp": self._time,
+            "unload_capacity_needed": min(self.anxiety - self.anxiety_threshold, self.anxiety_unload_capacity)
+        }
+        
+        # Filter nodes by trust level and proximity
+        trusted_helpers = []
+        for node in nearby_nodes:
+            if (node.node_id != self.node_id and 
+                self.trust_network.get(node.node_id, 0.5) >= 0.4 and
+                node.energy >= 3.0 and  # Helper needs sufficient energy
+                node.anxiety < 6.0):    # Helper shouldn't be overwhelmed themselves
+                trusted_helpers.append(node)
+                
+        if not trusted_helpers:
+            logger.debug(f"Node {self.node_id}: No trusted helpers available for anxiety help")
+            return []
+            
+        # Send help signal to trusted nodes
+        responses = self.send_signal(
+            target_nodes=trusted_helpers,
+            signal_type="anxiety_help",
+            content=help_content,
+            urgency=help_content["urgency"],
+            requires_response=True
+        )
+        
+        # Update help signal tracking
+        self.help_signals_sent += 1
+        self.last_help_signal_time = self._time
+        
+        # Record the help request in memory
+        help_memory = Memory(
+            content={"action": "sent_help_request", "anxiety_level": self.anxiety},
+            importance=0.8,
+            timestamp=self._time,
+            memory_type="help_signal",
+            emotional_valence=-0.3  # Slightly negative as it indicates distress
+        )
+        self.memory.append(help_memory)
+        
+        logger.info(f"Node {self.node_id}: Sent anxiety help signal to {len(trusted_helpers)} trusted nodes")
+        
+        return [node for node in trusted_helpers if any(r.source_id == node.node_id for r in responses)]
+        
+    def _process_anxiety_help_signal(self, signal: SocialSignal) -> Optional[SocialSignal]:
+        """Process an anxiety help request from another node"""
+        help_content = signal.content
+        
+        if not isinstance(help_content, dict) or help_content.get("type") != "anxiety_help_request":
+            return None
+            
+        requesting_node_id = help_content.get("requesting_node")
+        if requesting_node_id is None:
+            return None
+            
+        # Check if we can provide help
+        trust_level = self.trust_network.get(requesting_node_id, 0.5)
+        if (trust_level < 0.3 or  # Not trusted enough
+            self.energy < 3.0 or  # Not enough energy
+            self.anxiety > 7.0):  # Too anxious ourselves
+            return None
+            
+        # Provide anxiety support
+        anxiety_reduction = min(
+            help_content.get("unload_capacity_needed", 1.0),
+            self.anxiety_unload_capacity,
+            self.energy - 2.0  # Keep some energy for ourselves
+        )
+        
+        # Create help response
+        help_response = {
+            "type": "anxiety_help_response",
+            "helper_node": self.node_id,
+            "anxiety_reduction_offered": anxiety_reduction,
+            "support_message": "You're not alone. This will pass.",
+            "timestamp": self._time
+        }
+        
+        # Record helping action in memory
+        help_memory = Memory(
+            content={"action": "provided_help", "to_node": requesting_node_id, "reduction": anxiety_reduction},
+            importance=0.7,
+            timestamp=self._time,
+            memory_type="help_given",
+            emotional_valence=0.4  # Positive for helping others
+        )
+        self.memory.append(help_memory)
+        
+        # Energy cost for providing help
+        energy_cost = anxiety_reduction * 0.5
+        self.energy = max(1.0, self.energy - energy_cost)
+        
+        # Increase trust with the helped node
+        current_trust = self.trust_network.get(requesting_node_id, 0.5)
+        self.trust_network[requesting_node_id] = min(1.0, current_trust + 0.1)
+        
+        logger.debug(f"Node {self.node_id}: Provided anxiety help to node {requesting_node_id}")
+        
+        return SocialSignal(
+            content=help_response,
+            signal_type="anxiety_help_response",
+            urgency=0.7,
+            source_id=self.node_id
+        )
+        
+    def _process_anxiety_help_response(self, signal: SocialSignal):
+        """Process a help response from another node"""
+        help_response = signal.content
+        
+        if not isinstance(help_response, dict) or help_response.get("type") != "anxiety_help_response":
+            return
+            
+        helper_node_id = help_response.get("helper_node")
+        anxiety_reduction = help_response.get("anxiety_reduction_offered", 0.0)
+        
+        if helper_node_id is None or anxiety_reduction <= 0:
+            return
+            
+        # Apply anxiety reduction
+        old_anxiety = self.anxiety
+        self.anxiety = max(0, self.anxiety - anxiety_reduction)
+        
+        # Increase calm level
+        self.calm = min(5.0, self.calm + anxiety_reduction * 0.3)
+        
+        # Increase trust with helper
+        current_trust = self.trust_network.get(helper_node_id, 0.5)
+        self.trust_network[helper_node_id] = min(1.0, current_trust + 0.15)
+        
+        # Record received help in memory
+        help_memory = Memory(
+            content={
+                "action": "received_help", 
+                "from_node": helper_node_id, 
+                "anxiety_before": old_anxiety,
+                "anxiety_after": self.anxiety,
+                "message": help_response.get("support_message", "")
+            },
+            importance=0.9,
+            timestamp=self._time,
+            memory_type="help_received",
+            emotional_valence=0.6  # Positive for receiving help
+        )
+        self.memory.append(help_memory)
+        
+        self.received_help_this_period = True
+        
+        logger.info(f"Node {self.node_id}: Received anxiety help from node {helper_node_id}, "
+                   f"anxiety reduced from {old_anxiety:.2f} to {self.anxiety:.2f}")
+                   
+    def apply_calm_effect(self):
+        """Apply calm effect to reduce anxiety naturally"""
+        if self.calm > 0.0 and self.anxiety > 0.0:
+            calm_effect = min(self.calm * 0.2, self.anxiety * 0.3)
+            self.anxiety = max(0, self.anxiety - calm_effect)
+            # Calm depletes slightly when used
+            self.calm = max(0, self.calm - calm_effect * 0.1)
+            
+    def reset_help_signal_limits(self):
+        """Reset help signal limits (called periodically)"""
+        self.help_signals_sent = 0
+        self.received_help_this_period = False
+        
+    def get_anxiety_status(self) -> Dict[str, Any]:
+        """Get comprehensive anxiety and help status"""
+        return {
+            "anxiety_level": self.anxiety,
+            "calm_level": self.calm,
+            "is_overwhelmed": self.check_anxiety_overwhelm(),
+            "can_send_help": self.can_send_help_signal(),
+            "help_signals_sent": self.help_signals_sent,
+            "last_help_signal_time": self.last_help_signal_time,
+            "received_help_recently": self.received_help_this_period,
+            "anxiety_threshold": self.anxiety_threshold,
+            "trust_network_size": len(self.trust_network),
+            "avg_trust_level": np.mean(list(self.trust_network.values())) if self.trust_network else 0.0
+        }
 
 
 # Example usage in a multi-node simulation

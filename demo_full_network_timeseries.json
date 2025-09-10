@@ -1,0 +1,4524 @@
+{
+  "query": {
+    "node_ids": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "variables": null,
+    "start_time": -84,
+    "end_time": 16,
+    "max_points": null,
+    "aggregation": "none",
+    "aggregation_window": 1.0
+  },
+  "statistics": {
+    "total_points": 640,
+    "unique_nodes": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "unique_variables": [
+      "avg_trust",
+      "calm",
+      "emotional_valence",
+      "phase",
+      "communication_count",
+      "anxiety",
+      "energy",
+      "trust_network_size",
+      "memory_count",
+      "arousal"
+    ],
+    "first_timestamp": 1,
+    "last_timestamp": 16,
+    "first_timestamp_formatted": "1970-01-01T00:00:01",
+    "last_timestamp_formatted": "1970-01-01T00:00:16",
+    "time_range_seconds": 15
+  },
+  "data_points": [
+    {
+      "timestamp": 1,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 11.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 11.618227818203755,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 3.3406836908015953,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 0.8557057686097442,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 17.677351876364085,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 0.21,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.200471123607709,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 0.9020571397199211,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 18.819280164170923,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 0.21,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 2.8245233278097537,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 0.8722300155357127,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 14.470168924065488,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 0.21,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 3.0854042955983485,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 1,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 0.8574863771406092,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 14.444010501947476,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 14.570878620286265,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 21.12136237831156,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 3.1626508020825117,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 72.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 0.9944226508233505,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 22.263290666118397,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 3.1626508020825117,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 72.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 0.9995725183187029,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 17.914179426012964,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 3.1626508020825117,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 2,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 0.9845495823089426,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 18.12187140168475,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 15.685612646284437,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.18011996190177576,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 24.799223278048835,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 4.277384828080679,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.18011996190177576,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 4.277384828080679,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.18011996190177576,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 21.59204032575024,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 4.277384828080679,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.18011996190177576,
+      "metadata": null
+    },
+    {
+      "timestamp": 3,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 21.00159331279623,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 17.114549446326315,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.39647200945055583,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 5.706321628122557,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.39647200945055583,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 5.706321628122557,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.39647200945055583,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 24.47176223686172,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 5.706321628122557,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.39647200945055583,
+      "metadata": null
+    },
+    {
+      "timestamp": 4,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 24.337046987926332,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 18.111986123056194,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.17537719746497069,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 6.70375830485243,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.17537719746497069,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 6.70375830485243,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.17537719746497069,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 6.70375830485243,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 76.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.17537719746497069,
+      "metadata": null
+    },
+    {
+      "timestamp": 5,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 22.5481088931624,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.4393198887676623,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 11.139881074958629,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.4393198887676623,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 11.139881074958629,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.4393198887676623,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 11.139881074958629,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.4393198887676623,
+      "metadata": null
+    },
+    {
+      "timestamp": 6,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 26.072270719733694,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 14.66404290152992,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 14.66404290152992,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 14.66404290152992,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 7,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 28.547518619327032,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 17.13929080112326,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 17.13929080112326,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 20.936356646571628,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 8,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 31.134323062902084,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.25621059016979797,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 19.72609524469831,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.25621059016979797,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 19.72609524469831,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.25621059016979797,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 23.52316109014668,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.25621059016979797,
+      "metadata": null
+    },
+    {
+      "timestamp": 9,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 32.693832740667176,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.5209974703246858,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 21.285604922463406,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.5209974703246858,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 21.285604922463406,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.5209974703246858,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 25.082670767911775,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.5209974703246858,
+      "metadata": null
+    },
+    {
+      "timestamp": 10,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 34.1533835311516,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 22.745155712947824,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 22.745155712947824,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 26.542221558396193,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 11,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 35.36190887041696,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.829889993920134,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 23.95368105221319,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.829889993920134,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 23.95368105221319,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.829889993920134,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 27.75074689766156,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.829889993920134,
+      "metadata": null
+    },
+    {
+      "timestamp": 12,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 36.463628215074415,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.3752098166213876,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 25.05540039687065,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.3752098166213876,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 25.05540039687065,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.3752098166213876,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 28.852466242319018,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.3752098166213876,
+      "metadata": null
+    },
+    {
+      "timestamp": 13,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 37.98857260885706,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.0963770513806167,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 26.580344790653296,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.0963770513806167,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 26.580344790653296,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.0963770513806167,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 30.377410636101665,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.0963770513806167,
+      "metadata": null
+    },
+    {
+      "timestamp": 14,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 38.66194120838627,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 27.2537133901825,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 33.02678635539984,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 31.05077923563087,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 15,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 0,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 0,
+      "variable_name": "anxiety",
+      "value": 38.89265467033386,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 0,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 0,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 0,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 0,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 0,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 0,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 0,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 0,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 1,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 1,
+      "variable_name": "anxiety",
+      "value": 27.484426852130103,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 1,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 1,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 1,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 1,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 1,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 1,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 1,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 1,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 2,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 2,
+      "variable_name": "anxiety",
+      "value": 33.25749981734744,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 2,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 2,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 2,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 2,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 2,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 2,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 2,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 2,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 3,
+      "variable_name": "energy",
+      "value": 25.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 3,
+      "variable_name": "anxiety",
+      "value": 31.28149269757847,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 3,
+      "variable_name": "phase",
+      "value": 94.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 3,
+      "variable_name": "communication_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 3,
+      "variable_name": "trust_network_size",
+      "value": 3.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 3,
+      "variable_name": "memory_count",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 3,
+      "variable_name": "calm",
+      "value": 4.9,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 3,
+      "variable_name": "emotional_valence",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 3,
+      "variable_name": "arousal",
+      "value": 0.0,
+      "metadata": null
+    },
+    {
+      "timestamp": 16,
+      "node_id": 3,
+      "variable_name": "avg_trust",
+      "value": 1.0,
+      "metadata": null
+    }
+  ]
+}

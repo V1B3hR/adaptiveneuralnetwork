@@ -1,0 +1,289 @@
+{
+  "network_status": {
+    "time": 16,
+    "node_count": 4,
+    "capacitor_count": 2,
+    "performance_metrics": {
+      "total_help_signals": 0,
+      "successful_anxiety_reductions": 0,
+      "average_network_anxiety": 32.72901850934747,
+      "network_stability_score": 0.7185356745963515
+    },
+    "nodes": {
+      "0": {
+        "anxiety_level": 38.89265467033386,
+        "calm_level": 4.9,
+        "is_overwhelmed": "True",
+        "can_send_help": true,
+        "help_signals_sent": 0,
+        "last_help_signal_time": 0,
+        "received_help_recently": false,
+        "anxiety_threshold": 7.643839264482021,
+        "trust_network_size": 3,
+        "avg_trust_level": 1.0
+      },
+      "1": {
+        "anxiety_level": 27.484426852130103,
+        "calm_level": 4.9,
+        "is_overwhelmed": "True",
+        "can_send_help": true,
+        "help_signals_sent": 0,
+        "last_help_signal_time": 0,
+        "received_help_recently": false,
+        "anxiety_threshold": 7.963612246770605,
+        "trust_network_size": 3,
+        "avg_trust_level": 1.0
+      },
+      "2": {
+        "anxiety_level": 33.25749981734744,
+        "calm_level": 4.9,
+        "is_overwhelmed": "True",
+        "can_send_help": true,
+        "help_signals_sent": 0,
+        "last_help_signal_time": 0,
+        "received_help_recently": false,
+        "anxiety_threshold": 7.7637304571009835,
+        "trust_network_size": 3,
+        "avg_trust_level": 1.0
+      },
+      "3": {
+        "anxiety_level": 31.28149269757847,
+        "calm_level": 4.9,
+        "is_overwhelmed": "True",
+        "can_send_help": true,
+        "help_signals_sent": 0,
+        "last_help_signal_time": 0,
+        "received_help_recently": false,
+        "anxiety_threshold": 8.14220975453741,
+        "trust_network_size": 3,
+        "avg_trust_level": 1.0
+      }
+    },
+    "external_signals": {
+      "human": {
+        "sources": {
+          "human_emotion": {
+            "privacy_level": "private",
+            "retention_hours": 1,
+            "last_update": 0.0,
+            "has_cached_data": false,
+            "error_count": 16
+          },
+          "human_biometrics": {
+            "privacy_level": "confidential",
+            "retention_hours": 0.5,
+            "last_update": 0.0,
+            "has_cached_data": false,
+            "error_count": 16
+          },
+          "human_social": {
+            "privacy_level": "protected",
+            "retention_hours": 2,
+            "last_update": 0.0,
+            "has_cached_data": false,
+            "error_count": 16
+          }
+        },
+        "privacy_levels": {
+          "private": 1,
+          "confidential": 1,
+          "protected": 1
+        },
+        "data_retention": {},
+        "last_cleanup": null
+      },
+      "environmental": {
+        "sources": {
+          "weather_data": {
+            "name": "weather_data",
+            "type": "environmental",
+            "last_update": 0.0,
+            "error_count": 16,
+            "cached_data_available": false,
+            "update_needed": true,
+            "privacy_level": "public"
+          },
+          "air_quality": {
+            "name": "air_quality",
+            "type": "environmental",
+            "last_update": 0.0,
+            "error_count": 16,
+            "cached_data_available": false,
+            "update_needed": true,
+            "privacy_level": "public"
+          },
+          "economic_indicators": {
+            "name": "economic_indicators",
+            "type": "economic",
+            "last_update": 0.0,
+            "error_count": 16,
+            "cached_data_available": false,
+            "update_needed": true,
+            "privacy_level": "public"
+          }
+        },
+        "last_updates": {
+          "weather_data": 0.0,
+          "air_quality": 0.0,
+          "economic_indicators": 0.0
+        },
+        "alert_conditions": []
+      },
+      "ai": {}
+    }
+  },
+  "performance_metrics": {
+    "total_help_signals": 0,
+    "successful_anxiety_reductions": 0,
+    "average_network_anxiety": 32.72901850934747,
+    "network_stability_score": 0.7185356745963515
+  },
+  "anxiety_alert_history": [
+    {
+      "timestamp": 1,
+      "affected_nodes": [
+        0
+      ],
+      "average_anxiety": 11.618227818203755
+    },
+    {
+      "timestamp": 2,
+      "affected_nodes": [
+        0
+      ],
+      "average_anxiety": 14.570878620286265
+    },
+    {
+      "timestamp": 3,
+      "affected_nodes": [
+        0
+      ],
+      "average_anxiety": 15.685612646284437
+    },
+    {
+      "timestamp": 4,
+      "affected_nodes": [
+        0
+      ],
+      "average_anxiety": 17.114549446326315
+    },
+    {
+      "timestamp": 5,
+      "affected_nodes": [
+        0
+      ],
+      "average_anxiety": 18.111986123056194
+    },
+    {
+      "timestamp": 6,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 13.991938029509573
+    },
+    {
+      "timestamp": 7,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 17.516099856080864
+    },
+    {
+      "timestamp": 8,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 20.940614217036295
+    },
+    {
+      "timestamp": 9,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 23.527418660611346
+    },
+    {
+      "timestamp": 10,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 25.086928338376442
+    },
+    {
+      "timestamp": 11,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 26.54647912886086
+    },
+    {
+      "timestamp": 12,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 27.755004468126227
+    },
+    {
+      "timestamp": 13,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 28.856723812783684
+    },
+    {
+      "timestamp": 14,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 30.38166820656633
+    },
+    {
+      "timestamp": 15,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 32.49830504739987
+    },
+    {
+      "timestamp": 16,
+      "affected_nodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "average_anxiety": 32.72901850934747
+    }
+  ],
+  "timeseries_file": "demo_full_network_timeseries.json"
+}
