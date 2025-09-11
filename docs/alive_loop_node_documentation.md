@@ -1,16 +1,33 @@
-# **AliveLoopNode Class Documentation**
+# **AliveLoopNode Class Documentation (Advanced Feature Set)**
 
 ## **Overview**
 
-The `AliveLoopNode` class is designed to simulate the behavior of a node in a dynamic, interactive environment. It incorporates concepts such as energy management, circadian rhythms, memory systems, and social interactions. The class is highly modular and supports advanced features like neuromodulation, learning, and memory consolidation.
+The `AliveLoopNode` class models a node in a dynamic, interactive, emotionally and socially adaptive environment. It supports modular energy and memory management, circadian rhythms, social learning, collective intelligence, safety and resilience protocols, and advanced communication. The architecture is designed to reflect complex interactions found in biological and social systems.
 
-## **Class Features**
+---
 
-- **Energy Management**: Nodes consume energy for movement, communication, and other tasks. They can interact with capacitors to transfer energy.
-- **Circadian Rhythms**: Nodes follow a 24-hour cycle that influences their phases (e.g., active, sleep, inspired).
-- **Memory Systems**: Includes short-term, long-term, and working memory for storing and sharing information.
-- **Social Interaction**: Nodes can communicate and share memories with trusted neighbors.
-- **Adaptation and Learning**: Nodes adapt based on past experiences using mechanisms like Long-Term Potentiation (LTP) and Long-Term Depression (LTD).
+## **Core Features**
+
+- **Energy Management**: Nodes consume, transfer, and predict energy. Distributed energy sharing and resilience against draining/jamming are supported.
+- **Circadian & Phase Control**: Nodes follow 24-hour cycles with dynamic transitions between active, sleep (light/REM/deep), inspired, and interactive states, modulated by anxiety, calm, and social context.
+- **Advanced Memory Systems**:
+  - Multiple memory types: short-term (`working_memory`), long-term, collaborative, resource, reward, help, shared, and pattern-based.
+  - Privacy controls: private/protected/classified memories, audit logs, retention limits, and importance weighting.
+  - Collaborative memories allow for social knowledge integration and diversity tracking.
+- **Social & Emotional Adaptation**:
+  - Social learning using trust, influence, and emotional contagion (nodes affect each others’ mood).
+  - Collective intelligence metrics: contribution and diversity.
+  - Communication styles (directness, formality, expressiveness) adapt per phase and context.
+  - Trust and influence networks determine interaction quality.
+- **Communication**:
+  - Signals include memory, query, warning, resource, anxiety help, and responses.
+  - Rate limits, urgency, and energy costs per communication.
+  - Communication queue and history for asynchronous processing.
+- **Safety & Resilience Protocols**:
+  - Attack detection and handling (redundancy, throttling, defensive state).
+  - Energy sharing history and drain resistance.
+  - Anxiety overwhelm safety protocol: help signals, cooldowns, calm management, and cooperative anxiety unloading.
+- **Helper Methods**: Various utilities for suspicious event recording, help signal management, anxiety/calm updates, and collective interaction.
 
 ---
 
@@ -18,176 +35,166 @@ The `AliveLoopNode` class is designed to simulate the behavior of a node in a dy
 
 ### **Constructor**
 ```python
-def __init__(self, position, velocity, initial_energy=0.0, field_strength=1.0, node_id=0):
+def __init__(self, position, velocity, initial_energy=10.0, field_strength=1.0, node_id=0):
 ```
 
-#### **Parameters**
-- `position` (tuple): Initial position of the node (x, y).
-- `velocity` (tuple): Initial velocity of the node (vx, vy).
-- `initial_energy` (float): Initial energy level of the node. Default is `0.0`.
-- `field_strength` (float): Field strength of the node. Default is `1.0`.
-- `node_id` (int): Unique identifier for the node. Default is `0`.
+**Parameters**:
+- `position` (tuple): Initial position (x, y).
+- `velocity` (tuple): Initial velocity (vx, vy).
+- `initial_energy` (float): Node’s starting energy.
+- `field_strength` (float): Field interaction strength.
+- `node_id` (int): Unique node identifier.
 
-#### **Attributes**
-- `position` (np.array): Current position of the node.
-- `velocity` (np.array): Current velocity of the node.
-- `energy` (float): Current energy level of the node.
-- `phase` (str): Current phase of the node (e.g., "active", "sleep").
-- `memory` (deque): Long-term memory storage.
-- `working_memory` (deque): Short-term memory storage.
-- `trust_network` (dict): Trust levels for interacting with other nodes.
+**Key Attributes**:
+- **Position/Velocity/Energy**: Core movement and energy states.
+- **Phase Management**: `phase`, `_time`, `circadian_cycle`, `sleep_stage`.
+- **Memory**:
+  - `memory` (list of `Memory` objects): Main memory store.
+  - `long_term_memory` (dict), `working_memory` (deque).
+  - `collaborative_memories` (shared knowledge from other nodes).
+  - `memory` capped at `max_memory_size` (default: 1000).
+  - `predicted_energy`: Estimated future energy based on memory patterns.
+- **Social/Emotional Attributes**:
+  - `trust_network` (dict), `influence_network` (dict), `social_learning_rate`.
+  - `emotional_state` (valence/arousal), `emotional_contagion_sensitivity`.
+  - `shared_experience_buffer` (recent emotional/social events).
+  - `collective_contribution`, `knowledge_diversity`.
+- **Communication**:
+  - `communication_queue`, `signal_history`, `communication_style`.
+  - Rate limits: `max_communications_per_step`, `communications_this_step`.
+  - `communication_range`: Maximum distance for interaction.
+- **Safety/Resilience**:
+  - Energy sharing: `energy_sharing_enabled`, `energy_sharing_history`.
+  - Attack detection: `attack_detection_threshold`, `suspicious_events`, `signal_redundancy_level`, `jamming_detection_sensitivity`.
+  - Anxiety/calm: `anxiety`, `anxiety_threshold`, `anxiety_history`, `calm`.
+  - Help signaling: cooldowns, limits, history, unload capacity.
 
 ---
 
-### **Method: step_phase**
+## **Main Methods**
+
+### **Phase & Circadian Control**
 ```python
-def step_phase(self, current_time):
+def step_phase(self, current_time: Optional[int] = None):
 ```
+- Uses global time manager for simulation steps and circadian cycles.
+- Dynamically transitions between phases (`active`, `sleep`, `inspired`, `interactive`) based on energy, anxiety, and time.
+- Adjusts sleep stage per anxiety (light, REM, deep).
+- Modifies communication style and resets help limits.
+- Periodically cleans memory and manages anxiety/calm.
 
-#### **Description**
-Manages the node's phase transitions based on circadian rhythms, sleep debt, and neuromodulator levels.
-
-#### **Parameters**
-- `current_time` (int): Current time in hours (0-24).
-
-#### **Behavior**
-- Calculates circadian phase using the current time.
-- Determines whether the node enters sleep, active, or inspired phases.
-- Updates the sleep debt based on the current phase.
-
----
-
-### **Method: move**
+### **Movement**
 ```python
 def move(self):
 ```
+- Energy-efficient movement logic.
+- Position update based on velocity and phase.
+- Can be extended to move toward trusted nodes/social targets.
 
-#### **Description**
-Handles the node's movement and energy consumption.
-
-#### **Behavior**
-- Adjusts velocity based on the node's attention focus and phase.
-- Ensures the velocity does not exceed the maximum speed.
-- Updates the node's position and reduces energy based on movement.
-
----
-
-### **Method: interact_with_capacitor**
+### **Memory Management**
 ```python
-def interact_with_capacitor(self, capacitor, threshold=0.5):
+def _cleanup_memory(self):
+    ...
 ```
+- Periodically prunes memory by importance.
+- Ages memories and removes if retention/importance limits are hit.
 
-#### **Description**
-Manages energy transfer between the node and a capacitor.
-
-#### **Parameters**
-- `capacitor` (object): The capacitor object to interact with.
-- `threshold` (float): Minimum distance for interaction. Default is `0.5`.
-
-#### **Behavior**
-- Calculates the distance between the node and the capacitor.
-- Transfers energy based on the distance and energy levels of both entities.
-
----
-
-### **Method: replay_memories**
+### **Social and Emotional Adaptation**
 ```python
-def replay_memories(self, nodes):
+def share_valuable_memory(self, nodes: List['AliveLoopNode']) -> List[SocialSignal]:
+def apply_calm_effect(self):
+def _apply_emotional_contagion(self, emotional_valence: float, source_id: int):
+def _integrate_shared_knowledge(self, shared_memory: Memory):
 ```
+- Shares most valuable memory with trusted, relevant nodes (with ethics check).
+- Integrates shared social knowledge and emotional states.
+- Tracks collective intelligence and knowledge diversity.
 
-#### **Description**
-Replays and shares memories with trusted nodes during sleep.
-
-#### **Parameters**
-- `nodes` (list): List of neighboring nodes.
-
-#### **Behavior**
-- Consolidates memories into long-term storage.
-- Shares the most important memories with trusted neighboring nodes.
-
----
-
-### **Method: _consolidate_memories**
+### **Communication**
 ```python
-def _consolidate_memories(self):
+def send_signal(self, target_nodes, signal_type, content, urgency=0.5, requires_response=False):
+def receive_signal(self, signal: SocialSignal) -> Optional[SocialSignal]:
+def process_social_interactions(self):
 ```
+- Supports asynchronous, rate-limited interaction with other nodes.
+- Handles multiple signal types, including help and anxiety requests.
 
-#### **Description**
-Consolidates working memory into long-term memory during sleep.
-
-#### **Behavior**
-- Moves memories with high importance into long-term storage.
-- Ages and discards low-importance memories during deep sleep.
-
----
-
-### **Method: adapt_and_learn**
+### **Safety & Help Protocols**
 ```python
-def adapt_and_learn(self):
+def check_anxiety_overwhelm(self) -> bool:
+def can_send_help_signal(self) -> bool:
+def send_help_signal(self, nearby_nodes: List['AliveLoopNode']) -> List['AliveLoopNode']:
+def _process_anxiety_help_signal(self, signal: SocialSignal) -> Optional[SocialSignal]:
+def _process_anxiety_help_response(self, signal: SocialSignal):
+def reset_help_signal_limits(self):
+def get_anxiety_status(self) -> Dict[str, Any]:
 ```
+- Manages anxiety and help requests, cooldowns, and unloading.
+- Tracks help requests, responses, and emotional/calm regulation.
 
-#### **Description**
-Adjusts the node's learning rate and energy efficiency based on past experiences.
-
-#### **Behavior**
-- Analyzes recent rewards to determine performance.
-- Adjusts learning rate using LTP and LTD mechanisms.
+### **Attack/Resilience**
+```python
+def record_suspicious_event(self, event):
+def handle_attack_detection(self):
+def share_energy(self, amount, recipient_id):
+```
+- Supports detection and response to suspicious/attack events.
+- Manages redundancy and throttling for resilience.
 
 ---
 
 ## **Usage Examples**
 
-### **Basic Node Initialization**
+### **Node Initialization**
 ```python
 from core.alive_node import AliveLoopNode
 
-# Initialize a node at position (0, 0) with velocity (1, 1)
 node = AliveLoopNode(position=(0, 0), velocity=(1, 1), initial_energy=10.0)
 ```
 
----
-
-### **Simulating Node Behavior**
+### **Phase Simulation**
 ```python
-# Step through phases of the day
 for hour in range(24):
     node.step_phase(current_time=hour)
     node.move()
 ```
 
----
-
-### **Interacting with a Capacitor**
+### **Memory Sharing**
 ```python
-class MockCapacitor:
-    def __init__(self, position, energy, capacity):
-        self.position = np.array(position, dtype=float)
-        self.energy = energy
-        self.capacity = capacity
-
-# Create a capacitor
-capacitor = MockCapacitor(position=(5, 5), energy=15, capacity=20)
-
-# Node interacts with the capacitor
-node.interact_with_capacitor(capacitor=capacitor)
+neighboring_nodes = [AliveLoopNode(position=(2, 2), velocity=(0, 0), node_id=2)]
+node.share_valuable_memory(neighboring_nodes)
 ```
 
----
-
-### **Sharing Memories**
+### **Help Signaling**
 ```python
-# Simulate neighboring nodes
-neighboring_nodes = [AliveLoopNode(position=(2, 2), velocity=(0, 0), node_id=2)]
+if node.check_anxiety_overwhelm():
+    helpers = node.send_help_signal(nearby_nodes)
+```
 
-# Node replays memories with neighbors
-node.replay_memories(nodes=neighboring_nodes)
+### **Energy Prediction**
+```python
+node.predict_energy()
+print(node.predicted_energy)
+```
+
+### **Attack Detection**
+```python
+node.record_suspicious_event("suspicious_activity_detected")
+```
+
+### **Social/Emotional Adaptation**
+```python
+node.apply_calm_effect()
+node._apply_emotional_contagion(emotional_valence=0.7, source_id=2)
 ```
 
 ---
 
 ## **Notes**
-- Ensure that the node's `position` and `velocity` attributes are updated regularly to reflect interactions.
-- Use the `trust_network` attribute to manage interactions with neighboring nodes effectively.
-- The `memory` attribute is capped at 1000 entries to optimize performance.
+
+- Memory, communication, and social attributes are capped for stability and performance.
+- Privacy and ethics checks are embedded in social/memory sharing logic.
+- Helper, anxiety, and attack resilience protocols support robust distributed adaptation and well-being.
+- Communication, memory processing, and collective intelligence are modular and extensible.
 
 ---
