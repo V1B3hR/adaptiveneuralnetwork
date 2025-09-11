@@ -1,0 +1,51 @@
+# High-Dimensional Network Configuration Example
+# Research configuration for exploring high-dimensional spaces
+# Suitable for theoretical research and curse-of-dimensionality studies
+
+spatial_dims: 5  # 5D space for research
+nodes: 50  # Random arrangement works better in high dimensions
+topology: random
+
+# High-dimensional settings
+external_signal_interval: 8
+
+# API endpoints for external signals (optional)
+api_endpoints:
+  human: null
+  ai: null
+  world: null
+
+# Network parameters optimized for high dimensions
+# Note: Distances become more uniform in high dimensions
+communication_range: 4.0  # Increased range due to curse of dimensionality
+collision_radius: 1.0
+
+# High-dimensional bounds (5D example)
+space_bounds: [
+  [-10, 10],  # Dimension 0
+  [-10, 10],  # Dimension 1
+  [-10, 10],  # Dimension 2
+  [-10, 10],  # Dimension 3
+  [-10, 10]   # Dimension 4
+]
+
+# Performance settings optimized for research
+max_nodes_per_step: 25  # Reduced for high-dimensional complexity
+simulation_speed: 0.8   # Slightly slower for stability
+
+# Neighbor search optimization (for future Phase 3 features)
+neighbor_search:
+  method: "brute_force"  # KD-tree less effective in high dimensions
+  max_neighbors: 10
+
+# Research-focused logging
+log_level: "DEBUG"
+metrics_enabled: true
+spatial_metrics_enabled: true
+high_dimensional_analysis: true
+
+# Visualization (use dimensionality reduction)
+visualization:
+  enabled: true
+  type: "pca_2d"  # Project to 2D using PCA
+  update_interval: 20
