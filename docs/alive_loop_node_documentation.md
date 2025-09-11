@@ -2,14 +2,14 @@
 
 ## **Overview**
 
-The `AliveLoopNode` class models a node in a dynamic, interactive, emotionally and socially adaptive environment. It supports modular energy and memory management, circadian rhythms, social learning, collective intelligence, safety and resilience protocols, and advanced communication. The architecture is designed to reflect complex interactions found in biological and social systems.
+The `AliveLoopNode` class models a node in a dynamic, interactive, emotionally and socially adaptive environment. It supports modular energy and memory management, circadian rhythms, social learning, [...]
 
 ---
 
 ## **Core Features**
 
 - **Energy Management**: Nodes consume, transfer, and predict energy. Distributed energy sharing and resilience against draining/jamming are supported.
-- **Circadian & Phase Control**: Nodes follow 24-hour cycles with dynamic transitions between active, sleep (light/REM/deep), inspired, and interactive states, modulated by anxiety, calm, and social context.
+- **Circadian & Phase Control**: Nodes follow 24-hour cycles with dynamic transitions between active, sleep (light/REM/deep), inspired, and interactive states, modulated by anxiety, calm, and social c[...]
 - **Advanced Memory Systems**:
   - Multiple memory types: short-term (`working_memory`), long-term, collaborative, resource, reward, help, shared, and pattern-based.
   - Privacy controls: private/protected/classified memories, audit logs, retention limits, and importance weighting.
