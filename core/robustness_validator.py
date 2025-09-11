@@ -55,22 +55,22 @@ class RobustnessValidator:
             DeploymentScenario(
                 "low_energy_environment",
                 "Testing behavior under severe energy constraints",
-                {"initial_energy": 1.0, "max_energy": 2.0, "energy_decay_rate": 0.9}
+                {"initial_energy": 1.0, "max_energy": 2.0, "energy_decay_rate": 0.9, "spatial_dims": 2}
             ),
             DeploymentScenario(
                 "high_density_deployment", 
                 "Testing with many nodes in limited space",
-                {"node_count": 50, "space_bounds": [10, 10], "interaction_frequency": 0.8}
+                {"node_count": 50, "space_bounds": [10, 10], "spatial_dims": 2, "interaction_frequency": 0.8}
             ),
             DeploymentScenario(
                 "intermittent_connectivity",
                 "Testing with unreliable communication channels", 
-                {"packet_loss_rate": 0.3, "connection_failures": 0.2}
+                {"packet_loss_rate": 0.3, "connection_failures": 0.2, "spatial_dims": 2}
             ),
             DeploymentScenario(
                 "mixed_trust_environment",
                 "Testing with nodes of varying trustworthiness",
-                {"trust_variance": 0.6, "malicious_node_ratio": 0.1}
+                {"trust_variance": 0.6, "malicious_node_ratio": 0.1, "spatial_dims": 2}
             )
         ])
         
@@ -79,17 +79,17 @@ class RobustnessValidator:
             DeploymentScenario(
                 "extreme_load_conditions",
                 "Testing under maximum operational load",
-                {"processing_load": 0.95, "memory_pressure": 0.9, "concurrent_operations": 100}
+                {"processing_load": 0.95, "memory_pressure": 0.9, "concurrent_operations": 100, "spatial_dims": 2}
             ),
             DeploymentScenario(
                 "rapid_environment_changes",
                 "Testing adaptability to frequent environmental changes",
-                {"change_frequency": 0.1, "change_magnitude": 0.8}
+                {"change_frequency": 0.1, "change_magnitude": 0.8, "spatial_dims": 2}
             ),
             DeploymentScenario(
                 "degraded_sensor_input",
                 "Testing with noisy or incomplete sensor data",
-                {"noise_level": 0.4, "data_corruption_rate": 0.15}
+                {"noise_level": 0.4, "data_corruption_rate": 0.15, "spatial_dims": 2}
             )
         ])
     
@@ -250,11 +250,14 @@ class RobustnessValidator:
     def _test_low_energy_scenario(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Test behavior under severe energy constraints"""
         
+        spatial_dims = params.get("spatial_dims", 2)
+        
         node = AliveLoopNode(
-            position=(0, 0),
-            velocity=(0.1, 0.1),
+            position=[0] * spatial_dims,
+            velocity=[0.1] * spatial_dims,
             initial_energy=params["initial_energy"],
-            node_id=1
+            node_id=1,
+            spatial_dims=spatial_dims
         )
         
         initial_energy = node.energy
@@ -287,21 +290,36 @@ class RobustnessValidator:
     
     def _test_high_density_scenario(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Test behavior with many nodes in limited space"""
+        from core.spatial_utils import create_random_positions
         
         nodes = []
         space_bounds = params["space_bounds"]
+        spatial_dims = params.get("spatial_dims", 2)  # Default to 2D
+        
+        # Ensure space_bounds is properly formatted for dimensions
+        if isinstance(space_bounds, list) and len(space_bounds) == 2 and isinstance(space_bounds[0], (int, float)):
+            # Handle legacy [width, height] format
+            if spatial_dims == 2:
+                bounds = [(0, space_bounds[0]), (0, space_bounds[1])]
+            else:
+                # Extend to more dimensions with same bounds
+                bounds = [(0, space_bounds[0])] * spatial_dims
+        else:
+            bounds = space_bounds  # Assume already in correct format
         
         # Create high-density node environment
-        for i in range(min(params["node_count"], 20)):  # Limit for testing
-            position = (
-                np.random.uniform(0, space_bounds[0]),
-                np.random.uniform(0, space_bounds[1])
-            )
+        node_count = min(params["node_count"], 20)  # Limit for testing
+        positions = create_random_positions(node_count, spatial_dims, bounds)
+        
+        for i in range(node_count):
+            # Create velocity with same dimensionality
+            velocity = [0.1] * spatial_dims
             node = AliveLoopNode(
-                position=position,
-                velocity=(0.1, 0.1),
+                position=positions[i],
+                velocity=velocity,
                 initial_energy=10.0,
-                node_id=i
+                node_id=i,
+                spatial_dims=spatial_dims
             )
             nodes.append(node)
         
@@ -336,9 +354,11 @@ class RobustnessValidator:
     def _test_connectivity_scenario(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Test behavior with unreliable communication"""
         
+        spatial_dims = params.get("spatial_dims", 2)
+        
         nodes = [
-            AliveLoopNode(position=(0, 0), velocity=(0.1, 0.1), initial_energy=10.0, node_id=1),
-            AliveLoopNode(position=(2, 2), velocity=(0.1, 0.1), initial_energy=10.0, node_id=2)
+            AliveLoopNode(position=[0] * spatial_dims, velocity=[0.1] * spatial_dims, initial_energy=10.0, node_id=1, spatial_dims=spatial_dims),
+            AliveLoopNode(position=[2] * spatial_dims, velocity=[0.1] * spatial_dims, initial_energy=10.0, node_id=2, spatial_dims=spatial_dims)
         ]
         
         successful_communications = 0
@@ -371,7 +391,9 @@ class RobustnessValidator:
     def _test_trust_scenario(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Test behavior in mixed trust environment"""
         
-        node = AliveLoopNode(position=(0, 0), velocity=(0.1, 0.1), initial_energy=10.0, node_id=1)
+        spatial_dims = params.get("spatial_dims", 2)
+        
+        node = AliveLoopNode(position=[0] * spatial_dims, velocity=[0.1] * spatial_dims, initial_energy=10.0, node_id=1, spatial_dims=spatial_dims)
         
         # Create trust network with varying levels
         trust_levels = []
@@ -398,7 +420,9 @@ class RobustnessValidator:
     def _test_load_scenario(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Test behavior under extreme computational load"""
         
-        node = AliveLoopNode(position=(0, 0), velocity=(0.1, 0.1), initial_energy=10.0, node_id=1)
+        spatial_dims = params.get("spatial_dims", 2)
+        
+        node = AliveLoopNode(position=[0] * spatial_dims, velocity=[0.1] * spatial_dims, initial_energy=10.0, node_id=1, spatial_dims=spatial_dims)
         
         start_time = time.time()
         operations_completed = 0
@@ -441,7 +465,9 @@ class RobustnessValidator:
     def _test_adaptation_scenario(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Test adaptability to rapid environmental changes"""
         
-        node = AliveLoopNode(position=(0, 0), velocity=(0.1, 0.1), initial_energy=10.0, node_id=1)
+        spatial_dims = params.get("spatial_dims", 2)
+        
+        node = AliveLoopNode(position=[0] * spatial_dims, velocity=[0.1] * spatial_dims, initial_energy=10.0, node_id=1, spatial_dims=spatial_dims)
         
         adaptation_successes = 0
         total_changes = 50
@@ -489,7 +515,9 @@ class RobustnessValidator:
     def _test_sensor_degradation_scenario(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Test behavior with noisy or incomplete sensor data"""
         
-        node = AliveLoopNode(position=(0, 0), velocity=(0.1, 0.1), initial_energy=10.0, node_id=1)
+        spatial_dims = params.get("spatial_dims", 2)
+        
+        node = AliveLoopNode(position=[0] * spatial_dims, velocity=[0.1] * spatial_dims, initial_energy=10.0, node_id=1, spatial_dims=spatial_dims)
         
         accurate_decisions = 0
         total_decisions = 100
@@ -542,7 +570,7 @@ class RobustnessValidator:
     def _test_memory_stress(self) -> Dict[str, Any]:
         """Test behavior under memory pressure"""
         
-        node = AliveLoopNode(position=(0, 0), velocity=(0.1, 0.1), initial_energy=10.0, node_id=1)
+        node = AliveLoopNode(position=[0, 0], velocity=[0.1, 0.1], initial_energy=10.0, node_id=1, spatial_dims=2)
         
         # Fill memory to capacity
         for i in range(2000):  # Exceed normal capacity
@@ -571,7 +599,7 @@ class RobustnessValidator:
     def _test_computational_stress(self) -> Dict[str, Any]:
         """Test behavior under computational stress"""
         
-        node = AliveLoopNode(position=(0, 0), velocity=(0.1, 0.1), initial_energy=10.0, node_id=1)
+        node = AliveLoopNode(position=[0, 0], velocity=[0.1, 0.1], initial_energy=10.0, node_id=1, spatial_dims=2)
         
         start_time = time.time()
         operations = 0
@@ -608,10 +636,11 @@ class RobustnessValidator:
         nodes = []
         for i in range(10):
             node = AliveLoopNode(
-                position=(i, i), 
-                velocity=(0.1, 0.1), 
+                position=[i, i], 
+                velocity=[0.1, 0.1], 
                 initial_energy=10.0, 
-                node_id=i
+                node_id=i,
+                spatial_dims=2
             )
             nodes.append(node)
         
@@ -651,7 +680,7 @@ class RobustnessValidator:
     def _test_resource_exhaustion(self) -> Dict[str, Any]:
         """Test behavior when resources are exhausted"""
         
-        node = AliveLoopNode(position=(0, 0), velocity=(0.1, 0.1), initial_energy=10.0, node_id=1)
+        node = AliveLoopNode(position=[0, 0], velocity=[0.1, 0.1], initial_energy=10.0, node_id=1, spatial_dims=2)
         
         # Drain energy rapidly
         while node.energy > 0.1:

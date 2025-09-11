@@ -31,23 +31,31 @@ def get_synthetic_streams(node_count):
 
 def run_extreme_scale_test(steps=10000, node_count=9000, capacitor_count=600, snapshot_interval=500):
     cfg = load_network_config("config/network_config.yaml")
-    print(f"Initializing {node_count} nodes...")
+    spatial_dims = cfg.get("spatial_dims", 2)  # Get spatial dimensions from config, default to 2
+    print(f"Initializing {node_count} nodes in {spatial_dims}D space...")
+    
+    # Create position and velocity bounds based on spatial dimensions
+    position_bounds = [(-10, 10)] * spatial_dims  # Same bounds for all dimensions
+    velocity_bounds = [(-0.15, 0.15)] * spatial_dims
+    
     nodes = [
         AliveLoopNode(
-            position=[random.uniform(-10, 10), random.uniform(-10, 10)],
-            velocity=[random.uniform(-0.15, 0.15), random.uniform(-0.15, 0.15)],
+            position=[random.uniform(-10, 10) for _ in range(spatial_dims)],
+            velocity=[random.uniform(-0.15, 0.15) for _ in range(spatial_dims)],
             initial_energy=random.uniform(5, 15),
             field_strength=random.uniform(0.8, 1.3),
-            node_id=i
+            node_id=i,
+            spatial_dims=spatial_dims
         )
         for i in range(node_count)
     ]
-    print(f"Initializing {capacitor_count} capacitors...")
+    print(f"Initializing {capacitor_count} capacitors in {spatial_dims}D space...")
     capacitors = [
         CapacitorInSpace(
-            position=[random.uniform(-12, 12), random.uniform(-12, 12)],
+            position=[random.uniform(-12, 12) for _ in range(spatial_dims)],
             capacity=random.uniform(3, 12),
-            initial_energy=random.uniform(0, 6)
+            initial_energy=random.uniform(0, 6),
+            expected_dims=spatial_dims
         )
         for _ in range(capacitor_count)
     ]

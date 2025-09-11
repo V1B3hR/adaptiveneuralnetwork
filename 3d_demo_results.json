@@ -1,0 +1,68 @@
+{
+  "comparison": {
+    "2d": {
+      "spatial_dims": 2,
+      "avg_energy": 9.049672812555723,
+      "avg_distance_traveled": 0.986866998935357,
+      "total_interactions": 32,
+      "interaction_density": 0.32
+    },
+    "3d": {
+      "spatial_dims": 3,
+      "avg_energy": 9.831197181498176,
+      "avg_distance_traveled": 1.6880281850182506,
+      "total_interactions": 0,
+      "interaction_density": 0.0
+    }
+  },
+  "scaling": [
+    {
+      "dimensions": 2,
+      "initial_distance": 1.4142135623730951,
+      "final_distance": 1.5700924586837752e-16,
+      "node_energy": 7.238412431882406,
+      "cap_energy": 3.620166211880288
+    },
+    {
+      "dimensions": 3,
+      "initial_distance": 1.7320508075688772,
+      "final_distance": 1.9229626863835638e-16,
+      "node_energy": 7.669454293268055,
+      "cap_energy": 3.1573406259750647
+    },
+    {
+      "dimensions": 4,
+      "initial_distance": 2.0,
+      "final_distance": 2.220446049250313e-16,
+      "node_energy": 7.648640000000004,
+      "cap_energy": 3.1513600000000013
+    },
+    {
+      "dimensions": 5,
+      "initial_distance": 2.23606797749979,
+      "final_distance": 2.482534153247273e-16,
+      "node_energy": 7.630302239507814,
+      "cap_energy": 3.1460909627422042
+    },
+    {
+      "dimensions": 10,
+      "initial_distance": 3.1622776601683795,
+      "final_distance": 3.510833468576701e-16,
+      "node_energy": 8.118163409738065,
+      "cap_energy": 2.565608824245105
+    }
+  ],
+  "timestamp": "2024-demo",
+  "summary": {
+    "dimensions_tested": [
+      2,
+      3,
+      4,
+      5,
+      10
+    ],
+    "backward_compatible": true,
+    "config_driven": true,
+    "validation_enabled": true
+  }
+}
