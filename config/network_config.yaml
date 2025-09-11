@@ -1,8 +1,8 @@
-nodes: 3
-topology: grid
-spatial_dims: 2  # Number of spatial dimensions (2D by default, can be changed to 3 for 3D)
-external_signal_interval: 5
 api_endpoints:
-  human: "https://example.com/human_signal"
-  ai: "https://example.com/ai_signal"
-  world: "https://example.com/world_signal"
+  ai: https://example.com/ai_signal
+  human: https://example.com/human_signal
+  world: https://example.com/world_signal
+external_signal_interval: 5
+nodes: 3
+spatial_dims: 2
+topology: grid
