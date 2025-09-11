@@ -229,6 +229,18 @@ class AliveLoopNode:
             response = self._process_anxiety_help_signal(signal)
         elif signal.signal_type == "anxiety_help_response":
             self._process_anxiety_help_response(signal)
+        elif signal.signal_type == "joy_share":
+            self._process_joy_share_signal(signal)
+        elif signal.signal_type == "grief_support_request":
+            response = self._process_grief_support_request_signal(signal)
+        elif signal.signal_type == "grief_support_response":
+            self._process_grief_support_response_signal(signal)
+        elif signal.signal_type == "celebration_invite":
+            response = self._process_celebration_invite_signal(signal)
+        elif signal.signal_type == "comfort_request":
+            response = self._process_comfort_request_signal(signal)
+        elif signal.signal_type == "comfort_response":
+            self._process_comfort_response_signal(signal)
             
         # Emotional contagion
         if hasattr(signal.content, 'emotional_valence'):
@@ -413,6 +425,18 @@ class AliveLoopNode:
         elif signal_type == "resource":
             # Trust increases when sharing resources
             self.trust_network[target.node_id] = min(1.0, current_trust + 0.1)
+        elif signal_type == "joy_share":
+            # Trust increases when sharing positive emotions
+            self.trust_network[target.node_id] = min(1.0, current_trust + 0.04)
+        elif signal_type == "grief_support_request":
+            # Slight trust increase for vulnerability sharing
+            self.trust_network[target.node_id] = min(1.0, current_trust + 0.03)
+        elif signal_type == "celebration_invite":
+            # Trust increases when including others in celebrations
+            self.trust_network[target.node_id] = min(1.0, current_trust + 0.03)
+        elif signal_type == "comfort_request":
+            # Trust increases for reaching out for comfort
+            self.trust_network[target.node_id] = min(1.0, current_trust + 0.02)
 
     def _is_memory_relevant(self, memory, query: Any) -> bool:
         """Check if a memory is relevant to a query"""
@@ -829,6 +853,423 @@ class AliveLoopNode:
         
         logger.info(f"Node {self.node_id}: Received anxiety help from node {helper_node_id}, "
                    f"anxiety reduced from {old_anxiety:.2f} to {self.anxiety:.2f}")
+                   
+    # Joy and Positive Emotion Sharing Methods
+    
+    def send_joy_share_signal(self, nearby_nodes: List['AliveLoopNode'], joy_content: Dict[str, Any]) -> List['AliveLoopNode']:
+        """
+        Share positive emotions and joy with nearby nodes.
+        
+        Args:
+            nearby_nodes: List of nodes within communication range
+            joy_content: Dictionary containing joy details (achievement, celebration, etc.)
+            
+        Returns:
+            List of nodes that received the joy signal
+        """
+        if self.energy < 1.0 or self.phase == "sleep":
+            return []
+            
+        # Create joy sharing content
+        joy_signal_content = {
+            "type": "joy_share",
+            "source_node": self.node_id,
+            "emotional_valence": 0.8,  # High positive valence
+            "celebration_type": joy_content.get("type", "general"),
+            "description": joy_content.get("description", "Sharing positive energy"),
+            "intensity": joy_content.get("intensity", 0.7),
+            "timestamp": self._time,
+            "invite_celebration": joy_content.get("invite_celebration", False)
+        }
+        
+        # Filter nodes by proximity and trust
+        joy_recipients = []
+        for node in nearby_nodes:
+            if (node.node_id != self.node_id and 
+                self.trust_network.get(node.node_id, 0.5) >= 0.3 and
+                node.energy >= 1.0):  # Node needs some energy to appreciate joy
+                joy_recipients.append(node)
+                
+        if not joy_recipients:
+            return []
+            
+        # Send joy signal to recipients
+        self.send_signal(
+            target_nodes=joy_recipients,
+            signal_type="joy_share",
+            content=joy_signal_content,
+            urgency=0.3,  # Low urgency for positive sharing
+            requires_response=False
+        )
+        
+        # Record the joy sharing in memory
+        joy_memory = Memory(
+            content={"action": "shared_joy", "type": joy_content.get("type", "general")},
+            importance=0.6,
+            timestamp=self._time,
+            memory_type="joy_shared",
+            emotional_valence=0.8  # Positive for sharing joy
+        )
+        self.memory.append(joy_memory)
+        
+        # Boost own emotional state from sharing
+        self.emotional_state["valence"] = min(1.0, self.emotional_state["valence"] + 0.1)
+        
+        logger.info(f"Node {self.node_id}: Shared joy with {len(joy_recipients)} nodes")
+        return joy_recipients
+        
+    def _process_joy_share_signal(self, signal: SocialSignal):
+        """Process a joy sharing signal from another node"""
+        joy_content = signal.content
+        
+        if not isinstance(joy_content, dict) or joy_content.get("type") != "joy_share":
+            return
+            
+        source_node_id = joy_content.get("source_node")
+        if source_node_id is None:
+            return
+            
+        # Apply positive emotional contagion
+        trust_level = self.trust_network.get(source_node_id, 0.5)
+        joy_intensity = joy_content.get("intensity", 0.7)
+        emotional_boost = joy_intensity * trust_level * 0.5
+        
+        # Boost emotional valence
+        self.emotional_state["valence"] = min(1.0, self.emotional_state["valence"] + emotional_boost)
+        
+        # Reduce anxiety through positive influence
+        if self.anxiety > 0:
+            anxiety_reduction = emotional_boost * 0.8
+            self.anxiety = max(0, self.anxiety - anxiety_reduction)
+            
+        # Increase calm through shared joy
+        self.calm = min(5.0, self.calm + emotional_boost * 0.3)
+        
+        # Increase trust with the joy sharer
+        current_trust = self.trust_network.get(source_node_id, 0.5)
+        self.trust_network[source_node_id] = min(1.0, current_trust + 0.05)
+        
+        # Record received joy in memory
+        joy_memory = Memory(
+            content={
+                "action": "received_joy",
+                "from_node": source_node_id,
+                "celebration_type": joy_content.get("celebration_type", "general"),
+                "description": joy_content.get("description", "")
+            },
+            importance=0.6,
+            timestamp=self._time,
+            memory_type="joy_received",
+            emotional_valence=0.7  # Positive for receiving joy
+        )
+        self.memory.append(joy_memory)
+        
+        logger.debug(f"Node {self.node_id}: Received joy from node {source_node_id}, "
+                    f"emotional boost: {emotional_boost:.2f}")
+                    
+    # Grief and Emotional Support Methods
+    
+    def send_grief_support_request(self, nearby_nodes: List['AliveLoopNode'], grief_details: Dict[str, Any]) -> List['AliveLoopNode']:
+        """
+        Request emotional support during times of grief or sadness.
+        
+        Args:
+            nearby_nodes: List of nodes within communication range
+            grief_details: Details about the grief or emotional support needed
+            
+        Returns:
+            List of nodes that responded with support
+        """
+        if self.energy < 2.0:  # Need some energy to reach out
+            return []
+            
+        # Create grief support request content
+        support_request = {
+            "type": "grief_support_request",
+            "requesting_node": self.node_id,
+            "emotional_valence": grief_details.get("emotional_valence", -0.6),
+            "support_type": grief_details.get("support_type", "emotional"),
+            "grief_intensity": grief_details.get("intensity", 0.7),
+            "description": grief_details.get("description", "Requesting emotional support"),
+            "urgency": min(1.0, grief_details.get("intensity", 0.7)),
+            "timestamp": self._time
+        }
+        
+        # Filter nodes by trust and availability
+        trusted_supporters = []
+        for node in nearby_nodes:
+            if (node.node_id != self.node_id and 
+                self.trust_network.get(node.node_id, 0.5) >= 0.4 and
+                node.energy >= 3.0 and  # Supporter needs energy to help
+                node.anxiety < 8.0 and  # Supporter shouldn't be overwhelmed
+                node.emotional_state.get("valence", 0) > -0.5):  # Supporter not too sad themselves
+                trusted_supporters.append(node)
+                
+        if not trusted_supporters:
+            logger.debug(f"Node {self.node_id}: No available supporters for grief support")
+            return []
+            
+        # Send grief support request
+        responses = self.send_signal(
+            target_nodes=trusted_supporters,
+            signal_type="grief_support_request", 
+            content=support_request,
+            urgency=support_request["urgency"],
+            requires_response=True
+        )
+        
+        # Record the support request in memory
+        support_memory = Memory(
+            content={"action": "requested_grief_support", "grief_type": grief_details.get("support_type", "emotional")},
+            importance=0.8,
+            timestamp=self._time,
+            memory_type="support_requested",
+            emotional_valence=-0.4  # Slightly negative as it indicates distress
+        )
+        self.memory.append(support_memory)
+        
+        logger.info(f"Node {self.node_id}: Requested grief support from {len(trusted_supporters)} trusted nodes")
+        
+        return [node for node in trusted_supporters if any(r.source_id == node.node_id for r in responses)]
+        
+    def _process_grief_support_request_signal(self, signal: SocialSignal) -> Optional[SocialSignal]:
+        """Process a grief support request from another node"""
+        support_request = signal.content
+        
+        if not isinstance(support_request, dict) or support_request.get("type") != "grief_support_request":
+            return None
+            
+        requesting_node_id = support_request.get("requesting_node")
+        if requesting_node_id is None:
+            return None
+            
+        # Check if we can provide support
+        trust_level = self.trust_network.get(requesting_node_id, 0.5)
+        if (trust_level < 0.3 or  # Not trusted enough
+            self.energy < 3.0 or  # Not enough energy
+            self.anxiety > 8.0 or  # Too anxious ourselves
+            self.emotional_state.get("valence", 0) < -0.6):  # Too sad ourselves
+            return None
+            
+        # Provide emotional support
+        grief_intensity = support_request.get("grief_intensity", 0.7)
+        support_amount = min(grief_intensity * 0.8, self.calm * 0.5, 2.0)
+        
+        # Create support response
+        support_response = {
+            "type": "grief_support_response",
+            "supporter_node": self.node_id,
+            "emotional_support_offered": support_amount,
+            "comfort_message": "You're not alone in this. I'm here to support you.",
+            "support_type": support_request.get("support_type", "emotional"),
+            "timestamp": self._time
+        }
+        
+        # Record providing support in memory
+        support_memory = Memory(
+            content={"action": "provided_grief_support", "to_node": requesting_node_id, "support": support_amount},
+            importance=0.7,
+            timestamp=self._time,
+            memory_type="support_given",
+            emotional_valence=0.3  # Positive for helping others despite grief context
+        )
+        self.memory.append(support_memory)
+        
+        # Energy cost for providing emotional support
+        energy_cost = support_amount * 0.3
+        self.energy = max(1.0, self.energy - energy_cost)
+        
+        # Increase trust with the supported node
+        current_trust = self.trust_network.get(requesting_node_id, 0.5)
+        self.trust_network[requesting_node_id] = min(1.0, current_trust + 0.1)
+        
+        logger.debug(f"Node {self.node_id}: Provided grief support to node {requesting_node_id}")
+        
+        return SocialSignal(
+            content=support_response,
+            signal_type="grief_support_response",
+            urgency=0.6,
+            source_id=self.node_id
+        )
+        
+    def _process_grief_support_response_signal(self, signal: SocialSignal):
+        """Process a grief support response from another node"""
+        support_response = signal.content
+        
+        if not isinstance(support_response, dict) or support_response.get("type") != "grief_support_response":
+            return
+            
+        supporter_node_id = support_response.get("supporter_node")
+        emotional_support = support_response.get("emotional_support_offered", 0.0)
+        
+        if supporter_node_id is None or emotional_support <= 0:
+            return
+            
+        # Apply emotional support - gradual improvement in emotional valence
+        old_valence = self.emotional_state["valence"]
+        valence_improvement = emotional_support * 0.3
+        self.emotional_state["valence"] = min(1.0, self.emotional_state["valence"] + valence_improvement)
+        
+        # Increase calm level 
+        self.calm = min(5.0, self.calm + emotional_support * 0.2)
+        
+        # Reduce anxiety through emotional support
+        if self.anxiety > 0:
+            anxiety_reduction = emotional_support * 0.4
+            self.anxiety = max(0, self.anxiety - anxiety_reduction)
+        
+        # Increase trust with supporter
+        current_trust = self.trust_network.get(supporter_node_id, 0.5)
+        self.trust_network[supporter_node_id] = min(1.0, current_trust + 0.15)
+        
+        # Record received support in memory
+        support_memory = Memory(
+            content={
+                "action": "received_grief_support",
+                "from_node": supporter_node_id,
+                "valence_before": old_valence,
+                "valence_after": self.emotional_state["valence"],
+                "message": support_response.get("comfort_message", "")
+            },
+            importance=0.9,
+            timestamp=self._time,
+            memory_type="support_received",
+            emotional_valence=0.4  # Positive for receiving support
+        )
+        self.memory.append(support_memory)
+        
+        logger.info(f"Node {self.node_id}: Received grief support from node {supporter_node_id}, "
+                   f"emotional valence improved from {old_valence:.2f} to {self.emotional_state['valence']:.2f}")
+                   
+    # Celebration and Comfort Methods
+    
+    def _process_celebration_invite_signal(self, signal: SocialSignal) -> Optional[SocialSignal]:
+        """Process an invitation to celebrate something"""
+        celebration_invite = signal.content
+        
+        if not isinstance(celebration_invite, dict) or celebration_invite.get("type") != "celebration_invite":
+            return None
+            
+        inviter_node_id = celebration_invite.get("inviter_node")
+        if inviter_node_id is None:
+            return
+            
+        # Accept invitation based on energy, trust, and current emotional state
+        trust_level = self.trust_network.get(inviter_node_id, 0.5)
+        if (trust_level >= 0.4 and 
+            self.energy >= 2.0 and
+            self.anxiety < 6.0 and
+            self.emotional_state.get("valence", 0) > -0.3):
+            
+            # Participate in celebration - boost emotions
+            celebration_boost = 0.4 * trust_level
+            self.emotional_state["valence"] = min(1.0, self.emotional_state["valence"] + celebration_boost)
+            self.calm = min(5.0, self.calm + celebration_boost * 0.2)
+            
+            # Energy cost for celebrating
+            self.energy = max(0, self.energy - 0.5)
+            
+            # Strengthen trust
+            self.trust_network[inviter_node_id] = min(1.0, trust_level + 0.08)
+            
+            # Record celebration participation
+            celebration_memory = Memory(
+                content={"action": "participated_in_celebration", "with_node": inviter_node_id},
+                importance=0.6,
+                timestamp=self._time,
+                memory_type="celebration",
+                emotional_valence=0.6
+            )
+            self.memory.append(celebration_memory)
+            
+            logger.debug(f"Node {self.node_id}: Participated in celebration with node {inviter_node_id}")
+            
+            return SocialSignal(
+                content={"type": "celebration_acceptance", "participant_node": self.node_id},
+                signal_type="celebration_response", 
+                urgency=0.3,
+                source_id=self.node_id
+            )
+        
+        return None
+        
+    def _process_comfort_request_signal(self, signal: SocialSignal) -> Optional[SocialSignal]:
+        """Process a request for general comfort/support"""
+        comfort_request = signal.content
+        
+        if not isinstance(comfort_request, dict) or comfort_request.get("type") != "comfort_request":
+            return None
+            
+        requesting_node_id = comfort_request.get("requesting_node")
+        if requesting_node_id is None:
+            return None
+            
+        # Provide comfort if able
+        trust_level = self.trust_network.get(requesting_node_id, 0.5)
+        if (trust_level >= 0.3 and 
+            self.energy >= 2.0 and
+            self.anxiety < 7.0):
+            
+            comfort_amount = min(1.5, self.calm * 0.4)
+            
+            # Create comfort response
+            comfort_response = {
+                "type": "comfort_response",
+                "comforter_node": self.node_id,
+                "comfort_offered": comfort_amount,
+                "message": "Sending you comfort and support.",
+                "timestamp": self._time
+            }
+            
+            # Cost of providing comfort
+            self.energy = max(1.0, self.energy - comfort_amount * 0.2)
+            
+            # Strengthen relationship
+            self.trust_network[requesting_node_id] = min(1.0, trust_level + 0.05)
+            
+            logger.debug(f"Node {self.node_id}: Provided comfort to node {requesting_node_id}")
+            
+            return SocialSignal(
+                content=comfort_response,
+                signal_type="comfort_response",
+                urgency=0.4, 
+                source_id=self.node_id
+            )
+        
+        return None
+        
+    def _process_comfort_response_signal(self, signal: SocialSignal):
+        """Process a comfort response from another node"""
+        comfort_response = signal.content
+        
+        if not isinstance(comfort_response, dict) or comfort_response.get("type") != "comfort_response":
+            return
+            
+        comforter_node_id = comfort_response.get("comforter_node")
+        comfort_amount = comfort_response.get("comfort_offered", 0.0)
+        
+        if comforter_node_id is None or comfort_amount <= 0:
+            return
+            
+        # Apply comfort
+        self.calm = min(5.0, self.calm + comfort_amount)
+        if self.anxiety > 0:
+            self.anxiety = max(0, self.anxiety - comfort_amount * 0.3)
+            
+        # Improve emotional state slightly
+        self.emotional_state["valence"] = min(1.0, self.emotional_state["valence"] + comfort_amount * 0.2)
+        
+        # Record received comfort
+        comfort_memory = Memory(
+            content={"action": "received_comfort", "from_node": comforter_node_id},
+            importance=0.6,
+            timestamp=self._time,
+            memory_type="comfort_received",
+            emotional_valence=0.3
+        )
+        self.memory.append(comfort_memory)
+        
+        logger.debug(f"Node {self.node_id}: Received comfort from node {comforter_node_id}")
                    
     def apply_calm_effect(self):
         """Apply calm effect to reduce anxiety naturally"""
