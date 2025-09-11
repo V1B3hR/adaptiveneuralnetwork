@@ -63,17 +63,28 @@ class Memory:
 
 
 class SocialSignal:
-    """Structured signal for node-to-node communication"""
+    """Structured signal for node-to-node communication with production features"""
     def __init__(self, content: Any, signal_type: str, urgency: float, 
-                 source_id: int, requires_response: bool = False):
+                 source_id: int, requires_response: bool = False,
+                 idempotency_key: Optional[str] = None, partition_key: Optional[str] = None,
+                 correlation_id: Optional[str] = None, schema_version: str = "1.0"):
         self.id = str(uuid.uuid4())
         self.content = content
         self.signal_type = signal_type  # 'memory', 'query', 'warning', 'resource'
         self.urgency = urgency  # 0.0 to 1.0
         self.source_id = source_id
-        self.timestamp = 0
+        self.timestamp = get_timestamp()
         self.requires_response = requires_response
         self.response = None
+        
+        # Production features
+        self.idempotency_key = idempotency_key or f"{source_id}_{signal_type}_{uuid.uuid4().hex[:8]}"
+        self.partition_key = partition_key or f"{source_id}_{signal_type}"  # For ordering guarantees
+        self.correlation_id = correlation_id or str(uuid.uuid4())  # For distributed tracing
+        self.schema_version = schema_version  # For schema evolution
+        self.retry_count = 0  # Track retry attempts
+        self.created_at = get_timestamp()  # Creation timestamp for age calculation
+        self.processing_attempts = []  # Track processing history
 
 
 class AliveLoopNode:
@@ -168,18 +179,68 @@ class AliveLoopNode:
         # Initialize period boundaries if needed
         self._help_period_start = get_timestamp()
         self.help_period_duration = 60  # seconds (adjust as needed)
+        
+        # Production signal processing features
+        self.deduplication_store = {}  # idempotency_key -> {timestamp, ttl}
+        self.dedupe_ttl = 300  # 5 minutes TTL for deduplication
+        self.dead_letter_queue = deque(maxlen=100)  # DLQ for poison messages
+        self.signal_metrics = {
+            'processed_count': 0,
+            'error_count': 0,
+            'dlq_count': 0,
+            'duplicate_count': 0,
+            'processing_times': deque(maxlen=100)
+        }
+        self.circuit_breaker = {
+            'state': 'closed',  # closed, open, half-open
+            'failure_count': 0,
+            'failure_threshold': 5,
+            'timeout': 30,  # seconds
+            'last_failure_time': 0
+        }
+        self.persisted_signals = deque(maxlen=1000)  # For replay capabilities
+        self.partition_queues = {}  # partition_key -> deque for ordering guarantees
 
     def send_signal(self, target_nodes: List['AliveLoopNode'], signal_type: str, 
-                   content: Any, urgency: float = 0.5, requires_response: bool = False):
-        """Send a signal to other nodes with rate limiting"""
+                   content: Any, urgency: float = 0.5, requires_response: bool = False,
+                   idempotency_key: Optional[str] = None, partition_key: Optional[str] = None):
+        """Send a signal to other nodes with rate limiting and flow control"""
         # Rate limiting check
         if self.communications_this_step >= self.max_communications_per_step:
             return []  # Hit rate limit
             
         if self.energy < 1.0 or self.phase == "sleep":
             return []  # Not enough energy or asleep to communicate
+        
+        # Producer-side flow control: Check target node queue capacity
+        available_targets = []
+        for target in target_nodes:
+            if hasattr(target, 'communication_queue'):
+                queue_depth = len(target.communication_queue)
+                queue_capacity = target.communication_queue.maxlen
+                
+                # Implement backpressure if queue is getting full
+                if queue_depth >= queue_capacity * 0.8:  # 80% capacity threshold
+                    logger.warning(f"Node {self.node_id}: Target node {target.node_id} queue near capacity ({queue_depth}/{queue_capacity})")
+                    # Skip this target or apply circuit breaker logic
+                    if queue_depth >= queue_capacity * 0.95:  # 95% capacity - circuit break
+                        continue
+                
+                available_targets.append(target)
+        
+        if not available_targets:
+            logger.warning(f"Node {self.node_id}: No available targets due to backpressure")
+            return []
             
-        signal = SocialSignal(content, signal_type, urgency, self.node_id, requires_response)
+        signal = SocialSignal(
+            content=content, 
+            signal_type=signal_type, 
+            urgency=urgency, 
+            source_id=self.node_id, 
+            requires_response=requires_response,
+            idempotency_key=idempotency_key,
+            partition_key=partition_key or f"{self.node_id}_{signal_type}"
+        )
         signal.timestamp = self._time
         
         # Energy cost based on signal complexity and urgency
@@ -187,7 +248,7 @@ class AliveLoopNode:
         self.energy = max(0, self.energy - energy_cost)
         
         responses = []
-        for target in target_nodes:
+        for target in available_targets:
             if self.communications_this_step >= self.max_communications_per_step:
                 break  # Hit rate limit
                 
@@ -205,54 +266,219 @@ class AliveLoopNode:
         self.signal_history.append(signal)
         return responses
 
+    def _is_duplicate_signal(self, signal: SocialSignal) -> bool:
+        """Check if signal is a duplicate based on idempotency key"""
+        current_time = get_timestamp()
+        
+        if signal.idempotency_key in self.deduplication_store:
+            entry = self.deduplication_store[signal.idempotency_key]
+            if current_time - entry['timestamp'] < self.dedupe_ttl:
+                return True
+            else:
+                # TTL expired, remove entry
+                del self.deduplication_store[signal.idempotency_key]
+        
+        return False
+    
+    def _record_signal_processed(self, signal: SocialSignal):
+        """Record signal as processed for deduplication"""
+        self.deduplication_store[signal.idempotency_key] = {
+            'timestamp': get_timestamp(),
+            'ttl': self.dedupe_ttl
+        }
+    
+    def _validate_signal_schema(self, signal: SocialSignal) -> bool:
+        """Validate signal schema version compatibility"""
+        supported_versions = ["1.0", "1.1"]  # Add new versions as needed
+        return signal.schema_version in supported_versions
+    
+    def _should_circuit_break(self) -> bool:
+        """Check if circuit breaker should open"""
+        if self.circuit_breaker['state'] == 'open':
+            current_time = get_timestamp()
+            if current_time - self.circuit_breaker['last_failure_time'] > self.circuit_breaker['timeout']:
+                self.circuit_breaker['state'] = 'half-open'
+                return False
+            return True
+        return False
+    
+    def _record_processing_error(self, signal: SocialSignal, error: str):
+        """Record processing error and update circuit breaker"""
+        self.signal_metrics['error_count'] += 1
+        self.circuit_breaker['failure_count'] += 1
+        self.circuit_breaker['last_failure_time'] = get_timestamp()
+        
+        if self.circuit_breaker['failure_count'] >= self.circuit_breaker['failure_threshold']:
+            self.circuit_breaker['state'] = 'open'
+        
+        # Add to DLQ
+        dlq_entry = {
+            'signal': signal,
+            'error': error,
+            'timestamp': get_timestamp(),
+            'node_id': self.node_id
+        }
+        self.dead_letter_queue.append(dlq_entry)
+        self.signal_metrics['dlq_count'] += 1
+        
+        logger.warning(f"Node {self.node_id}: Signal {signal.id} moved to DLQ due to error: {error}")
+    
+    def _add_to_partition_queue(self, signal: SocialSignal):
+        """Add signal to appropriate partition queue for ordering"""
+        if signal.partition_key not in self.partition_queues:
+            self.partition_queues[signal.partition_key] = deque(maxlen=50)
+        
+        self.partition_queues[signal.partition_key].append(signal)
+    
+    def _get_queue_metrics(self) -> Dict[str, Any]:
+        """Get current queue metrics for observability"""
+        current_time = get_timestamp()
+        
+        # Calculate queue depths
+        main_queue_depth = len(self.communication_queue)
+        partition_queue_depths = {k: len(v) for k, v in self.partition_queues.items()}
+        
+        # Calculate message ages
+        message_ages = []
+        for signal in self.communication_queue:
+            if hasattr(signal, 'created_at'):
+                age = current_time - signal.created_at
+                message_ages.append(age)
+        
+        # Calculate throughput (messages per second over last minute)
+        recent_times = [t for t in self.signal_metrics['processing_times'] 
+                       if current_time - t < 60]
+        throughput = len(recent_times) / 60.0 if recent_times else 0.0
+        
+        return {
+            'queue_depth': main_queue_depth,
+            'partition_queue_depths': partition_queue_depths,
+            'max_message_age': max(message_ages) if message_ages else 0,
+            'avg_message_age': sum(message_ages) / len(message_ages) if message_ages else 0,
+            'throughput_per_second': throughput,
+            'error_rate': self.signal_metrics['error_count'] / max(1, self.signal_metrics['processed_count']),
+            'dlq_count': self.signal_metrics['dlq_count'],
+            'duplicate_count': self.signal_metrics['duplicate_count'],
+            'circuit_breaker_state': self.circuit_breaker['state']
+        }
+
     def receive_signal(self, signal: SocialSignal) -> Optional[SocialSignal]:
-        """Process an incoming signal from another node"""
-        if self.energy < 0.5:
-            return None  # Not enough energy to process
-            
-        # Energy cost to process signal
-        processing_cost = 0.05 + (0.1 * signal.urgency)
-        self.energy = max(0, self.energy - processing_cost)
+        """Process an incoming signal from another node with production features"""
+        processing_start_time = get_timestamp()
         
-        # Add to communication queue
-        self.communication_queue.append(signal)
-        
-        # Process based on signal type
-        response = None
-        if signal.signal_type == "memory":
-            self._process_memory_signal(signal)
-        elif signal.signal_type == "query":
-            response = self._process_query_signal(signal)
-        elif signal.signal_type == "warning":
-            self._process_warning_signal(signal)
-        elif signal.signal_type == "resource":
-            self._process_resource_signal(signal)
-        elif signal.signal_type == "anxiety_help":
-            response = self._process_anxiety_help_signal(signal)
-        elif signal.signal_type == "anxiety_help_response":
-            self._process_anxiety_help_response(signal)
-        elif signal.signal_type == "joy_share":
-            self._process_joy_share_signal(signal)
-        elif signal.signal_type == "grief_support_request":
-            response = self._process_grief_support_request_signal(signal)
-        elif signal.signal_type == "grief_support_response":
-            self._process_grief_support_response_signal(signal)
-        elif signal.signal_type == "celebration_invite":
-            response = self._process_celebration_invite_signal(signal)
-        elif signal.signal_type == "comfort_request":
-            response = self._process_comfort_request_signal(signal)
-        elif signal.signal_type == "comfort_response":
-            self._process_comfort_response_signal(signal)
+        try:
+            # Circuit breaker check
+            if self._should_circuit_break():
+                logger.warning(f"Node {self.node_id}: Circuit breaker open, rejecting signal {signal.id}")
+                return None
             
-        # Emotional contagion
-        if hasattr(signal.content, 'emotional_valence'):
-            self._apply_emotional_contagion(signal.content.emotional_valence, signal.source_id)
+            # Schema validation
+            if not self._validate_signal_schema(signal):
+                error_msg = f"Unsupported schema version: {signal.schema_version}"
+                self._record_processing_error(signal, error_msg)
+                return None
             
-        return response
+            # Deduplication check
+            if self._is_duplicate_signal(signal):
+                self.signal_metrics['duplicate_count'] += 1
+                logger.debug(f"Node {self.node_id}: Duplicate signal {signal.id} ignored")
+                return None
+            
+            # Energy check
+            if self.energy < 0.5:
+                return None  # Not enough energy to process
+                
+            # Energy cost to process signal
+            processing_cost = 0.05 + (0.1 * signal.urgency)
+            self.energy = max(0, self.energy - processing_cost)
+            
+            # Add signal processing attempt
+            signal.processing_attempts.append({
+                'node_id': self.node_id,
+                'timestamp': processing_start_time,
+                'correlation_id': signal.correlation_id
+            })
+            
+            # Add to partition queue for ordering guarantees
+            self._add_to_partition_queue(signal)
+            
+            # Add to communication queue (existing behavior)
+            self.communication_queue.append(signal)
+            
+            # Persist signal for replay capabilities
+            self.persisted_signals.append({
+                'signal': signal,
+                'timestamp': processing_start_time,
+                'node_id': self.node_id
+            })
+            
+            # Process based on signal type
+            response = None
+            if signal.signal_type == "memory":
+                self._process_memory_signal(signal)
+            elif signal.signal_type == "query":
+                response = self._process_query_signal(signal)
+            elif signal.signal_type == "warning":
+                self._process_warning_signal(signal)
+            elif signal.signal_type == "resource":
+                self._process_resource_signal(signal)
+            elif signal.signal_type == "anxiety_help":
+                response = self._process_anxiety_help_signal(signal)
+            elif signal.signal_type == "anxiety_help_response":
+                self._process_anxiety_help_response(signal)
+            elif signal.signal_type == "joy_share":
+                self._process_joy_share_signal(signal)
+            elif signal.signal_type == "grief_support_request":
+                response = self._process_grief_support_request_signal(signal)
+            elif signal.signal_type == "grief_support_response":
+                self._process_grief_support_response_signal(signal)
+            elif signal.signal_type == "celebration_invite":
+                response = self._process_celebration_invite_signal(signal)
+            elif signal.signal_type == "comfort_request":
+                response = self._process_comfort_request_signal(signal)
+            elif signal.signal_type == "comfort_response":
+                self._process_comfort_response_signal(signal)
+            else:
+                error_msg = f"Unknown signal type: {signal.signal_type}"
+                self._record_processing_error(signal, error_msg)
+                return None
+                
+            # Emotional contagion
+            if hasattr(signal.content, 'emotional_valence'):
+                self._apply_emotional_contagion(signal.content.emotional_valence, signal.source_id)
+            
+            # Record successful processing
+            self._record_signal_processed(signal)
+            self.signal_metrics['processed_count'] += 1
+            self.signal_metrics['processing_times'].append(processing_start_time)
+            
+            # Reset circuit breaker on success
+            if self.circuit_breaker['state'] == 'half-open':
+                self.circuit_breaker['state'] = 'closed'
+                self.circuit_breaker['failure_count'] = 0
+            
+            return response
+            
+        except Exception as e:
+            error_msg = f"Exception during signal processing: {str(e)}"
+            self._record_processing_error(signal, error_msg)
+            logger.error(f"Node {self.node_id}: {error_msg}")
+            return None
 
     def _process_memory_signal(self, signal: SocialSignal):
         """Process a memory shared by another node"""
         memory = signal.content
+        
+        # Handle case where content is not a Memory object (create one)
+        if not isinstance(memory, Memory):
+            memory = Memory(
+                content=memory,
+                importance=0.5,  # Default importance
+                timestamp=self._time,
+                memory_type="shared",
+                emotional_valence=0.0,
+                source_node=signal.source_id
+            )
         
         # Determine trustworthiness of the source
         trust_level = self.trust_network.get(signal.source_id, 0.5)
@@ -1394,6 +1620,140 @@ class AliveLoopNode:
             self.anxiety_history.clear()
             self.anxiety_history.extend(trimmed)
         return unload
+
+    def graceful_shutdown(self, timeout: int = 30) -> bool:
+        """Gracefully shutdown node by draining queues and finishing work"""
+        logger.info(f"Node {self.node_id}: Starting graceful shutdown with {timeout}s timeout")
+        start_time = get_timestamp()
+        
+        # Stop accepting new signals
+        self.circuit_breaker['state'] = 'open'
+        
+        # Process remaining signals in queues
+        while get_timestamp() - start_time < timeout:
+            # Drain main communication queue
+            if self.communication_queue:
+                signal = self.communication_queue.popleft()
+                try:
+                    self.receive_signal(signal)
+                except Exception as e:
+                    logger.error(f"Node {self.node_id}: Error processing signal during shutdown: {e}")
+                continue
+            
+            # Drain partition queues
+            processed_any = False
+            for partition_key, queue in self.partition_queues.items():
+                if queue:
+                    signal = queue.popleft()
+                    try:
+                        self.receive_signal(signal)
+                        processed_any = True
+                    except Exception as e:
+                        logger.error(f"Node {self.node_id}: Error processing partition signal during shutdown: {e}")
+            
+            if not processed_any:
+                break  # All queues empty
+                
+        # Log final metrics
+        metrics = self._get_queue_metrics()
+        logger.info(f"Node {self.node_id}: Shutdown complete. Final metrics: {metrics}")
+        
+        return len(self.communication_queue) == 0 and all(len(q) == 0 for q in self.partition_queues.values())
+    
+    def replay_signals(self, from_timestamp: Optional[int] = None, to_timestamp: Optional[int] = None) -> List[Dict]:
+        """Replay persisted signals for recovery or audit purposes"""
+        if from_timestamp is None:
+            from_timestamp = 0
+        if to_timestamp is None:
+            to_timestamp = get_timestamp()
+            
+        replayed_signals = []
+        for entry in self.persisted_signals:
+            signal_time = entry['timestamp']
+            if from_timestamp <= signal_time <= to_timestamp:
+                signal = entry['signal']
+                
+                # Create replay entry
+                replay_entry = {
+                    'signal_id': signal.id,
+                    'signal_type': signal.signal_type,
+                    'source_id': signal.source_id,
+                    'timestamp': signal_time,
+                    'correlation_id': signal.correlation_id,
+                    'content_summary': str(signal.content)[:100] + "..." if len(str(signal.content)) > 100 else str(signal.content)
+                }
+                replayed_signals.append(replay_entry)
+        
+        logger.info(f"Node {self.node_id}: Replayed {len(replayed_signals)} signals from {from_timestamp} to {to_timestamp}")
+        return replayed_signals
+    
+    def process_dlq_messages(self) -> List[Dict]:
+        """Process and return dead letter queue messages for manual review"""
+        dlq_messages = []
+        
+        for entry in self.dead_letter_queue:
+            signal = entry['signal']
+            dlq_message = {
+                'signal_id': signal.id,
+                'signal_type': signal.signal_type,
+                'source_id': signal.source_id,
+                'error': entry['error'],
+                'timestamp': entry['timestamp'],
+                'correlation_id': signal.correlation_id,
+                'retry_count': signal.retry_count,
+                'content': signal.content
+            }
+            dlq_messages.append(dlq_message)
+        
+        logger.info(f"Node {self.node_id}: Found {len(dlq_messages)} messages in DLQ")
+        return dlq_messages
+    
+    def reprocess_dlq_message(self, signal_id: str) -> bool:
+        """Attempt to reprocess a message from the DLQ"""
+        for i, entry in enumerate(self.dead_letter_queue):
+            if entry['signal'].id == signal_id:
+                signal = entry['signal']
+                signal.retry_count += 1
+                
+                # Temporarily enable circuit breaker for reprocessing
+                original_state = self.circuit_breaker['state']
+                self.circuit_breaker['state'] = 'closed'
+                
+                # Attempt reprocessing
+                try:
+                    response = self.receive_signal(signal)
+                    # Only remove from DLQ if processing was actually successful
+                    # Check if signal was processed (not None response or no error thrown)
+                    if signal.id not in [entry['signal'].id for entry in self.dead_letter_queue]:
+                        logger.info(f"Node {self.node_id}: Successfully reprocessed DLQ message {signal_id}")
+                        return True
+                    else:
+                        logger.error(f"Node {self.node_id}: Failed to reprocess DLQ message {signal_id}: still in DLQ")
+                        return False
+                except Exception as e:
+                    logger.error(f"Node {self.node_id}: Failed to reprocess DLQ message {signal_id}: {e}")
+                    return False
+                finally:
+                    # Restore original circuit breaker state
+                    self.circuit_breaker['state'] = original_state
+        
+        logger.warning(f"Node {self.node_id}: DLQ message {signal_id} not found")
+        return False
+    
+    def cleanup_expired_deduplication_entries(self):
+        """Clean up expired entries from deduplication store"""
+        current_time = get_timestamp()
+        expired_keys = []
+        
+        for key, entry in self.deduplication_store.items():
+            if current_time - entry['timestamp'] >= entry['ttl']:
+                expired_keys.append(key)
+        
+        for key in expired_keys:
+            del self.deduplication_store[key]
+        
+        if expired_keys:
+            logger.debug(f"Node {self.node_id}: Cleaned up {len(expired_keys)} expired deduplication entries")
 
 
 # Example usage in a multi-node simulation
