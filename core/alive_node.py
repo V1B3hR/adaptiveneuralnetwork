@@ -8,6 +8,7 @@ import uuid
 import logging
 from core.ai_ethics import audit_decision
 from core.time_manager import get_time_manager, get_timestamp
+from core.trust_network import TrustNetwork
 
 # Setup logger for alive_node module
 logger = logging.getLogger('alive_node')
@@ -103,8 +104,9 @@ class AliveLoopNode:
         self.attention_focus = np.array([0.0, 0.0])
         self.radius = 0.5
         
-        # Trust and social networks
-        self.trust_network = {}  # node_id -> trust_score
+        # Trust and social networks - Enhanced trust system
+        self.trust_network_system = TrustNetwork(node_id)
+        self.trust_network = self.trust_network_system.trust_network  # Backward compatibility
         
         # Enhanced social learning attributes
         self.communication_queue = deque(maxlen=20)  # Incoming signals to process
@@ -412,31 +414,44 @@ class AliveLoopNode:
         )
 
     def _update_trust_after_communication(self, target: 'AliveLoopNode', signal_type: str):
-        """Update trust based on communication outcome"""
-        current_trust = self.trust_network.get(target.node_id, 0.5)
+        """Update trust based on communication outcome using enhanced trust system"""
+        # Create context for trust update
+        context = {
+            'timestamp': self._time,
+            'source_energy': self.energy,
+            'target_energy': getattr(target, 'energy', None),
+            'communication_history': len(self.signal_history)
+        }
         
-        # Different trust updates based on signal type
-        if signal_type == "memory":
-            # Trust increases when sharing valuable memories
-            self.trust_network[target.node_id] = min(1.0, current_trust + 0.05)
-        elif signal_type == "warning":
-            # Trust updates happen after warning is validated
-            pass  # Will be updated later when warning is proven true/false
-        elif signal_type == "resource":
-            # Trust increases when sharing resources
-            self.trust_network[target.node_id] = min(1.0, current_trust + 0.1)
-        elif signal_type == "joy_share":
-            # Trust increases when sharing positive emotions
-            self.trust_network[target.node_id] = min(1.0, current_trust + 0.04)
-        elif signal_type == "grief_support_request":
-            # Slight trust increase for vulnerability sharing
-            self.trust_network[target.node_id] = min(1.0, current_trust + 0.03)
-        elif signal_type == "celebration_invite":
-            # Trust increases when including others in celebrations
-            self.trust_network[target.node_id] = min(1.0, current_trust + 0.03)
-        elif signal_type == "comfort_request":
-            # Trust increases for reaching out for comfort
-            self.trust_network[target.node_id] = min(1.0, current_trust + 0.02)
+        # Use enhanced trust network system
+        new_trust = self.trust_network_system.update_trust(target, signal_type, context)
+        
+        # Update the backward compatibility dict
+        self.trust_network[target.node_id] = new_trust
+    
+    def get_trust_summary(self):
+        """Get overview of trust network health"""
+        return self.trust_network_system.get_trust_summary()
+    
+    def process_trust_verification_request(self, verification_request):
+        """Process a community trust verification request"""
+        subject_id = verification_request.get('subject')
+        if subject_id is None:
+            return None
+            
+        # Provide our opinion on the subject
+        our_trust = self.trust_network_system.get_trust(subject_id)
+        return {
+            'trust_level': our_trust,
+            'responder_id': self.node_id,
+            'confidence': 0.8 if subject_id in self.trust_network else 0.3
+        }
+    
+    def handle_community_trust_feedback(self, subject_id, feedback_list):
+        """Handle community feedback about a suspicious node"""
+        self.trust_network_system.process_community_feedback(subject_id, feedback_list)
+        # Update backward compatibility dict
+        self.trust_network[subject_id] = self.trust_network_system.get_trust(subject_id)
 
     def _is_memory_relevant(self, memory, query: Any) -> bool:
         """Check if a memory is relevant to a query"""
