@@ -3,6 +3,13 @@ Time Series Tracking System for Node State Variables
 
 Provides comprehensive tracking, querying, and visualization capabilities
 for key node state variables over time.
+
+Security Features:
+- Parameterized queries prevent SQL injection
+- Input validation and type coercion at boundaries
+- Variable name allowlist prevents column injection
+- Multi-statement prevention (SQLite default)
+- Query performance analysis with EXPLAIN
 """
 
 import json
@@ -68,6 +75,12 @@ class TimeSeriesTracker:
         "emotional_valence", "arousal", "communication_count"
     ]
     
+    # Security allowlist for variable names (prevent SQL injection via column names)
+    ALLOWED_VARIABLES = set(DEFAULT_VARIABLES + [
+        "trust_network_size", "memory_count", "avg_trust", "phase",
+        "temperature", "pressure", "humidity", "light_level", "noise_level"
+    ])
+    
     def __init__(self, 
                  max_memory_points: int = 10000,
                  persist_to_disk: bool = True,
@@ -95,7 +108,12 @@ class TimeSeriesTracker:
             self._init_database()
             
     def _init_database(self):
-        """Initialize SQLite database for persistent storage"""
+        """
+        Initialize SQLite database for persistent storage.
+        
+        Security: SQLite by default prevents multi-statement execution,
+        providing protection against compound SQL injection attacks.
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -141,11 +159,25 @@ class TimeSeriesTracker:
             state_data: Dictionary of variable_name -> value
             timestamp: Optional timestamp (uses current time if None)
         """
+        # Validate node_id type
+        if not isinstance(node_id, int):
+            try:
+                node_id = int(node_id)
+            except (ValueError, TypeError):
+                raise ValueError(f"node_id must be integer, got {type(node_id)}")
+        
         if timestamp is None:
             timestamp = get_timestamp()
             
         with self._lock:
             for variable_name, value in state_data.items():
+                # Validate variable name (allow new variables but log warnings for unknown ones)
+                if not isinstance(variable_name, str):
+                    logger.warning(f"Skipping non-string variable name: {variable_name}")
+                    continue
+                if variable_name not in self.ALLOWED_VARIABLES:
+                    logger.warning(f"Variable '{variable_name}' not in standard allowlist. Consider adding to ALLOWED_VARIABLES.")
+                
                 if isinstance(value, (int, float)):
                     point = TimeSeriesDataPoint(
                         timestamp=timestamp,
@@ -200,6 +232,9 @@ class TimeSeriesTracker:
         Returns:
             List of TimeSeriesDataPoint objects matching the query
         """
+        # Validate and sanitize query parameters for security
+        self._validate_query_parameters(query)
+        
         results = []
         result_keys = set()  # Track unique results to avoid duplicates
         
@@ -240,6 +275,58 @@ class TimeSeriesTracker:
             
         return results
         
+    def _validate_query_parameters(self, query: TimeSeriesQuery):
+        """
+        Validate and coerce query parameters for security and type safety.
+        Implements defense against SQL injection and type confusion attacks.
+        """
+        # Validate and coerce node_ids to integers
+        if query.node_ids is not None:
+            validated_node_ids = []
+            for node_id in query.node_ids:
+                if isinstance(node_id, str):
+                    # Reject strings to prevent SQL injection
+                    raise ValueError(f"Node ID must be integer, got string: {node_id}")
+                try:
+                    # Coerce to integer
+                    validated_id = int(node_id)
+                    if validated_id != node_id:  # Check for truncation
+                        raise ValueError(f"Node ID {node_id} cannot be safely converted to integer")
+                    validated_node_ids.append(validated_id)
+                except (ValueError, TypeError) as e:
+                    raise ValueError(f"Invalid node_id '{node_id}': {e}")
+            query.node_ids = validated_node_ids
+            
+        # Validate variable names against allowlist
+        if query.variables is not None:
+            for var_name in query.variables:
+                if not isinstance(var_name, str):
+                    raise ValueError(f"Variable name must be string, got {type(var_name)}")
+                if var_name not in self.ALLOWED_VARIABLES:
+                    raise ValueError(f"Variable '{var_name}' not in allowed list: {sorted(self.ALLOWED_VARIABLES)}")
+                    
+        # Validate time parameters
+        for time_param in ['start_time', 'end_time']:
+            time_value = getattr(query, time_param, None)
+            if time_value is not None:
+                if isinstance(time_value, str):
+                    raise ValueError(f"{time_param} must be numeric, got string")
+                try:
+                    float(time_value)  # Ensure it's convertible to float
+                except (ValueError, TypeError):
+                    raise ValueError(f"Invalid {time_param}: {time_value}")
+                    
+        # Validate max_points
+        if query.max_points is not None:
+            if isinstance(query.max_points, str):
+                raise ValueError("max_points must be integer, got string")
+            try:
+                query.max_points = int(query.max_points)
+                if query.max_points <= 0:
+                    raise ValueError("max_points must be positive")
+            except (ValueError, TypeError):
+                raise ValueError(f"Invalid max_points: {query.max_points}")
+                
     def _query_database(self, query: TimeSeriesQuery) -> List[TimeSeriesDataPoint]:
         """Query data from persistent database"""
         results = []
@@ -298,6 +385,72 @@ class TimeSeriesTracker:
             logger.error(f"Failed to query database: {e}")
             
         return results
+        
+    def explain_query(self, query: TimeSeriesQuery) -> str:
+        """
+        Analyze query performance using EXPLAIN QUERY PLAN.
+        Helps with indexing and query optimization analysis.
+        
+        Args:
+            query: TimeSeriesQuery to analyze
+            
+        Returns:
+            String containing the query execution plan
+        """
+        # Validate parameters first
+        self._validate_query_parameters(query)
+        
+        if not self.persist_to_disk:
+            return "EXPLAIN not available - database persistence disabled"
+            
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Build the same SQL query as _query_database
+                sql_parts = ["SELECT timestamp, node_id, variable_name, value, metadata FROM time_series WHERE 1=1"]
+                params = []
+                
+                if query.node_ids:
+                    placeholders = ",".join("?" * len(query.node_ids))
+                    sql_parts.append(f"AND node_id IN ({placeholders})")
+                    params.extend(query.node_ids)
+                    
+                if query.variables:
+                    placeholders = ",".join("?" * len(query.variables))
+                    sql_parts.append(f"AND variable_name IN ({placeholders})")
+                    params.extend(query.variables)
+                    
+                if query.start_time:
+                    sql_parts.append("AND timestamp >= ?")
+                    params.append(query.start_time)
+                    
+                if query.end_time:
+                    sql_parts.append("AND timestamp <= ?")
+                    params.append(query.end_time)
+                    
+                sql_parts.append("ORDER BY timestamp")
+                
+                if query.max_points:
+                    sql_parts.append("LIMIT ?")
+                    params.append(query.max_points)
+                    
+                sql = " ".join(sql_parts)
+                
+                # Execute EXPLAIN QUERY PLAN
+                cursor.execute(f"EXPLAIN QUERY PLAN {sql}", params)
+                explain_results = cursor.fetchall()
+                
+                # Format the results
+                result_lines = ["Query Execution Plan:"]
+                for row in explain_results:
+                    result_lines.append(f"  {' | '.join(str(col) for col in row)}")
+                    
+                return "\n".join(result_lines)
+                
+        except Exception as e:
+            logger.error(f"Failed to explain query: {e}")
+            return f"EXPLAIN failed: {e}"
         
     def get_latest_values(self, node_id: int, variables: Optional[List[str]] = None) -> Dict[str, float]:
         """Get the latest values for specified variables of a node"""
