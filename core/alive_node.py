@@ -90,10 +90,27 @@ class SocialSignal:
 class AliveLoopNode:
     sleep_stages = ["light", "REM", "deep"]
 
-    def __init__(self, position, velocity, initial_energy=10.0, field_strength=1.0, node_id=0):
+    def __init__(self, position, velocity, initial_energy=10.0, field_strength=1.0, node_id=0, spatial_dims=None):
+        # Import spatial utilities
+        from core.spatial_utils import validate_spatial_dimensions, zero_vector
+        
         # Basic node attributes
         self.position = np.array(position, dtype=float)
         self.velocity = np.array(velocity, dtype=float)
+        
+        # Determine spatial dimensions
+        if spatial_dims is not None:
+            self.spatial_dims = int(spatial_dims)
+        else:
+            # Infer from position length
+            self.spatial_dims = len(self.position)
+        
+        # Validate position and velocity dimensions
+        try:
+            validate_spatial_dimensions([self.position, self.velocity], self.spatial_dims)
+        except ValueError as e:
+            raise ValueError(f"Node {node_id} dimension validation failed: {e}")
+        
         self.energy = float(initial_energy)
         self.field_strength = float(field_strength)
         self.node_id = int(node_id)
@@ -112,7 +129,7 @@ class AliveLoopNode:
         # Behavioral attributes
         self.anxiety = 0.0
         self.sleep_stage = "light"
-        self.attention_focus = np.array([0.0, 0.0])
+        self.attention_focus = zero_vector(self.spatial_dims)  # Dimension-aware attention focus
         self.radius = 0.5
         
         # Trust and social networks - Enhanced trust system
@@ -536,13 +553,18 @@ class AliveLoopNode:
 
     def _process_warning_signal(self, signal: SocialSignal):
         """Process a warning from another node"""
+        from core.spatial_utils import zero_vector
+        
         # Increase anxiety based on urgency and trust in source
         trust_level = self.trust_network.get(signal.source_id, 0.5)
         self.anxiety += signal.urgency * trust_level * 2.0
         
-        # Direct attention to potential threat
+        # Direct attention to potential threat (dimension-aware)
         if "danger" in str(signal.content).lower():
-            self.attention_focus = np.array([1.0, 0.0])  # Focus on threat direction
+            # Create attention focus vector with first component set to 1.0
+            self.attention_focus = zero_vector(self.spatial_dims)
+            if self.spatial_dims > 0:
+                self.attention_focus[0] = 1.0  # Focus on first axis direction
 
     def _process_resource_signal(self, signal: SocialSignal):
         """Process a resource sharing signal"""
@@ -853,6 +875,12 @@ class AliveLoopNode:
 
     def interact_with_capacitor(self, capacitor, threshold=0.5):
         """Enhanced interaction with capacitors"""
+        # Validate spatial dimensions match
+        if hasattr(capacitor, 'position'):
+            if self.position.shape != capacitor.position.shape:
+                raise ValueError(f"Node {self.node_id} spatial dimensions {self.position.shape} "
+                               f"don't match capacitor dimensions {capacitor.position.shape}")
+        
         distance = np.linalg.norm(self.position - capacitor.position)
         
         if distance < threshold:

@@ -15,6 +15,7 @@ def load_network_config(config_path="config/network_config.yaml"):
         return {
             "nodes": 9,
             "topology": "grid",
+            "spatial_dims": 2,  # Default to 2D for backward compatibility
             "external_signal_interval": 5,
             "api_endpoints": {
                 "human": None,
