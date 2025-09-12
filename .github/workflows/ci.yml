@@ -1,0 +1,124 @@
+name: CI - Train, Test, Coverage & Artifacts
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.12]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-html coverage
+
+    - name: Training Phase - Run Neural Network Simulation
+      run: |
+        echo "=== TRAINING PHASE ==="
+        echo "Running adaptive neural network simulation..."
+        python runsimulation.py
+        echo "Training/simulation completed successfully"
+
+    - name: Test Phase - Run Test Suite with Coverage
+      run: |
+        echo "=== TESTING PHASE ==="
+        python -m pytest tests/ \
+          --cov=core \
+          --cov=config \
+          --cov-report=html:coverage-html \
+          --cov-report=xml:coverage.xml \
+          --cov-report=term-missing \
+          --html=test-report.html \
+          --self-contained-html \
+          -v
+
+    - name: Generate Coverage Badge
+      if: matrix.python-version == '3.12'
+      run: |
+        echo "=== COVERAGE BADGE GENERATION ==="
+        coverage report --format=markdown > coverage-summary.md
+        COVERAGE=$(coverage report --format=total)
+        echo "Total coverage: ${COVERAGE}%"
+        
+        # Create a simple coverage badge (JSON format for shields.io)
+        cat > coverage-badge.json << EOF
+        {
+          "schemaVersion": 1,
+          "label": "coverage",
+          "message": "${COVERAGE}%",
+          "color": "$([ ${COVERAGE} -ge 80 ] && echo 'green' || [ ${COVERAGE} -ge 60 ] && echo 'yellow' || echo 'red')"
+        }
+        EOF
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-python${{ matrix.python-version }}
+        path: |
+          test-report.html
+          coverage.xml
+          coverage-html/
+          coverage-summary.md
+        retention-days: 30
+
+    - name: Upload Coverage Badge
+      if: matrix.python-version == '3.12'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-badge
+        path: coverage-badge.json
+        retention-days: 30
+
+    - name: Upload Training Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: training-artifacts-python${{ matrix.python-version }}
+        path: |
+          *.json
+          *.db
+          *.png
+        if-no-files-found: warn
+        retention-days: 30
+
+    - name: Comment Coverage on PR
+      if: matrix.python-version == '3.12' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          if (fs.existsSync('coverage-summary.md')) {
+            const coverage = fs.readFileSync('coverage-summary.md', 'utf8');
+            const comment = `## 📊 Coverage Report\n\n${coverage}`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          }

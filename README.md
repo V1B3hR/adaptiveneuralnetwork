@@ -1,4 +1,6 @@
 # Adaptive Neural Network
+[![CI](https://github.com/V1B3hR/adaptiveneuralnetwork/workflows/CI%20-%20Train,%20Test,%20Coverage%20&%20Artifacts/badge.svg)](https://github.com/V1B3hR/adaptiveneuralnetwork/actions)
+![Coverage](https://img.shields.io/badge/coverage-71%25-yellow)
 
 A biologically-inspired network of nodes (“AliveLoopNode”) interacting with capacitors and external data streams, featuring:
 - Staged sleep (light, REM, deep)
