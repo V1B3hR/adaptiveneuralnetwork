@@ -1,4 +1,6 @@
 # Adaptive Neural Network
+[![CI](https://github.com/V1B3hR/adaptiveneuralnetwork/workflows/CI%20-%20Train,%20Test,%20Coverage%20&%20Artifacts/badge.svg)](https://github.com/V1B3hR/adaptiveneuralnetwork/actions)
+![Coverage](https://img.shields.io/badge/coverage-71%25-yellow)
 
 A production-ready biologically-inspired neural network with vectorized training capabilities and adaptive learning mechanisms. This library provides a PyTorch-compatible implementation of adaptive neural networks with phase-based dynamics, energy management, and continual learning support.
 

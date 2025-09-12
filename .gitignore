@@ -50,6 +50,10 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+coverage-html/
+test-report.html
+coverage-summary.md
+coverage-badge.json
 
 # Translations
 *.mo
@@ -142,3 +146,6 @@ extreme_scale_test_results.json
 # OS
 .DS_Store
 Thumbs.db
+
+# CI-generated artifacts (available as GitHub Actions artifacts)
+node_timeseries.db
