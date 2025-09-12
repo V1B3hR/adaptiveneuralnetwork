@@ -268,3 +268,91 @@ def quick_train(
         "metrics_history": metrics_history,
         "final_metrics": metrics_history[-1] if metrics_history else {},
     }
+
+
+def train_epoch(
+    model: nn.Module, 
+    train_loader: DataLoader, 
+    optimizer: optim.Optimizer, 
+    criterion: nn.Module, 
+    device: torch.device
+) -> tuple[float, float]:
+    """
+    Train model for one epoch.
+    
+    Args:
+        model: Model to train
+        train_loader: Training data loader
+        optimizer: Optimizer
+        criterion: Loss criterion
+        device: Device to run on
+    
+    Returns:
+        (average_loss, accuracy)
+    """
+    model.train()
+    total_loss = 0.0
+    correct = 0
+    total = 0
+    
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)
+        
+        # Flatten data if needed for adaptive model
+        if data.dim() > 2:
+            data = data.view(data.shape[0], -1)
+        
+        optimizer.zero_grad()
+        output = model(data)
+        loss = criterion(output, target)
+        loss.backward()
+        optimizer.step()
+        
+        total_loss += loss.item()
+        pred = output.argmax(dim=1, keepdim=True)
+        correct += pred.eq(target.view_as(pred)).sum().item()
+        total += target.size(0)
+    
+    avg_loss = total_loss / len(train_loader)
+    accuracy = correct / total
+    
+    return avg_loss, accuracy
+
+
+def evaluate_model(
+    model: nn.Module, 
+    test_loader: DataLoader, 
+    device: torch.device,
+    criterion: nn.Module = None
+) -> float:
+    """
+    Evaluate model on test data.
+    
+    Args:
+        model: Model to evaluate
+        test_loader: Test data loader
+        device: Device to run on
+        criterion: Optional loss criterion
+    
+    Returns:
+        Accuracy score
+    """
+    model.eval()
+    correct = 0
+    total = 0
+    
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            
+            # Flatten data if needed for adaptive model
+            if data.dim() > 2:
+                data = data.view(data.shape[0], -1)
+            
+            output = model(data)
+            pred = output.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+            total += target.size(0)
+    
+    accuracy = correct / total
+    return accuracy

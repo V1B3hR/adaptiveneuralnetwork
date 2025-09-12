@@ -42,7 +42,8 @@ class AdaptiveConfig:
         default_factory=lambda: {"active": 0.6, "interactive": 0.25, "sleep": 0.1, "inspired": 0.05}
     )
 
-    # Hardware configuration
+    # Backend configuration
+    backend: str = "pytorch"  # "pytorch", "jax", "neuromorphic"
     device: str = "cpu"
     dtype: str = "float32"
     seed: int = 42

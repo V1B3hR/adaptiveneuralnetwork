@@ -9,26 +9,46 @@ A production-ready biologically-inspired neural network with vectorized training
 ### Installation
 
 ```bash
+# Basic installation
 pip install -e .
+
+# With JAX backend support
+pip install -e ".[jax]"
+
+# With neuromorphic hardware support
+pip install -e ".[neuromorphic]"
+
+# With multi-modal support
+pip install -e ".[multimodal]"
+
+# Full installation with all backends
+pip install -e ".[jax,neuromorphic,multimodal]"
 ```
 
 ### Basic Usage
 
 ```python
-from adaptiveneuralnetwork.api import AdaptiveModel, AdaptiveConfig
+from adaptiveneuralnetwork.api import create_adaptive_model, AdaptiveConfig
 
 # Create configuration
 config = AdaptiveConfig(
     num_nodes=100,
     hidden_dim=64,
-    num_epochs=10,
-    learning_rate=0.001
+    backend="pytorch"  # or "jax", "neuromorphic"
 )
 
-# Create and train model
-model = AdaptiveModel(config)
+# Create model with backend selection
+model = create_adaptive_model(config)
+
+# Or use convenience function
+model = create_adaptive_model(
+    backend="pytorch",  # Choose your backend
+    num_nodes=128,
+    hidden_dim=64
+)
 
 # Standard PyTorch training loop
+import torch
 optimizer = torch.optim.Adam(model.parameters())
 for batch in dataloader:
     optimizer.zero_grad()
@@ -38,14 +58,46 @@ for batch in dataloader:
     optimizer.step()
 ```
 
-### Run MNIST Benchmark
+### Run Benchmarks
 
 ```bash
-# Quick test
-python scripts/run_benchmark.py --quick-test --epochs 1
+# MNIST benchmark (classic)
+python scripts/run_benchmark.py --dataset mnist --epochs 10
 
-# Full benchmark
-python scripts/run_benchmark.py --epochs 10 --batch-size 128
+# CIFAR-10 standard benchmark
+python -c "
+from adaptiveneuralnetwork.benchmarks.vision.cifar10 import run_cifar10_benchmark
+results = run_cifar10_benchmark(epochs=5, batch_size=64)
+print(f'CIFAR-10 accuracy: {results[\"standard\"][\"final_test_accuracy\"]:.3f}')
+"
+
+# CIFAR-10 robustness benchmark
+python -c "
+from adaptiveneuralnetwork.benchmarks.vision.cifar10 import CIFAR10Benchmark
+from adaptiveneuralnetwork.api import AdaptiveConfig
+
+config = AdaptiveConfig(num_nodes=64, hidden_dim=32)
+benchmark = CIFAR10Benchmark(config)
+
+# Run robustness test
+results = benchmark.run_robustness_benchmark(
+    corruption_types=['gaussian_noise', 'brightness'],
+    severities=[1, 3, 5]
+)
+robustness = results['robustness_results']['relative_robustness']
+print(f'Domain shift robustness: {robustness:.3f}')
+"
+
+# Multi-modal benchmark
+python -c "
+from adaptiveneuralnetwork.benchmarks.multimodal import run_multimodal_benchmark
+results = run_multimodal_benchmark(
+    modalities=['text', 'image'], 
+    epochs=3, 
+    batch_size=16
+)
+print(f'Multi-modal accuracy: {results[\"final_test_accuracy\"]:.3f}')
+"
 ```
 
 ### Performance Profiling
@@ -80,7 +132,19 @@ python scripts/profile.py --profile-type comprehensive
 - **Phase-Based Dynamics**: Biologically-inspired phases (active, sleep, interactive, inspired)
 - **Energy Management**: Node energy levels influence behavior and phase transitions
 - **Adaptive Learning**: Dynamic adaptation rates and node connectivity
+- **Multi-Backend Support**: PyTorch, JAX, and neuromorphic hardware compatibility
+- **Domain Shift Robustness**: CIFAR-10 corrupted benchmarks for testing robustness
+- **Multi-Modal Learning**: Text + image processing capabilities
+- **Neuromorphic Compatibility**: Spike-based computation and hardware abstraction
 - **Production-Ready**: Comprehensive testing, CI/CD, and packaging
+
+## 🔬 Backend Comparison
+
+| Backend | Use Case | Performance | Features |
+|---------|----------|-------------|----------|
+| **PyTorch** | General purpose, GPU/CPU | High | Dynamic graphs, CUDA, standard ML |
+| **JAX** | Research, TPU, functional | Very High | JIT compilation, auto-vectorization, functional programming |
+| **Neuromorphic** | Edge computing, low power | Specialized | Spike-based, event-driven, hardware simulation |
 
 ## 📊 Benchmark Results
 
@@ -121,25 +185,29 @@ mypy adaptiveneuralnetwork/core/ adaptiveneuralnetwork/api/
 
 ## 🗺 Roadmap
 
-### Current Version (0.1.0)
+### Current Version (0.3.0)
 - [x] Vectorized core abstractions
 - [x] MNIST benchmark pipeline
 - [x] Basic training loops and metrics
 - [x] Configuration system
 - [x] Profiling utilities
 - [x] CI/CD infrastructure
+- [x] **Domain shift robustness (CIFAR-10 corrupted)**
+- [x] **JAX backend for advanced acceleration**
+- [x] **Multi-modal benchmarks (text + image)**
+- [x] **Neuromorphic hardware compatibility layer**
 
-### Planned (0.2.0)
-- [ ] Continual learning (Split MNIST)
-- [ ] Advanced phase controllers (anxiety/restorative mechanics)
-- [ ] Energy/activity sparsity metrics
-- [ ] Sleep-phase ablation studies
+### Previous Versions
+#### Version 0.2.0
+- [x] Continual learning (Split MNIST)
+- [x] Advanced phase controllers (anxiety/restorative mechanics)
+- [x] Energy/activity sparsity metrics
+- [x] Sleep-phase ablation studies
 
-### Future (0.3.0+)
-- [ ] Domain shift robustness (CIFAR-10 corrupted)
-- [ ] JAX backend for advanced acceleration
-- [ ] Multi-modal benchmarks
-- [ ] Neuromorphic hardware compatibility
+#### Version 0.1.0 
+- [x] Basic adaptive neural network implementation
+- [x] PyTorch integration
+- [x] MNIST benchmarking
 
 ## 📖 Documentation
 

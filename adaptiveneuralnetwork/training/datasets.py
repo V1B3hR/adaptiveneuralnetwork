@@ -9,6 +9,8 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset
+import numpy as np
+from typing import Optional, Callable, Union
 
 
 def load_mnist(
@@ -183,5 +185,254 @@ def create_synthetic_loaders(
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, test_loader
+
+
+def load_cifar10(
+    batch_size: int = 64, root: str = "./data", download: bool = True, num_workers: int = 0
+) -> tuple[DataLoader, DataLoader]:
+    """
+    Load CIFAR-10 dataset with standard preprocessing.
+
+    Args:
+        batch_size: Batch size for data loaders
+        root: Root directory for dataset storage
+        download: Whether to download dataset if not present
+        num_workers: Number of workers for data loading
+
+    Returns:
+        Tuple of (train_loader, test_loader)
+    """
+    # Standard CIFAR-10 preprocessing
+    transform_train = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    ])
+    
+    transform_test = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    ])
+
+    # Load train and test sets
+    train_dataset = torchvision.datasets.CIFAR10(
+        root=root, train=True, transform=transform_train, download=download
+    )
+
+    test_dataset = torchvision.datasets.CIFAR10(
+        root=root, train=False, transform=transform_test, download=download
+    )
+
+    # Create data loaders
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True if torch.cuda.is_available() else False,
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True if torch.cuda.is_available() else False,
+    )
+
+    return train_loader, test_loader
+
+
+class CIFAR10Corrupted(Dataset):
+    """
+    CIFAR-10 dataset with various corruption types for domain shift robustness testing.
+    
+    Supports various corruption types like noise, blur, weather effects, etc.
+    """
+    
+    CORRUPTION_TYPES = [
+        'gaussian_noise', 'shot_noise', 'impulse_noise',
+        'defocus_blur', 'glass_blur', 'motion_blur', 'zoom_blur',
+        'snow', 'frost', 'fog', 'brightness',
+        'contrast', 'elastic_transform', 'pixelate', 'jpeg_compression',
+        'speckle_noise', 'gaussian_blur', 'spatter', 'saturate'
+    ]
+    
+    def __init__(
+        self, 
+        root: str = "./data",
+        train: bool = True,
+        corruption_type: str = 'gaussian_noise',
+        severity: int = 1,
+        transform: Optional[Callable] = None,
+        download: bool = True
+    ):
+        """
+        Initialize corrupted CIFAR-10 dataset.
+        
+        Args:
+            root: Root directory for dataset storage
+            train: If True, use training set, otherwise test set
+            corruption_type: Type of corruption to apply
+            severity: Severity level (1-5, where 1 is mild, 5 is severe)
+            transform: Additional transforms to apply
+            download: Whether to download dataset if not present
+        """
+        self.root = root
+        self.train = train
+        self.corruption_type = corruption_type
+        self.severity = max(1, min(5, severity))  # Clamp to [1, 5]
+        self.transform = transform
+        
+        if corruption_type not in self.CORRUPTION_TYPES:
+            raise ValueError(f"Corruption type {corruption_type} not supported. "
+                           f"Choose from: {self.CORRUPTION_TYPES}")
+        
+        # Load base CIFAR-10 dataset
+        self.base_dataset = torchvision.datasets.CIFAR10(
+            root=root, train=train, download=download, transform=None
+        )
+        
+    def __len__(self) -> int:
+        return len(self.base_dataset)
+    
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        image, target = self.base_dataset[idx]
+        
+        # Apply corruption
+        corrupted_image = self._apply_corruption(image)
+        
+        # Apply additional transforms if provided
+        if self.transform:
+            corrupted_image = self.transform(corrupted_image)
+        
+        return corrupted_image, target
+    
+    def _apply_corruption(self, image) -> torch.Tensor:
+        """Apply the specified corruption to an image."""
+        # Convert PIL Image to numpy array
+        if hasattr(image, 'convert'):
+            image = np.array(image.convert('RGB'))
+        else:
+            image = np.array(image)
+            
+        # Normalize to [0, 1]
+        image = image.astype(np.float32) / 255.0
+        
+        # Apply corruption based on type
+        if self.corruption_type == 'gaussian_noise':
+            noise_std = 0.08 + (self.severity - 1) * 0.04
+            noise = np.random.normal(0, noise_std, image.shape).astype(np.float32)
+            corrupted = image + noise
+            
+        elif self.corruption_type == 'shot_noise':
+            lambda_param = 60.0 - (self.severity - 1) * 12.0
+            corrupted = np.random.poisson(image * lambda_param) / lambda_param
+            
+        elif self.corruption_type == 'impulse_noise':
+            prob = 0.03 + (self.severity - 1) * 0.02
+            mask = np.random.random(image.shape) < prob
+            corrupted = image.copy()
+            corrupted[mask] = np.random.random(np.sum(mask))
+            
+        elif self.corruption_type in ['defocus_blur', 'gaussian_blur']:
+            # Simple blur implementation without scipy dependency for now
+            kernel_size = 1 + (self.severity - 1) * 2
+            corrupted = image.copy()
+            # Apply simple averaging for blur effect
+            if kernel_size > 1:
+                from torch.nn.functional import conv2d
+                # Convert to tensor for convolution
+                img_tensor = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0)
+                kernel = torch.ones(1, 1, kernel_size, kernel_size) / (kernel_size ** 2)
+                blurred = torch.zeros_like(img_tensor)
+                for c in range(3):
+                    blurred[:, c:c+1] = conv2d(img_tensor[:, c:c+1], kernel, padding=kernel_size//2)
+                corrupted = blurred.squeeze(0).permute(1, 2, 0).numpy()
+                
+        elif self.corruption_type == 'brightness':
+            factor = 0.1 + (self.severity - 1) * 0.3
+            corrupted = image + factor
+            
+        elif self.corruption_type == 'contrast':
+            factor = 0.75 + (self.severity - 1) * 0.1
+            mean = np.mean(image)
+            corrupted = (image - mean) * factor + mean
+            
+        elif self.corruption_type == 'pixelate':
+            # Simple pixelation by downsampling and upsampling
+            corrupted = image.copy()
+            step = max(1, 6 - self.severity)
+            corrupted[::step, ::step] = corrupted[::step, ::step]
+            
+        elif self.corruption_type == 'saturate':
+            factor = 1.0 + (self.severity - 1) * 0.5
+            corrupted = image * factor
+            
+        else:
+            # Fallback to gaussian noise for unsupported types
+            noise_std = 0.08 + (self.severity - 1) * 0.04
+            noise = np.random.normal(0, noise_std, image.shape).astype(np.float32)
+            corrupted = image + noise
+        
+        # Clip to valid range and convert back to tensor
+        corrupted = np.clip(corrupted, 0, 1)
+        corrupted = torch.from_numpy(corrupted).permute(2, 0, 1)  # HWC to CHW
+        
+        return corrupted
+
+
+def load_cifar10_corrupted(
+    corruption_type: str = 'gaussian_noise',
+    severity: int = 1,
+    batch_size: int = 64,
+    root: str = "./data",
+    download: bool = True,
+    num_workers: int = 0
+) -> tuple[DataLoader, DataLoader]:
+    """
+    Load corrupted CIFAR-10 dataset for domain shift robustness testing.
+    
+    Args:
+        corruption_type: Type of corruption to apply
+        severity: Severity level (1-5)
+        batch_size: Batch size for data loaders
+        root: Root directory for dataset storage
+        download: Whether to download dataset if not present
+        num_workers: Number of workers for data loading
+    
+    Returns:
+        Tuple of (train_loader, test_loader) with corrupted data
+    """
+    # Create datasets with corruption
+    train_dataset = CIFAR10Corrupted(
+        root=root, train=True, corruption_type=corruption_type,
+        severity=severity, download=download
+    )
+    
+    test_dataset = CIFAR10Corrupted(
+        root=root, train=False, corruption_type=corruption_type,
+        severity=severity, download=download
+    )
+    
+    # Create data loaders
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True if torch.cuda.is_available() else False,
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True if torch.cuda.is_available() else False,
+    )
 
     return train_loader, test_loader
