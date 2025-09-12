@@ -160,8 +160,8 @@ class STDPSynapse(nn.Module):
         )
         
         # Update eligibility traces
-        self.pre_trace *= torch.exp(-dt / self.config.tau_plus)
-        self.post_trace *= torch.exp(-dt / self.config.tau_minus)
+        self.pre_trace *= torch.exp(torch.tensor(-dt / self.config.tau_plus))
+        self.post_trace *= torch.exp(torch.tensor(-dt / self.config.tau_minus))
         
         # Add spike contributions to traces
         self.pre_trace += pre_spikes
@@ -229,7 +229,7 @@ class STDPSynapse(nn.Module):
                     
                     if 0 < dt_spike <= self.config.max_dt:
                         # Potentiation
-                        ltp_amount = self.config.a_plus * torch.exp(-dt_spike / self.config.tau_plus)
+                        ltp_amount = self.config.a_plus * torch.exp(torch.tensor(-dt_spike / self.config.tau_plus))
                         weight_changes[b, pre_idx, post_idx] += ltp_amount
             
             # LTD: post before pre (Δt = t_post - t_pre < 0)  
@@ -242,7 +242,7 @@ class STDPSynapse(nn.Module):
                     
                     if 0 < dt_spike <= self.config.max_dt:
                         # Depression
-                        ltd_amount = -self.config.a_minus * torch.exp(-dt_spike / self.config.tau_minus)
+                        ltd_amount = -self.config.a_minus * torch.exp(torch.tensor(-dt_spike / self.config.tau_minus))
                         weight_changes[b, pre_idx, post_idx] += ltd_amount
         
         # Average over batch
