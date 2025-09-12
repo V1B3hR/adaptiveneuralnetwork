@@ -192,6 +192,16 @@ class AliveLoopNode:
         self.anxiety_unload_capacity = 2.0     # How much anxiety can be reduced per assistance interaction
         self.received_help_this_period = False # Flag to avoid redundant requests
         self.anxiety_history = deque(maxlen=20)# Rolling history for trend analysis
+        
+        # Extended emotional states and their histories
+        self.joy = 0.0                         # Joy level (0.0 to 5.0)
+        self.grief = 0.0                       # Grief level (0.0 to 5.0) 
+        self.sadness = 0.0                     # Sadness level (0.0 to 5.0)
+        self.joy_history = deque(maxlen=20)    # Rolling history for joy trend analysis
+        self.grief_history = deque(maxlen=20)  # Rolling history for grief trend analysis
+        self.sadness_history = deque(maxlen=20)# Rolling history for sadness trend analysis
+        self.calm_history = deque(maxlen=20)   # Rolling history for calm trend analysis
+        self.energy_history = deque(maxlen=20) # Rolling history for energy trend analysis
 
         # Initialize period boundaries if needed
         self._help_period_start = get_timestamp()
@@ -850,8 +860,8 @@ class AliveLoopNode:
         elif self.phase == "sleep":
             self.communication_style["directness"] = max(0.0, self.communication_style["directness"] - 0.1)
             
-        # Anxiety management and safety protocol
-        self.anxiety_history.append(self.anxiety)
+        # Emotional state management and safety protocol
+        self.update_emotional_states()  # Record all emotional states in history
         
         # Apply natural calm effect
         self.apply_calm_effect()
@@ -860,7 +870,15 @@ class AliveLoopNode:
         if self._time % 50 == 0:  # Every 50 time steps
             self.reset_help_signal_limits()
             
-        # Automatic anxiety help signal for overwhelm
+        # Proactive intervention assessment using all emotional states
+        if self._time % 10 == 0:  # Check every 10 steps to avoid overload
+            intervention_assessment = self.assess_intervention_need()
+            if intervention_assessment['intervention_needed']:
+                # Store assessment for network to act upon
+                # This allows the network layer to coordinate interventions
+                self._last_intervention_assessment = intervention_assessment
+            
+        # Automatic anxiety help signal for overwhelm  
         # Note: This will be called by the network when it has access to nearby nodes
 
     def move(self):
@@ -1198,21 +1216,41 @@ class AliveLoopNode:
         if source_node_id is None:
             return
             
-        # Apply positive emotional contagion
+        # Apply positive emotional contagion - enhanced with new emotional states
         trust_level = self.trust_network.get(source_node_id, 0.5)
         joy_intensity = joy_content.get("intensity", 0.7)
+        
+        # Base emotional boost
         emotional_boost = joy_intensity * trust_level * 0.5
         
-        # Boost emotional valence
-        self.emotional_state["valence"] = min(1.0, self.emotional_state["valence"] + emotional_boost)
+        # Amplify boost if we're in need (high grief/sadness, low joy)
+        emotional_need = (self.grief * 0.2) + (self.sadness * 0.2) + max(0, (2.0 - self.joy) * 0.1)
+        amplified_boost = emotional_boost * (1.0 + emotional_need)
         
-        # Reduce anxiety through positive influence
+        # Update all relevant emotional states
+        # Boost emotional valence
+        self.emotional_state["valence"] = min(1.0, self.emotional_state["valence"] + amplified_boost)
+        
+        # Increase joy directly
+        joy_increase = min(amplified_boost * 1.5, 2.0)  # Cap the increase
+        self.update_joy(joy_increase)
+        
+        # Reduce negative emotions through positive influence
         if self.anxiety > 0:
-            anxiety_reduction = emotional_boost * 0.8
+            anxiety_reduction = amplified_boost * 0.8
             self.anxiety = max(0, self.anxiety - anxiety_reduction)
             
+        if self.sadness > 0:
+            sadness_reduction = amplified_boost * 0.6
+            self.update_sadness(-sadness_reduction)
+            
+        if self.grief > 0:
+            grief_reduction = amplified_boost * 0.4  # Grief is harder to reduce
+            self.update_grief(-grief_reduction)
+            
         # Increase calm through shared joy
-        self.calm = min(5.0, self.calm + emotional_boost * 0.3)
+        calm_increase = amplified_boost * 0.3
+        self.update_calm(calm_increase)
         
         # Increase trust with the joy sharer
         current_trust = self.trust_network.get(source_node_id, 0.5)
@@ -1312,17 +1350,39 @@ class AliveLoopNode:
         if requesting_node_id is None:
             return None
             
-        # Check if we can provide support
+        # Check if we can provide support - enhanced with new emotional factors
         trust_level = self.trust_network.get(requesting_node_id, 0.5)
+        
+        # Enhanced decision logic using new emotional states and predictions
+        predicted_anxiety = self.predict_emotional_state('anxiety', 2)
+        predicted_energy = self.predict_emotional_state('energy', 2)
+        
+        # Can't help if we're too compromised emotionally or will be soon
         if (trust_level < 0.3 or  # Not trusted enough
             self.energy < 3.0 or  # Not enough energy
+            predicted_energy < 2.0 or  # Energy will be too low
             self.anxiety > 8.0 or  # Too anxious ourselves
-            self.emotional_state.get("valence", 0) < -0.6):  # Too sad ourselves
+            predicted_anxiety > 7.0 or  # Will be too anxious
+            self.grief > 4.0 or  # Too much grief ourselves
+            self.sadness > 4.0 or  # Too sad ourselves  
+            (self.sadness + self.grief) > 6.0 or  # Combined negative emotions too high
+            self.emotional_state.get("valence", 0) < -0.6):  # General negative state
             return None
             
-        # Provide emotional support
+        # Provide emotional support - enhanced calculation using new emotional states
         grief_intensity = support_request.get("grief_intensity", 0.7)
-        support_amount = min(grief_intensity * 0.8, self.calm * 0.5, 2.0)
+        
+        # Base support from calm level
+        base_support = self.calm * 0.5
+        
+        # Boost support if we have high joy (sharing positive emotions)
+        joy_boost = min(self.joy * 0.2, 1.0) if self.joy > 2.0 else 0.0
+        
+        # Reduce support if we have our own grief/sadness
+        emotional_burden = (self.grief * 0.3) + (self.sadness * 0.25)
+        
+        support_amount = min(grief_intensity * 0.8, base_support + joy_boost - emotional_burden, 2.5)
+        support_amount = max(0.1, support_amount)  # Minimum support level
         
         # Create support response
         support_response = {
@@ -1612,6 +1672,202 @@ class AliveLoopNode:
         rolling_anxiety = sum(v for _, v in self.anxiety_history)
         if rolling_anxiety >= self.anxiety_threshold:
             self.try_send_help_signal()
+
+    def update_joy(self, delta):
+        """Adjust joy level and record history."""
+        self.joy = max(0.0, min(5.0, self.joy + delta))
+        timestamp = get_timestamp()
+        self.joy_history.append((timestamp, self.joy))
+        
+    def update_grief(self, delta):
+        """Adjust grief level and record history."""
+        self.grief = max(0.0, min(5.0, self.grief + delta))
+        timestamp = get_timestamp()
+        self.grief_history.append((timestamp, self.grief))
+        
+    def update_sadness(self, delta):
+        """Adjust sadness level and record history."""
+        self.sadness = max(0.0, min(5.0, self.sadness + delta))
+        timestamp = get_timestamp()
+        self.sadness_history.append((timestamp, self.sadness))
+        
+    def update_calm(self, delta):
+        """Adjust calm level and record history."""
+        self.calm = max(0.0, min(5.0, self.calm + delta))
+        timestamp = get_timestamp()
+        self.calm_history.append((timestamp, self.calm))
+        
+    def update_emotional_states(self):
+        """Record current emotional states in history at each simulation step."""
+        timestamp = get_timestamp()
+        self.energy_history.append((timestamp, self.energy))
+        # Record current states if not already recorded this timestamp
+        if not self.joy_history or self.joy_history[-1][0] != timestamp:
+            self.joy_history.append((timestamp, self.joy))
+        if not self.grief_history or self.grief_history[-1][0] != timestamp:
+            self.grief_history.append((timestamp, self.grief))
+        if not self.sadness_history or self.sadness_history[-1][0] != timestamp:
+            self.sadness_history.append((timestamp, self.sadness))
+        if not self.calm_history or self.calm_history[-1][0] != timestamp:
+            self.calm_history.append((timestamp, self.calm))
+        if not self.anxiety_history or (len(self.anxiety_history) > 0 and 
+                                       isinstance(self.anxiety_history[-1], tuple) and 
+                                       self.anxiety_history[-1][0] != timestamp):
+            self.anxiety_history.append((timestamp, self.anxiety))
+    
+    def predict_emotional_state(self, state_name: str, steps_ahead: int = 5) -> float:
+        """Predict future emotional state based on historical data using simple trend analysis."""
+        history_mapping = {
+            'joy': self.joy_history,
+            'grief': self.grief_history, 
+            'sadness': self.sadness_history,
+            'calm': self.calm_history,
+            'anxiety': self.anxiety_history,
+            'energy': self.energy_history
+        }
+        
+        history = history_mapping.get(state_name)
+        if not history or len(history) < 2:
+            # Return current value if insufficient history
+            current_mapping = {
+                'joy': self.joy,
+                'grief': self.grief,
+                'sadness': self.sadness,
+                'calm': self.calm,
+                'anxiety': self.anxiety,
+                'energy': self.energy
+            }
+            return current_mapping.get(state_name, 0.0)
+        
+        # Simple linear trend calculation using last few data points
+        recent_points = list(history)[-min(5, len(history)):]
+        if len(recent_points) < 2:
+            return recent_points[-1][1]
+            
+        # Calculate average rate of change
+        total_change = 0.0
+        count = 0
+        for i in range(1, len(recent_points)):
+            time_diff = recent_points[i][0] - recent_points[i-1][0]
+            if time_diff > 0:
+                rate = (recent_points[i][1] - recent_points[i-1][1]) / time_diff
+                total_change += rate
+                count += 1
+        
+        if count == 0:
+            return recent_points[-1][1]
+            
+        avg_rate = total_change / count
+        current_value = recent_points[-1][1]
+        predicted_value = current_value + (avg_rate * steps_ahead)
+        
+        # Apply bounds based on emotional state type
+        if state_name in ['joy', 'grief', 'sadness', 'calm']:
+            return max(0.0, min(5.0, predicted_value))
+        elif state_name == 'anxiety':
+            return max(0.0, predicted_value)
+        elif state_name == 'energy':
+            return max(0.0, predicted_value)
+        else:
+            return predicted_value
+    
+    def get_emotional_trends(self) -> Dict[str, str]:
+        """Analyze trends in all emotional states and return trend directions."""
+        trends = {}
+        states = ['joy', 'grief', 'sadness', 'calm', 'anxiety', 'energy']
+        
+        for state in states:
+            current = getattr(self, state)
+            predicted = self.predict_emotional_state(state, 3)
+            
+            # Use absolute difference for states that have bounds, percentage for unbounded states
+            if state in ['joy', 'grief', 'sadness', 'calm']:
+                # For bounded states (0-5), use absolute threshold
+                if predicted > current + 0.2:  # Increasing by more than 0.2
+                    trends[state] = 'increasing'
+                elif predicted < current - 0.2:  # Decreasing by more than 0.2
+                    trends[state] = 'decreasing'
+                else:
+                    trends[state] = 'stable'
+            else:
+                # For unbounded states, use percentage threshold
+                if predicted > current * 1.1:  # 10% threshold for trend detection
+                    trends[state] = 'increasing'
+                elif predicted < current * 0.9:
+                    trends[state] = 'decreasing'
+                else:
+                    trends[state] = 'stable'
+                
+        return trends
+    
+    def assess_intervention_need(self) -> Dict[str, Any]:
+        """Assess need for proactive intervention based on all emotional trends and predictions."""
+        trends = self.get_emotional_trends()
+        
+        # Predict emotional states 3 steps ahead
+        predictions = {}
+        for state in ['joy', 'grief', 'sadness', 'calm', 'anxiety', 'energy']:
+            predictions[state] = self.predict_emotional_state(state, 3)
+        
+        intervention_needed = False
+        intervention_type = None
+        urgency = 0.0
+        reasons = []
+        
+        # Check for anxiety escalation
+        if (trends['anxiety'] == 'increasing' and predictions['anxiety'] > self.anxiety_threshold) or \
+           (self.anxiety > self.anxiety_threshold * 0.8):
+            intervention_needed = True
+            intervention_type = 'anxiety_help'
+            urgency = max(urgency, 0.8)
+            reasons.append('anxiety_escalation_predicted')
+        
+        # Check for overwhelming grief
+        if (trends['grief'] == 'increasing' and predictions['grief'] > 4.0) or self.grief > 3.5:
+            intervention_needed = True
+            intervention_type = 'grief_support'
+            urgency = max(urgency, 0.7)
+            reasons.append('grief_overwhelming')
+        
+        # Check for deep sadness trends
+        if (trends['sadness'] == 'increasing' and predictions['sadness'] > 4.0) or \
+           (self.sadness > 3.0 and trends['joy'] == 'decreasing'):
+            intervention_needed = True
+            intervention_type = 'comfort_request'
+            urgency = max(urgency, 0.6)
+            reasons.append('sadness_trend_concerning')
+        
+        # Check for energy depletion with negative emotional states
+        if (trends['energy'] == 'decreasing' and predictions['energy'] < 2.0) and \
+           (self.grief > 2.0 or self.sadness > 2.0 or self.anxiety > 5.0):
+            intervention_needed = True
+            intervention_type = 'energy_support'
+            urgency = max(urgency, 0.5)
+            reasons.append('energy_emotional_crisis')
+        
+        # Check for positive intervention opportunities (share joy)
+        if trends['joy'] == 'increasing' and self.joy > 3.0 and self.calm > 2.5:
+            intervention_needed = True
+            intervention_type = 'joy_share'
+            urgency = max(urgency, 0.3)
+            reasons.append('joy_sharing_opportunity')
+        
+        return {
+            'intervention_needed': intervention_needed,
+            'intervention_type': intervention_type,
+            'urgency': urgency,
+            'reasons': reasons,
+            'trends': trends,
+            'predictions': predictions,
+            'emotional_summary': {
+                'joy': self.joy,
+                'grief': self.grief,
+                'sadness': self.sadness,
+                'calm': self.calm,
+                'anxiety': self.anxiety,
+                'energy': self.energy
+            }
+        }
 
     def try_send_help_signal(self):
         """Attempt to send a help signal respecting cooldown and rate limits."""
