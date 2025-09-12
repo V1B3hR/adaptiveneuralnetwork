@@ -197,11 +197,46 @@ class AliveLoopNode:
         self.joy = 0.0                         # Joy level (0.0 to 5.0)
         self.grief = 0.0                       # Grief level (0.0 to 5.0) 
         self.sadness = 0.0                     # Sadness level (0.0 to 5.0)
+        self.anger = 0.0                       # Anger level (0.0 to 5.0)
+        self.hope = 2.0                        # Hope level (0.0 to 5.0), start with moderate hope
+        self.curiosity = 1.0                   # Curiosity level (0.0 to 5.0), start with some curiosity
+        self.frustration = 0.0                 # Frustration level (0.0 to 5.0)
+        self.resilience = 2.0                  # Resilience level (0.0 to 5.0), start with moderate resilience
+        
+        # Emotional state histories for trend analysis
         self.joy_history = deque(maxlen=20)    # Rolling history for joy trend analysis
         self.grief_history = deque(maxlen=20)  # Rolling history for grief trend analysis
         self.sadness_history = deque(maxlen=20)# Rolling history for sadness trend analysis
+        self.anger_history = deque(maxlen=20)  # Rolling history for anger trend analysis
+        self.hope_history = deque(maxlen=20)   # Rolling history for hope trend analysis
+        self.curiosity_history = deque(maxlen=20) # Rolling history for curiosity trend analysis
+        self.frustration_history = deque(maxlen=20) # Rolling history for frustration trend analysis
+        self.resilience_history = deque(maxlen=20) # Rolling history for resilience trend analysis
         self.calm_history = deque(maxlen=20)   # Rolling history for calm trend analysis
         self.energy_history = deque(maxlen=20) # Rolling history for energy trend analysis
+
+        # Configurable emotion schema - defines which emotions are tracked
+        self.emotion_schema = {
+            # Core emotions (always tracked)
+            'anxiety': {'type': 'negative', 'range': (0, float('inf')), 'default': 0.0, 'core': True},
+            'calm': {'type': 'positive', 'range': (0, 5.0), 'default': 1.0, 'core': True},
+            'energy': {'type': 'neutral', 'range': (0, float('inf')), 'default': initial_energy, 'core': True},
+            
+            # Extended emotions (configurable)
+            'joy': {'type': 'positive', 'range': (0, 5.0), 'default': 0.0, 'core': False},
+            'grief': {'type': 'negative', 'range': (0, 5.0), 'default': 0.0, 'core': False},
+            'sadness': {'type': 'negative', 'range': (0, 5.0), 'default': 0.0, 'core': False},
+            'anger': {'type': 'negative', 'range': (0, 5.0), 'default': 0.0, 'core': False},
+            'hope': {'type': 'positive', 'range': (0, 5.0), 'default': 2.0, 'core': False},
+            'curiosity': {'type': 'positive', 'range': (0, 5.0), 'default': 1.0, 'core': False},
+            'frustration': {'type': 'negative', 'range': (0, 5.0), 'default': 0.0, 'core': False},
+            'resilience': {'type': 'positive', 'range': (0, 5.0), 'default': 2.0, 'core': False}
+        }
+        
+        # Initialize emotion histories dynamically based on schema
+        self.emotion_histories = {}
+        for emotion_name in self.emotion_schema.keys():
+            self.emotion_histories[emotion_name] = deque(maxlen=20)
 
         # Initialize period boundaries if needed
         self._help_period_start = get_timestamp()
@@ -1223,8 +1258,8 @@ class AliveLoopNode:
         # Base emotional boost
         emotional_boost = joy_intensity * trust_level * 0.5
         
-        # Amplify boost if we're in need (high grief/sadness, low joy)
-        emotional_need = (self.grief * 0.2) + (self.sadness * 0.2) + max(0, (2.0 - self.joy) * 0.1)
+        # Amplify boost if we're in need (high grief/sadness, low joy, low hope)
+        emotional_need = (self.grief * 0.2) + (self.sadness * 0.2) + max(0, (2.0 - self.joy) * 0.1) + max(0, (2.0 - self.hope) * 0.1)
         amplified_boost = emotional_boost * (1.0 + emotional_need)
         
         # Update all relevant emotional states
@@ -1234,6 +1269,13 @@ class AliveLoopNode:
         # Increase joy directly
         joy_increase = min(amplified_boost * 1.5, 2.0)  # Cap the increase
         self.update_joy(joy_increase)
+        
+        # NEW: Boost hope and curiosity from shared joy
+        hope_increase = min(amplified_boost * 0.8, 1.5)
+        self.update_hope(hope_increase)
+        
+        curiosity_increase = min(amplified_boost * 0.6, 1.0)
+        self.update_curiosity(curiosity_increase)
         
         # Reduce negative emotions through positive influence
         if self.anxiety > 0:
@@ -1247,10 +1289,23 @@ class AliveLoopNode:
         if self.grief > 0:
             grief_reduction = amplified_boost * 0.4  # Grief is harder to reduce
             self.update_grief(-grief_reduction)
+        
+        # NEW: Reduce anger and frustration through joy
+        if self.anger > 0:
+            anger_reduction = amplified_boost * 0.5
+            self.update_anger(-anger_reduction)
+            
+        if self.frustration > 0:
+            frustration_reduction = amplified_boost * 0.7
+            self.update_frustration(-frustration_reduction)
             
         # Increase calm through shared joy
         calm_increase = amplified_boost * 0.3
         self.update_calm(calm_increase)
+        
+        # NEW: Boost resilience slightly through positive social connection
+        resilience_increase = amplified_boost * 0.2
+        self.update_resilience(resilience_increase)
         
         # Increase trust with the joy sharer
         current_trust = self.trust_network.get(source_node_id, 0.5)
@@ -1262,7 +1317,8 @@ class AliveLoopNode:
                 "action": "received_joy",
                 "from_node": source_node_id,
                 "celebration_type": joy_content.get("celebration_type", "general"),
-                "description": joy_content.get("description", "")
+                "description": joy_content.get("description", ""),
+                "emotional_boost": amplified_boost
             },
             importance=0.6,
             timestamp=self._time,
@@ -1272,7 +1328,7 @@ class AliveLoopNode:
         self.memory.append(joy_memory)
         
         logger.debug(f"Node {self.node_id}: Received joy from node {source_node_id}, "
-                    f"emotional boost: {emotional_boost:.2f}")
+                    f"emotional boost: {emotional_boost:.2f}, composite health: {self.calculate_composite_emotional_health():.2f}")
                     
     # Grief and Emotional Support Methods
     
@@ -1697,47 +1753,109 @@ class AliveLoopNode:
         timestamp = get_timestamp()
         self.calm_history.append((timestamp, self.calm))
         
+    def update_anger(self, delta):
+        """Adjust anger level and record history."""
+        self.anger = max(0.0, min(5.0, self.anger + delta))
+        timestamp = get_timestamp()
+        self.anger_history.append((timestamp, self.anger))
+        
+    def update_hope(self, delta):
+        """Adjust hope level and record history."""
+        self.hope = max(0.0, min(5.0, self.hope + delta))
+        timestamp = get_timestamp()
+        self.hope_history.append((timestamp, self.hope))
+        
+    def update_curiosity(self, delta):
+        """Adjust curiosity level and record history."""
+        self.curiosity = max(0.0, min(5.0, self.curiosity + delta))
+        timestamp = get_timestamp()
+        self.curiosity_history.append((timestamp, self.curiosity))
+        
+    def update_frustration(self, delta):
+        """Adjust frustration level and record history."""
+        self.frustration = max(0.0, min(5.0, self.frustration + delta))
+        timestamp = get_timestamp()
+        self.frustration_history.append((timestamp, self.frustration))
+        
+    def update_resilience(self, delta):
+        """Adjust resilience level and record history."""
+        self.resilience = max(0.0, min(5.0, self.resilience + delta))
+        timestamp = get_timestamp()
+        self.resilience_history.append((timestamp, self.resilience))
+        
+    def update_emotion(self, emotion_name: str, delta: float):
+        """Generic method to update any emotion based on the emotion schema."""
+        if emotion_name not in self.emotion_schema:
+            raise ValueError(f"Unknown emotion: {emotion_name}")
+            
+        # Get current value and constraints
+        current_value = getattr(self, emotion_name)
+        emotion_config = self.emotion_schema[emotion_name]
+        min_val, max_val = emotion_config['range']
+        
+        # Update value within bounds
+        new_value = max(min_val, min(max_val, current_value + delta))
+        setattr(self, emotion_name, new_value)
+        
+        # Record in history
+        timestamp = get_timestamp()
+        history_attr = f"{emotion_name}_history"
+        if hasattr(self, history_attr):
+            getattr(self, history_attr).append((timestamp, new_value))
+        
+        # Also record in dynamic histories
+        if emotion_name in self.emotion_histories:
+            self.emotion_histories[emotion_name].append((timestamp, new_value))
+        
     def update_emotional_states(self):
         """Record current emotional states in history at each simulation step."""
         timestamp = get_timestamp()
-        self.energy_history.append((timestamp, self.energy))
-        # Record current states if not already recorded this timestamp
-        if not self.joy_history or self.joy_history[-1][0] != timestamp:
-            self.joy_history.append((timestamp, self.joy))
-        if not self.grief_history or self.grief_history[-1][0] != timestamp:
-            self.grief_history.append((timestamp, self.grief))
-        if not self.sadness_history or self.sadness_history[-1][0] != timestamp:
-            self.sadness_history.append((timestamp, self.sadness))
-        if not self.calm_history or self.calm_history[-1][0] != timestamp:
-            self.calm_history.append((timestamp, self.calm))
-        if not self.anxiety_history or (len(self.anxiety_history) > 0 and 
-                                       isinstance(self.anxiety_history[-1], tuple) and 
-                                       self.anxiety_history[-1][0] != timestamp):
-            self.anxiety_history.append((timestamp, self.anxiety))
+        
+        # Record all tracked emotions based on emotion schema
+        for emotion_name in self.emotion_schema.keys():
+            current_value = getattr(self, emotion_name)
+            history_attr = f"{emotion_name}_history"
+            
+            # Record in legacy history attributes if they exist
+            if hasattr(self, history_attr):
+                history = getattr(self, history_attr)
+                if not history or history[-1][0] != timestamp:
+                    history.append((timestamp, current_value))
+            
+            # Record in dynamic emotion histories
+            if emotion_name in self.emotion_histories:
+                if not self.emotion_histories[emotion_name] or self.emotion_histories[emotion_name][-1][0] != timestamp:
+                    self.emotion_histories[emotion_name].append((timestamp, current_value))
     
     def predict_emotional_state(self, state_name: str, steps_ahead: int = 5) -> float:
         """Predict future emotional state based on historical data using simple trend analysis."""
+        # First try to get history from legacy attributes
         history_mapping = {
             'joy': self.joy_history,
             'grief': self.grief_history, 
             'sadness': self.sadness_history,
             'calm': self.calm_history,
             'anxiety': self.anxiety_history,
-            'energy': self.energy_history
+            'energy': self.energy_history,
+            'anger': getattr(self, 'anger_history', None),
+            'hope': getattr(self, 'hope_history', None),
+            'curiosity': getattr(self, 'curiosity_history', None),
+            'frustration': getattr(self, 'frustration_history', None),
+            'resilience': getattr(self, 'resilience_history', None)
         }
         
         history = history_mapping.get(state_name)
+        
+        # If not found in legacy attributes, try dynamic emotion histories
+        if history is None and state_name in self.emotion_histories:
+            history = self.emotion_histories[state_name]
+        
         if not history or len(history) < 2:
             # Return current value if insufficient history
-            current_mapping = {
-                'joy': self.joy,
-                'grief': self.grief,
-                'sadness': self.sadness,
-                'calm': self.calm,
-                'anxiety': self.anxiety,
-                'energy': self.energy
-            }
-            return current_mapping.get(state_name, 0.0)
+            if hasattr(self, state_name):
+                return getattr(self, state_name)
+            else:
+                return 0.0
         
         # Simple linear trend calculation using last few data points
         recent_points = list(history)[-min(5, len(history)):]
@@ -1761,8 +1879,11 @@ class AliveLoopNode:
         current_value = recent_points[-1][1]
         predicted_value = current_value + (avg_rate * steps_ahead)
         
-        # Apply bounds based on emotional state type
-        if state_name in ['joy', 'grief', 'sadness', 'calm']:
+        # Apply bounds based on emotion schema or defaults
+        if state_name in self.emotion_schema:
+            min_val, max_val = self.emotion_schema[state_name]['range']
+            return max(min_val, min(max_val, predicted_value))
+        elif state_name in ['joy', 'grief', 'sadness', 'calm', 'anger', 'hope', 'curiosity', 'frustration', 'resilience']:
             return max(0.0, min(5.0, predicted_value))
         elif state_name == 'anxiety':
             return max(0.0, predicted_value)
@@ -1774,29 +1895,33 @@ class AliveLoopNode:
     def get_emotional_trends(self) -> Dict[str, str]:
         """Analyze trends in all emotional states and return trend directions."""
         trends = {}
-        states = ['joy', 'grief', 'sadness', 'calm', 'anxiety', 'energy']
         
-        for state in states:
-            current = getattr(self, state)
-            predicted = self.predict_emotional_state(state, 3)
+        # Get all tracked emotions from schema
+        for emotion_name in self.emotion_schema.keys():
+            current = getattr(self, emotion_name, 0.0)
+            predicted = self.predict_emotional_state(emotion_name, 3)
             
-            # Use absolute difference for states that have bounds, percentage for unbounded states
-            if state in ['joy', 'grief', 'sadness', 'calm']:
-                # For bounded states (0-5), use absolute threshold
-                if predicted > current + 0.2:  # Increasing by more than 0.2
-                    trends[state] = 'increasing'
-                elif predicted < current - 0.2:  # Decreasing by more than 0.2
-                    trends[state] = 'decreasing'
+            # Use bounds from emotion schema for trend detection
+            emotion_config = self.emotion_schema[emotion_name]
+            min_val, max_val = emotion_config['range']
+            
+            # For bounded states, use absolute threshold; for unbounded, use percentage
+            if max_val != float('inf'):
+                # Bounded state - use absolute threshold
+                if predicted > current + 0.2:
+                    trends[emotion_name] = 'increasing'
+                elif predicted < current - 0.2:
+                    trends[emotion_name] = 'decreasing'
                 else:
-                    trends[state] = 'stable'
+                    trends[emotion_name] = 'stable'
             else:
-                # For unbounded states, use percentage threshold
-                if predicted > current * 1.1:  # 10% threshold for trend detection
-                    trends[state] = 'increasing'
+                # Unbounded state - use percentage threshold
+                if predicted > current * 1.1:
+                    trends[emotion_name] = 'increasing'
                 elif predicted < current * 0.9:
-                    trends[state] = 'decreasing'
+                    trends[emotion_name] = 'decreasing'
                 else:
-                    trends[state] = 'stable'
+                    trends[emotion_name] = 'stable'
                 
         return trends
     
@@ -1804,10 +1929,10 @@ class AliveLoopNode:
         """Assess need for proactive intervention based on all emotional trends and predictions."""
         trends = self.get_emotional_trends()
         
-        # Predict emotional states 3 steps ahead
+        # Predict emotional states 3 steps ahead for all tracked emotions
         predictions = {}
-        for state in ['joy', 'grief', 'sadness', 'calm', 'anxiety', 'energy']:
-            predictions[state] = self.predict_emotional_state(state, 3)
+        for emotion_name in self.emotion_schema.keys():
+            predictions[emotion_name] = self.predict_emotional_state(emotion_name, 3)
         
         intervention_needed = False
         intervention_type = None
@@ -1831,26 +1956,83 @@ class AliveLoopNode:
         
         # Check for deep sadness trends
         if (trends['sadness'] == 'increasing' and predictions['sadness'] > 4.0) or \
-           (self.sadness > 3.0 and trends['joy'] == 'decreasing'):
+           (self.sadness > 3.0 and trends.get('joy', 'stable') == 'decreasing'):
             intervention_needed = True
             intervention_type = 'comfort_request'
             urgency = max(urgency, 0.6)
             reasons.append('sadness_trend_concerning')
         
-        # Check for energy depletion with negative emotional states
-        if (trends['energy'] == 'decreasing' and predictions['energy'] < 2.0) and \
-           (self.grief > 2.0 or self.sadness > 2.0 or self.anxiety > 5.0):
+        # NEW: Check for anger escalation
+        if (trends.get('anger', 'stable') == 'increasing' and predictions.get('anger', 0) > 3.5) or self.anger > 3.0:
+            intervention_needed = True
+            intervention_type = 'anger_management'
+            urgency = max(urgency, 0.7)
+            reasons.append('anger_escalation')
+        
+        # NEW: Check for hope depletion
+        if (trends.get('hope', 'stable') == 'decreasing' and predictions.get('hope', 2.0) < 1.0) or self.hope < 0.5:
+            intervention_needed = True
+            intervention_type = 'hope_restoration'
+            urgency = max(urgency, 0.6)
+            reasons.append('hope_depletion')
+        
+        # NEW: Check for curiosity decline (might indicate depression or disengagement)
+        if (trends.get('curiosity', 'stable') == 'decreasing' and predictions.get('curiosity', 1.0) < 0.3) or \
+           (self.curiosity < 0.2 and trends.get('energy', 'stable') == 'decreasing'):
+            intervention_needed = True
+            intervention_type = 'engagement_boost'
+            urgency = max(urgency, 0.4)
+            reasons.append('curiosity_disengagement')
+        
+        # NEW: Check for frustration buildup
+        if (trends.get('frustration', 'stable') == 'increasing' and predictions.get('frustration', 0) > 3.5) or \
+           (self.frustration > 3.0 and self.anger > 2.0):  # Frustration + anger combination
+            intervention_needed = True
+            intervention_type = 'frustration_relief'
+            urgency = max(urgency, 0.6)
+            reasons.append('frustration_buildup')
+        
+        # NEW: Check for resilience depletion
+        if (trends.get('resilience', 'stable') == 'decreasing' and predictions.get('resilience', 2.0) < 1.0) or \
+           (self.resilience < 0.8 and (self.grief > 2.0 or self.sadness > 2.0 or self.anxiety > 6.0)):
+            intervention_needed = True
+            intervention_type = 'resilience_building'
+            urgency = max(urgency, 0.7)
+            reasons.append('resilience_depletion')
+        
+        # Check for energy depletion with negative emotional states (enhanced with new emotions)
+        negative_emotion_load = self.grief + self.sadness + (self.anxiety * 0.2) + self.anger + self.frustration
+        if (trends['energy'] == 'decreasing' and predictions['energy'] < 2.0) and negative_emotion_load > 5.0:
             intervention_needed = True
             intervention_type = 'energy_support'
             urgency = max(urgency, 0.5)
             reasons.append('energy_emotional_crisis')
         
-        # Check for positive intervention opportunities (share joy)
-        if trends['joy'] == 'increasing' and self.joy > 3.0 and self.calm > 2.5:
+        # Check for positive intervention opportunities (enhanced)
+        if trends.get('joy', 'stable') == 'increasing' and self.joy > 3.0 and self.calm > 2.5:
             intervention_needed = True
             intervention_type = 'joy_share'
             urgency = max(urgency, 0.3)
             reasons.append('joy_sharing_opportunity')
+        
+        # NEW: Hope sharing opportunity
+        if trends.get('hope', 'stable') == 'increasing' and self.hope > 4.0 and self.resilience > 3.0:
+            intervention_needed = True
+            intervention_type = 'hope_share'
+            urgency = max(urgency, 0.3)
+            reasons.append('hope_sharing_opportunity')
+        
+        # NEW: Curiosity collaboration opportunity
+        if trends.get('curiosity', 'stable') == 'increasing' and self.curiosity > 3.5 and self.energy > 8.0:
+            intervention_needed = True
+            intervention_type = 'curiosity_collaboration'
+            urgency = max(urgency, 0.3)
+            reasons.append('curiosity_collaboration_opportunity')
+        
+        # Get current emotional summary
+        emotional_summary = {}
+        for emotion_name in self.emotion_schema.keys():
+            emotional_summary[emotion_name] = getattr(self, emotion_name, 0.0)
         
         return {
             'intervention_needed': intervention_needed,
@@ -1859,14 +2041,8 @@ class AliveLoopNode:
             'reasons': reasons,
             'trends': trends,
             'predictions': predictions,
-            'emotional_summary': {
-                'joy': self.joy,
-                'grief': self.grief,
-                'sadness': self.sadness,
-                'calm': self.calm,
-                'anxiety': self.anxiety,
-                'energy': self.energy
-            }
+            'emotional_summary': emotional_summary,
+            'composite_health_score': self.calculate_composite_emotional_health()
         }
 
     def try_send_help_signal(self):
@@ -1903,7 +2079,195 @@ class AliveLoopNode:
                 trimmed.append((ts, val * 0.7))  # decay past anxiety
             self.anxiety_history.clear()
             self.anxiety_history.extend(trimmed)
-        return unload
+    def calculate_composite_emotional_health(self) -> float:
+        """
+        Calculate a composite emotional health score (0.0 to 1.0) based on all tracked emotions.
+        
+        Returns:
+            float: Composite health score where 1.0 is optimal emotional health, 0.0 is poor
+        """
+        if not self.emotion_schema:
+            return 0.5  # Default neutral score
+        
+        positive_emotions = []
+        negative_emotions = []
+        neutral_emotions = []
+        
+        # Categorize emotions and normalize values
+        for emotion_name, config in self.emotion_schema.items():
+            current_value = getattr(self, emotion_name, config['default'])
+            emotion_type = config['type']
+            min_val, max_val = config['range']
+            
+            # Normalize to 0-1 scale for bounded emotions
+            if max_val != float('inf'):
+                normalized_value = current_value / max_val
+            else:
+                # For unbounded emotions, use a reasonable upper bound for normalization
+                if emotion_name == 'energy':
+                    normalized_value = min(1.0, current_value / 20.0)  # Assume 20 is high energy
+                elif emotion_name == 'anxiety':
+                    normalized_value = min(1.0, current_value / 10.0)  # Assume 10 is high anxiety
+                else:
+                    normalized_value = min(1.0, current_value / 5.0)   # Generic upper bound
+            
+            if emotion_type == 'positive':
+                positive_emotions.append(normalized_value)
+            elif emotion_type == 'negative':
+                negative_emotions.append(normalized_value)
+            else:
+                neutral_emotions.append(normalized_value)
+        
+        # Calculate component scores
+        # Positive emotions: higher values = better health
+        positive_score = np.mean(positive_emotions) if positive_emotions else 0.5
+        
+        # Negative emotions: lower values = better health  
+        negative_score = 1.0 - np.mean(negative_emotions) if negative_emotions else 0.5
+        
+        # Neutral emotions: moderate values are typically best
+        neutral_score = 0.5
+        if neutral_emotions:
+            # For neutral emotions like energy, being too low or too high can be problematic
+            # Optimal range is typically 0.3-0.8, with 0.6 being ideal
+            neutral_deviations = [abs(val - 0.6) / 0.6 for val in neutral_emotions]
+            neutral_score = 1.0 - np.mean(neutral_deviations)
+        
+        # Weighted composite score
+        # Positive emotions have higher weight as they're essential for wellbeing
+        # Negative emotions have high weight as they can severely impact health
+        # Neutral emotions have moderate weight
+        weights = {
+            'positive': 0.4,
+            'negative': 0.4, 
+            'neutral': 0.2
+        }
+        
+        composite_score = (
+            weights['positive'] * positive_score +
+            weights['negative'] * negative_score + 
+            weights['neutral'] * neutral_score
+        )
+        
+        # Apply resilience bonus - higher resilience improves overall score
+        resilience_bonus = min(0.1, self.resilience / 50.0)  # Up to 10% bonus
+        composite_score = min(1.0, composite_score + resilience_bonus)
+        
+        # Apply severe negative emotion penalties
+        severe_penalty = 0.0
+        if self.anxiety > 8.0:
+            severe_penalty += 0.1
+        if self.anger > 4.0:
+            severe_penalty += 0.05
+        if self.frustration > 4.0:
+            severe_penalty += 0.05
+        if self.grief > 4.5:
+            severe_penalty += 0.08
+        
+        composite_score = max(0.0, composite_score - severe_penalty)
+        
+        return round(composite_score, 3)
+    
+    def add_emotion_to_schema(self, emotion_name: str, emotion_type: str, 
+                             emotion_range: tuple, default_value: float = 0.0, 
+                             is_core: bool = False) -> bool:
+        """
+        Add a new emotion to the tracking schema.
+        
+        Args:
+            emotion_name: Name of the emotion to track
+            emotion_type: 'positive', 'negative', or 'neutral'
+            emotion_range: Tuple of (min_value, max_value)
+            default_value: Starting value for the emotion
+            is_core: Whether this is a core emotion that cannot be removed
+            
+        Returns:
+            bool: True if successfully added, False if already exists
+        """
+        if emotion_name in self.emotion_schema:
+            return False  # Already exists
+        
+        # Add to schema
+        self.emotion_schema[emotion_name] = {
+            'type': emotion_type,
+            'range': emotion_range,
+            'default': default_value,
+            'core': is_core
+        }
+        
+        # Initialize the emotion attribute
+        setattr(self, emotion_name, default_value)
+        
+        # Create history attribute and deque
+        history_attr = f"{emotion_name}_history"
+        setattr(self, history_attr, deque(maxlen=20))
+        
+        # Add to dynamic emotion histories
+        self.emotion_histories[emotion_name] = deque(maxlen=20)
+        
+        return True
+    
+    def remove_emotion_from_schema(self, emotion_name: str) -> bool:
+        """
+        Remove an emotion from the tracking schema.
+        
+        Args:
+            emotion_name: Name of the emotion to remove
+            
+        Returns:
+            bool: True if successfully removed, False if core emotion or not found
+        """
+        if emotion_name not in self.emotion_schema:
+            return False  # Doesn't exist
+            
+        # Cannot remove core emotions
+        if self.emotion_schema[emotion_name].get('core', False):
+            return False
+        
+        # Remove from schema
+        del self.emotion_schema[emotion_name]
+        
+        # Remove attributes if they exist
+        if hasattr(self, emotion_name):
+            delattr(self, emotion_name)
+            
+        history_attr = f"{emotion_name}_history"
+        if hasattr(self, history_attr):
+            delattr(self, history_attr)
+            
+        # Remove from dynamic histories
+        if emotion_name in self.emotion_histories:
+            del self.emotion_histories[emotion_name]
+        
+        return True
+    
+    def get_emotion_schema_config(self) -> Dict[str, Any]:
+        """Get current emotion schema configuration."""
+        return {
+            'schema': dict(self.emotion_schema),
+            'tracked_emotions': list(self.emotion_schema.keys()),
+            'core_emotions': [name for name, config in self.emotion_schema.items() if config.get('core', False)],
+            'configurable_emotions': [name for name, config in self.emotion_schema.items() if not config.get('core', False)]
+        }
+    
+    def reset_emotion_to_default(self, emotion_name: str) -> bool:
+        """Reset an emotion to its default value."""
+        if emotion_name not in self.emotion_schema:
+            return False
+            
+        default_value = self.emotion_schema[emotion_name]['default']
+        setattr(self, emotion_name, default_value)
+        
+        # Record the reset in history
+        timestamp = get_timestamp()
+        history_attr = f"{emotion_name}_history"
+        if hasattr(self, history_attr):
+            getattr(self, history_attr).append((timestamp, default_value))
+            
+        if emotion_name in self.emotion_histories:
+            self.emotion_histories[emotion_name].append((timestamp, default_value))
+        
+        return True
 
     def graceful_shutdown(self, timeout: int = 30) -> bool:
         """Gracefully shutdown node by draining queues and finishing work"""
