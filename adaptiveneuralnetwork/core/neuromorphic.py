@@ -83,6 +83,200 @@ class NeuromorphicConfig:
     enable_phase_encoding: bool = False
     enable_oscillatory_dynamics: bool = False
     enable_sparse_coding: bool = False
+    
+    # Input data characteristics (for intelligent configuration)
+    input_data_type: Optional[str] = None  # 'sequential', 'high_dimensional', 'temporal_patterns'
+    
+    # Internal flag to track auto-configuration
+    _auto_configure_phase_encoding: bool = True
+    
+    def __post_init__(self):
+        """Configure intelligent defaults after initialization."""
+        # Apply intelligent phase encoding configuration only if enabled
+        if self._auto_configure_phase_encoding:
+            self._configure_phase_encoding()
+    
+    def _was_phase_encoding_explicitly_set(self, original_value: bool) -> bool:
+        """
+        Determine if phase encoding was explicitly set by the user.
+        
+        This is a heuristic: if the user provided any temporal coding parameters
+        or set the value to True, we assume it was intentional.
+        """
+        # If set to True, assume it was intentional
+        if original_value:
+            return True
+            
+        # If any temporal coding parameters are set, assume user is configuring manually
+        temporal_params_set = any([
+            self.enable_temporal_patterns,
+            self.enable_oscillatory_dynamics,
+            self.enable_sparse_coding
+        ])
+        
+        return temporal_params_set
+    
+    def _detect_hardware_phase_encoding_support(self) -> Tuple[bool, str]:
+        """
+        Detect hardware platform's phase encoding capabilities.
+        
+        Returns:
+            (supported: bool, reason: str) - Whether phase encoding is supported and reason
+        """
+        platform_capabilities = {
+            # 3rd generation platforms - full support
+            NeuromorphicPlatform.LOIHI2: (True, "Loihi2 has native phase encoding support"),
+            NeuromorphicPlatform.SPINNAKER2: (True, "SpiNNaker2 supports advanced temporal coding"),
+            NeuromorphicPlatform.GENERIC_V3: (True, "Generic V3 supports all temporal features"),
+            
+            # 2nd generation platforms - limited support
+            NeuromorphicPlatform.LOIHI: (False, "Loihi has limited phase encoding support"),
+            NeuromorphicPlatform.SPINNAKER: (False, "SpiNNaker has basic temporal coding only"),
+            NeuromorphicPlatform.TRUENORTH: (False, "TrueNorth does not support phase encoding"),
+            NeuromorphicPlatform.AKIDA: (False, "Akida has limited temporal coding support"),
+            NeuromorphicPlatform.GENERIC_SNN: (False, "Generic SNN has basic spike processing only"),
+            
+            # Simulation - full support for testing
+            NeuromorphicPlatform.SIMULATION: (True, "Simulation supports all features for testing")
+        }
+        
+        return platform_capabilities.get(self.platform, (False, f"Unknown platform: {self.platform}"))
+    
+    def _analyze_model_requirements(self) -> Tuple[bool, List[str]]:
+        """
+        Analyze model configuration to determine if phase encoding would be beneficial.
+        
+        Returns:
+            (should_enable: bool, reasons: List[str]) - Whether to enable and reasons
+        """
+        should_enable = False
+        reasons = []
+        
+        # Check temporal pattern requirements
+        if self.enable_temporal_patterns:
+            should_enable = True
+            reasons.append("Temporal patterns are enabled")
+        
+        # Check oscillatory dynamics
+        if self.enable_oscillatory_dynamics:
+            should_enable = True
+            reasons.append("Oscillatory dynamics are enabled")
+        
+        # Check hierarchical structure with multiple levels
+        if self.enable_hierarchical_structure and self.num_hierarchy_levels > 1:
+            should_enable = True
+            reasons.append(f"Hierarchical structure with {self.num_hierarchy_levels} levels")
+        
+        # Check 3rd generation advanced features
+        if self.generation >= 3:
+            advanced_features_enabled = any([
+                self.enable_multi_compartment,
+                self.enable_adaptive_threshold,
+                self.enable_burst_firing,
+                self.enable_stochastic_dynamics
+            ])
+            if advanced_features_enabled:
+                should_enable = True
+                reasons.append("Advanced 3rd generation neuron features are enabled")
+        
+        return should_enable, reasons
+    
+    def _analyze_input_data_characteristics(self) -> Tuple[bool, List[str]]:
+        """
+        Analyze input data characteristics to determine if phase encoding would be beneficial.
+        
+        Returns:
+            (should_enable: bool, reasons: List[str]) - Whether to enable and reasons
+        """
+        should_enable = False
+        reasons = []
+        
+        if self.input_data_type:
+            if self.input_data_type == 'sequential':
+                should_enable = True
+                reasons.append("Sequential data benefits from phase encoding")
+            elif self.input_data_type == 'high_dimensional':
+                should_enable = True
+                reasons.append("High-dimensional data benefits from temporal multiplexing")
+            elif self.input_data_type == 'temporal_patterns':
+                should_enable = True
+                reasons.append("Data has natural temporal patterns")
+        
+        return should_enable, reasons
+    
+    def _configure_phase_encoding(self):
+        """
+        Intelligently configure phase encoding based on hardware, model, and data characteristics.
+        """
+        # Store original value
+        original_value = self.enable_phase_encoding
+        
+        # Detect hardware capabilities
+        hw_supported, hw_reason = self._detect_hardware_phase_encoding_support()
+        
+        # Analyze model requirements
+        model_should_enable, model_reasons = self._analyze_model_requirements()
+        
+        # Analyze input data characteristics
+        data_should_enable, data_reasons = self._analyze_input_data_characteristics()
+        
+        # Combine all factors to make decision
+        should_enable = False
+        all_reasons = []
+        
+        if hw_supported:
+            if model_should_enable or data_should_enable:
+                should_enable = True
+                all_reasons.append(hw_reason)
+                all_reasons.extend(model_reasons)
+                all_reasons.extend(data_reasons)
+        else:
+            # Hardware doesn't support it - provide fallback guidance
+            if model_should_enable or data_should_enable:
+                logger.warning(
+                    f"Phase encoding would be beneficial but {hw_reason}. "
+                    f"Consider using simulation mode or upgrading to 3rd generation platform."
+                )
+        
+        # Apply auto-configuration only if user didn't explicitly set it to True
+        if not original_value and should_enable:
+            self.enable_phase_encoding = True
+            if all_reasons:
+                logger.info(
+                    f"Automatically enabled phase encoding. Reasons: {'; '.join(all_reasons)}"
+                )
+        elif original_value and not (hw_supported and (model_should_enable or data_should_enable)):
+            # User set it but conditions may not warrant it - provide guidance
+            if not hw_supported:
+                logger.warning(
+                    f"Phase encoding is enabled but {hw_reason}. "
+                    f"Consider using simulation mode for testing."
+                )
+            elif not (model_should_enable or data_should_enable):
+                logger.info(
+                    f"Phase encoding is enabled. Consider enabling temporal patterns or "
+                    f"oscillatory dynamics to fully utilize phase encoding capabilities."
+                )
+    
+    @classmethod
+    def create_with_explicit_phase_encoding(cls, enable_phase_encoding: bool, **kwargs):
+        """
+        Create a NeuromorphicConfig with explicit phase encoding setting.
+        
+        This factory method allows users to explicitly set phase encoding
+        and bypass auto-configuration.
+        
+        Args:
+            enable_phase_encoding: Explicit phase encoding setting
+            **kwargs: Other configuration parameters
+            
+        Returns:
+            NeuromorphicConfig with explicit phase encoding setting
+        """
+        config = cls(_auto_configure_phase_encoding=False, 
+                    enable_phase_encoding=enable_phase_encoding, 
+                    **kwargs)
+        return config
 
 
 @runtime_checkable
