@@ -1,71 +1,165 @@
 # Adaptive Neural Network
 
-A biologically-inspired network of nodes (“AliveLoopNode”) interacting with capacitors and external data streams, featuring:
-- Staged sleep (light, REM, deep)
-- Mixed/overlapping phases (active, inspired, interactive)
-- Anxiety and restorative behaviour
-- Memory replay/sharing during sleep
-- External signal adaptation
-- **Multi-dimensional spatial awareness (2D, 3D, N-D support)**
+A production-ready biologically-inspired neural network with vectorized training capabilities and adaptive learning mechanisms. This library provides a PyTorch-compatible implementation of adaptive neural networks with phase-based dynamics, energy management, and continual learning support.
 
-## Project Structure
+## 🚀 Quick Start
 
-- `core/` — Main model classes (`alive_node.py`, `capacitor.py`, `network.py`)
-- `experiments/` — Testing and demonstration scripts (`demo_test.py`)
-- `run_simulation.py` — Entry point for running the demo
-- `README.md` — Project overview and instructions
+### Installation
 
-## Getting Started
+```bash
+pip install -e .
+```
 
-1. Install requirements:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Basic Usage
 
-2. **Choose your spatial dimension** (optional):
-   ```bash
-   # For 2D (default)
-   cp config/examples/network_config_2d.yaml config/network_config.yaml
-   
-   # For 3D
-   cp config/examples/network_config_3d.yaml config/network_config.yaml
-   
-   # For high-dimensional research
-   cp config/examples/network_config_high_dimensional.yaml config/network_config.yaml
-   ```
+```python
+from adaptiveneuralnetwork.api import AdaptiveModel, AdaptiveConfig
 
-3. Run the demo simulation:
-   ```bash
-   python runsimulation.py
-   ```
+# Create configuration
+config = AdaptiveConfig(
+    num_nodes=100,
+    hidden_dim=64,
+    num_epochs=10,
+    learning_rate=0.001
+)
 
-See [Spatial Dimensions Guide](docs/SPATIAL_DIMENSIONS_GUIDE.md) for detailed configuration options.
+# Create and train model
+model = AdaptiveModel(config)
 
-## Features
+# Standard PyTorch training loop
+optimizer = torch.optim.Adam(model.parameters())
+for batch in dataloader:
+    optimizer.zero_grad()
+    output = model(batch.data)
+    loss = criterion(output, batch.target)
+    loss.backward()
+    optimizer.step()
+```
 
-- Staged sleep (light, REM, deep)
-- Mixed/overlapping phases (active, inspired, interactive)
-- Anxiety tracking and relief
-- Memory replay and sharing during sleep
-- External signal absorption (human, AI, world)
-- **Multi-dimensional spatial support (2D, 3D, N-D)**
-- Demonstrative test function
+### Run MNIST Benchmark
 
-## Extending
+```bash
+# Quick test
+python scripts/run_benchmark.py --quick-test --epochs 1
 
-- Integrate real-world APIs for external signals
-- Extend phase logic for nuanced transitions
-- Experiment with network size, topology, and connectivity
-- **Explore different spatial dimensions for your use case**
-- Add custom spatial topologies and neighbor search algorithms
+# Full benchmark
+python scripts/run_benchmark.py --epochs 10 --batch-size 128
+```
 
-## Documentation
+### Performance Profiling
 
-- [Spatial Dimensions Guide](docs/SPATIAL_DIMENSIONS_GUIDE.md) - Complete guide to 2D, 3D, and N-D configuration
-- [Configuration Examples](config/examples/) - Ready-to-use configurations for different dimensions
+```bash
+python scripts/profile.py --profile-type comprehensive
+```
 
----
+## 🏗 Architecture
 
-Contributions welcome!
+### Core Components
 
-License: GNU GPL v3.0
+- **`adaptiveneuralnetwork/core/`** — Vectorized node states, phase scheduling, and dynamics
+  - `nodes.py` — Tensor-based node state management
+  - `phases.py` — Phase scheduling (active, sleep, interactive, inspired)
+  - `dynamics.py` — Core dynamics engine with energy and activity updates
+
+- **`adaptiveneuralnetwork/training/`** — Training infrastructure
+  - `datasets.py` — MNIST and synthetic dataset loaders
+  - `loops.py` — Training loops with metrics tracking and checkpointing
+
+- **`adaptiveneuralnetwork/benchmarks/`** — Standardized benchmarks
+  - `vision/mnist.py` — MNIST classification benchmark
+
+- **`adaptiveneuralnetwork/api/`** — High-level API
+  - `model.py` — Main AdaptiveModel class
+  - `config.py` — Configuration management with YAML support
+
+### Key Features
+
+- **Vectorized Operations**: Efficient batch processing for training and inference
+- **Phase-Based Dynamics**: Biologically-inspired phases (active, sleep, interactive, inspired)
+- **Energy Management**: Node energy levels influence behavior and phase transitions
+- **Adaptive Learning**: Dynamic adaptation rates and node connectivity
+- **Production-Ready**: Comprehensive testing, CI/CD, and packaging
+
+## 📊 Benchmark Results
+
+| Model | Dataset | Accuracy | Training Time | Active Nodes |
+|-------|---------|----------|---------------|--------------|
+| Adaptive-100 | MNIST | ~95%* | ~60s* | ~60%* |
+| Adaptive-200 | MNIST | TBD | TBD | TBD |
+
+*Preliminary results - benchmarks in progress
+
+## 🛠 Development
+
+### Running Tests
+
+```bash
+# Unit tests
+pytest adaptiveneuralnetwork/tests/ -v
+
+# Integration tests
+pytest adaptiveneuralnetwork/tests/test_integration.py -v
+
+# Skip slow tests
+pytest -m "not slow"
+```
+
+### Code Quality
+
+```bash
+# Linting
+ruff check adaptiveneuralnetwork/
+
+# Formatting
+black adaptiveneuralnetwork/
+
+# Type checking  
+mypy adaptiveneuralnetwork/core/ adaptiveneuralnetwork/api/
+```
+
+## 🗺 Roadmap
+
+### Current Version (0.1.0)
+- [x] Vectorized core abstractions
+- [x] MNIST benchmark pipeline
+- [x] Basic training loops and metrics
+- [x] Configuration system
+- [x] Profiling utilities
+- [x] CI/CD infrastructure
+
+### Planned (0.2.0)
+- [ ] Continual learning (Split MNIST)
+- [ ] Advanced phase controllers (anxiety/restorative mechanics)
+- [ ] Energy/activity sparsity metrics
+- [ ] Sleep-phase ablation studies
+
+### Future (0.3.0+)
+- [ ] Domain shift robustness (CIFAR-10 corrupted)
+- [ ] JAX backend for advanced acceleration
+- [ ] Multi-modal benchmarks
+- [ ] Neuromorphic hardware compatibility
+
+## 📖 Documentation
+
+- [API Reference](docs/api/) — Detailed API documentation
+- [Configuration Guide](docs/configuration.md) — Configuration options and examples
+- [Benchmarking Guide](docs/benchmarking.md) — Running and interpreting benchmarks
+- [Contributing Guide](CONTRIBUTING.md) — Development setup and contribution guidelines
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup
+- Code style guidelines
+- Testing requirements
+- Issue and PR templates
+
+## 📄 License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- [GitHub Repository](https://github.com/V1B3hR/adaptiveneuralnetwork)
+- [Issue Tracker](https://github.com/V1B3hR/adaptiveneuralnetwork/issues)
+- [Changelog](CHANGELOG.md)
