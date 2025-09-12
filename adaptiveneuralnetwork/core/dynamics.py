@@ -49,8 +49,17 @@ class AdaptiveDynamics(nn.Module):
         """
         batch_size = node_state.get_batch_size()
 
-        # Get current phases
-        phases = phase_scheduler.step(node_state.energy, node_state.activity)
+        # Calculate anxiety levels based on hidden state and energy
+        # Simple heuristic: high activity + low energy = anxiety
+        energy_stress = torch.clamp(5.0 - node_state.energy, min=0.0)  # Stress from low energy
+        activity_stress = node_state.activity * 2.0  # Stress from high activity
+        hidden_variance = node_state.hidden_state.var(dim=-1, keepdim=True)  # Instability
+        
+        # Combine stress factors to create anxiety signal
+        anxiety_levels = energy_stress + activity_stress + hidden_variance
+
+        # Get current phases (now with anxiety information)
+        phases = phase_scheduler.step(node_state.energy, node_state.activity, anxiety_levels)
 
         # Update hidden state with phase-dependent scaling
         hidden_delta = self.state_update(node_state.hidden_state)
@@ -80,8 +89,13 @@ class AdaptiveDynamics(nn.Module):
         # Apply nonlinearity
         node_state.hidden_state = torch.tanh(node_state.hidden_state)
 
-        # Update energy
+        # Update energy (affected by anxiety)
         energy_delta = self.energy_update(node_state.hidden_state)
+        
+        # Anxiety reduces energy efficiency
+        anxiety_factor = 1.0 - 0.1 * torch.clamp(anxiety_levels / 10.0, 0.0, 1.0)
+        energy_delta = energy_delta * anxiety_factor
+        
         node_state.update_energy(energy_delta * active_mask)
 
         # Update activity
