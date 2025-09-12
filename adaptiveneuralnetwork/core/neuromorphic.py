@@ -20,11 +20,19 @@ logger = logging.getLogger(__name__)
 
 class NeuromorphicPlatform(Enum):
     """Supported neuromorphic hardware platforms."""
+    # 2nd Generation Platforms
     LOIHI = "loihi"
     SPINNAKER = "spinnaker" 
     TRUENORTH = "truenorth"
     AKIDA = "akida"
     GENERIC_SNN = "generic_snn"
+    
+    # 3rd Generation Platforms
+    LOIHI2 = "loihi2"
+    SPINNAKER2 = "spinnaker2"
+    GENERIC_V3 = "generic_v3"
+    
+    # Simulation
     SIMULATION = "simulation"
 
 
@@ -50,6 +58,31 @@ class NeuromorphicConfig:
     refractory_period: float = 0.002  # Refractory period
     encoding_window: float = 0.1  # Time window for rate encoding
     max_spike_rate: float = 1000.0  # Maximum spike rate (Hz)
+    
+    # 3rd Generation Extensions
+    generation: int = 2  # Neuromorphic generation (2 or 3)
+    
+    # Advanced neuron parameters
+    enable_multi_compartment: bool = False
+    enable_adaptive_threshold: bool = False
+    enable_burst_firing: bool = False
+    enable_stochastic_dynamics: bool = False
+    
+    # Plasticity parameters
+    enable_stdp: bool = False
+    enable_metaplasticity: bool = False
+    enable_homeostatic_scaling: bool = False
+    
+    # Network topology parameters
+    enable_hierarchical_structure: bool = False
+    enable_dynamic_connectivity: bool = False
+    num_hierarchy_levels: int = 3
+    
+    # Temporal coding parameters
+    enable_temporal_patterns: bool = False
+    enable_phase_encoding: bool = False
+    enable_oscillatory_dynamics: bool = False
+    enable_sparse_coding: bool = False
 
 
 @runtime_checkable
