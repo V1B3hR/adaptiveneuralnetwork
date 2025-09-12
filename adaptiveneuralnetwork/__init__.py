@@ -4,7 +4,7 @@ Adaptive Neural Network - Biologically inspired neural network with adaptive lea
 
 __version__ = "0.1.0"
 
-from .api.model import AdaptiveModel
 from .api.config import AdaptiveConfig
+from .api.model import AdaptiveModel
 
 __all__ = ["AdaptiveModel", "AdaptiveConfig"]
