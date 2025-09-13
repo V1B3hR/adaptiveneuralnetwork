@@ -3,17 +3,23 @@ Neuromorphic hardware compatibility layer for adaptive neural networks.
 
 This module provides abstractions and implementations for neuromorphic hardware
 compatibility, including spike-based computation, event-driven processing,
-and hardware-specific optimizations.
+hardware-specific optimizations, and advanced real-time adaptation mechanisms.
 """
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple, Any, Protocol, runtime_checkable
+from typing import Dict, List, Optional, Tuple, Any, Protocol, runtime_checkable, Callable, Union
 import numpy as np
 from abc import ABC, abstractmethod
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
+import threading
+import time
+from collections import deque, defaultdict
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +38,47 @@ class NeuromorphicPlatform(Enum):
     SPINNAKER2 = "spinnaker2"
     GENERIC_V3 = "generic_v3"
     
+    # Advanced Platforms (4th Gen)
+    MEMRISTIVE_CROSSBAR = "memristive_crossbar"
+    PHOTONIC_SNN = "photonic_snn"
+    QUANTUM_NEUROMORPHIC = "quantum_neuromorphic"
+    
     # Simulation
     SIMULATION = "simulation"
+
+
+class PlasticityType(Enum):
+    """Types of synaptic plasticity mechanisms."""
+    STDP = "spike_timing_dependent_plasticity"
+    BCM = "bienenstock_cooper_munro"
+    HOMEOSTATIC = "homeostatic_scaling" 
+    METAPLASTICITY = "metaplasticity"
+    TRIPLET_STDP = "triplet_stdp"
+    CALCIUM_DEPENDENT = "calcium_dependent"
+    DOPAMINE_MODULATED = "dopamine_modulated"
+    VOLTAGE_DEPENDENT = "voltage_dependent"
+    STRUCTURAL_PLASTICITY = "structural_plasticity"
+
+
+class AdaptationMode(Enum):
+    """Real-time adaptation modes."""
+    CONTINUOUS = "continuous"
+    EPISODIC = "episodic"
+    TRIGGERED = "triggered"
+    LEARNING_BASED = "learning_based"
+    HYBRID = "hybrid"
+
+
+class NeuronType(Enum):
+    """Advanced neuron model types."""
+    LIF = "leaky_integrate_fire"
+    ADAPTIVE_LIF = "adaptive_lif"
+    IZHIKEVICH = "izhikevich"
+    HODGKIN_HUXLEY = "hodgkin_huxley" 
+    MULTI_COMPARTMENT = "multi_compartment"
+    STOCHASTIC_LIF = "stochastic_lif"
+    FRACTIONAL_LIF = "fractional_lif"
+    RESONATOR = "resonator_neuron"
 
 
 @dataclass
@@ -43,12 +88,100 @@ class SpikeEvent:
     timestamp: float
     amplitude: float = 1.0
     metadata: Optional[Dict[str, Any]] = None
+    
+    # Advanced spike properties
+    phase: Optional[float] = None
+    burst_index: Optional[int] = None
+    dendrite_id: Optional[int] = None
+    axon_delay: float = 0.0
+    
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
+
+
+@dataclass
+class PlasticityRule:
+    """Configuration for plasticity rules."""
+    rule_type: PlasticityType
+    learning_rate: float = 0.01
+    time_window: float = 0.02  # ms
+    
+    # STDP parameters
+    tau_plus: float = 0.02
+    tau_minus: float = 0.02
+    a_plus: float = 1.0
+    a_minus: float = 1.0
+    
+    # BCM parameters
+    tau_bcm: float = 1.0
+    theta_0: float = 1.0
+    
+    # Homeostatic parameters
+    target_rate: float = 10.0  # Hz
+    tau_homeostatic: float = 10.0  # s
+    
+    # Metaplasticity parameters
+    meta_learning_rate: float = 0.001
+    sliding_threshold: bool = True
+    
+    # Modulation parameters
+    modulation_factor: float = 1.0
+    modulator_type: Optional[str] = None  # 'dopamine', 'acetylcholine', etc.
+    
+    # Real-time adaptation
+    adaptive_learning_rate: bool = False
+    adaptation_window: float = 1.0
+    min_learning_rate: float = 1e-6
+    max_learning_rate: float = 0.1
+
+
+@dataclass
+class RealTimeAdaptationConfig:
+    """Configuration for real-time adaptation mechanisms."""
+    mode: AdaptationMode = AdaptationMode.CONTINUOUS
+    update_frequency: float = 0.1  # seconds
+    
+    # Performance monitoring
+    performance_window: float = 1.0
+    performance_threshold: float = 0.8
+    adaptation_sensitivity: float = 0.1
+    
+    # Resource monitoring
+    monitor_energy: bool = True
+    monitor_latency: bool = True
+    monitor_accuracy: bool = True
+    energy_budget: Optional[float] = None  # Joules
+    latency_budget: Optional[float] = None  # seconds
+    
+    # Adaptation strategies
+    parameter_scaling: bool = True
+    topology_adaptation: bool = False
+    plasticity_modulation: bool = True
+    
+    # Learning rate schedules
+    lr_schedule_type: str = "exponential"  # exponential, cosine, linear, adaptive
+    lr_decay_rate: float = 0.95
+    lr_min: float = 1e-6
+    lr_max: float = 0.1
+    
+    # Network topology adaptation
+    pruning_threshold: float = 0.01
+    growth_threshold: float = 0.8
+    max_connections_per_neuron: int = 100
+    
+    # Environmental adaptation
+    temperature_compensation: bool = False
+    noise_adaptation: bool = False
+    power_scaling: bool = False
 
 
 @dataclass  
 class NeuromorphicConfig:
-    """Configuration for neuromorphic hardware compatibility."""
+    """Enhanced configuration for neuromorphic hardware compatibility."""
     platform: NeuromorphicPlatform = NeuromorphicPlatform.SIMULATION
+    
+    # Basic neuron parameters
     dt: float = 0.001  # Time step in seconds
     v_threshold: float = 1.0  # Spike threshold
     v_reset: float = 0.0  # Reset potential
@@ -56,692 +189,911 @@ class NeuromorphicConfig:
     tau_mem: float = 0.01  # Membrane time constant
     tau_syn: float = 0.005  # Synaptic time constant
     refractory_period: float = 0.002  # Refractory period
-    encoding_window: float = 0.1  # Time window for rate encoding
-    max_spike_rate: float = 1000.0  # Maximum spike rate (Hz)
-    
-    # 3rd Generation Extensions
-    generation: int = 2  # Neuromorphic generation (2 or 3)
     
     # Advanced neuron parameters
+    neuron_type: NeuronType = NeuronType.LIF
+    v_spike: float = 1.0  # Spike amplitude
+    tau_adaptation: float = 0.1  # Adaptation time constant
+    adaptation_strength: float = 0.1  # Adaptation coupling
+    noise_amplitude: float = 0.0  # Background noise
+    
+    # Izhikevich parameters (for Izhikevich neuron type)
+    izhikevich_a: float = 0.02
+    izhikevich_b: float = 0.2
+    izhikevich_c: float = -65.0
+    izhikevich_d: float = 2.0
+    
+    # Multi-compartment parameters
+    num_compartments: int = 1
+    compartment_coupling: float = 0.1
+    dendritic_delay: float = 0.001
+    
+    # Encoding parameters
+    encoding_window: float = 0.1  # Time window for rate encoding
+    max_spike_rate: float = 1000.0  # Maximum spike rate (Hz)
+    temporal_resolution: float = 0.0001  # Temporal resolution
+    
+    # Generation and features
+    generation: int = 3  # Neuromorphic generation (2, 3, or 4)
+    
+    # Advanced neuron features
     enable_multi_compartment: bool = False
-    enable_adaptive_threshold: bool = False
+    enable_adaptive_threshold: bool = True
     enable_burst_firing: bool = False
     enable_stochastic_dynamics: bool = False
+    enable_calcium_dynamics: bool = False
+    enable_ion_channels: bool = False
     
-    # Plasticity parameters
-    enable_stdp: bool = False
+    # Plasticity configuration
+    plasticity_rules: List[PlasticityRule] = field(default_factory=list)
+    enable_stdp: bool = True
     enable_metaplasticity: bool = False
-    enable_homeostatic_scaling: bool = False
+    enable_homeostatic_scaling: bool = True
+    enable_structural_plasticity: bool = False
+    
+    # Real-time adaptation
+    real_time_adaptation: RealTimeAdaptationConfig = field(default_factory=RealTimeAdaptationConfig)
     
     # Network topology parameters
     enable_hierarchical_structure: bool = False
-    enable_dynamic_connectivity: bool = False
+    enable_dynamic_connectivity: bool = True
     num_hierarchy_levels: int = 3
+    connectivity_density: float = 0.1
     
     # Temporal coding parameters
-    enable_temporal_patterns: bool = False
+    enable_temporal_patterns: bool = True
     enable_phase_encoding: bool = False
     enable_oscillatory_dynamics: bool = False
-    enable_sparse_coding: bool = False
+    enable_sparse_coding: bool = True
+    enable_population_coding: bool = False
     
-    # Input data characteristics (for intelligent configuration)
-    input_data_type: Optional[str] = None  # 'sequential', 'high_dimensional', 'temporal_patterns'
+    # Advanced temporal features
+    enable_gamma_oscillations: bool = False
+    enable_theta_rhythms: bool = False
+    enable_delta_waves: bool = False
+    oscillation_frequency: float = 40.0  # Hz for gamma
+    phase_coupling_strength: float = 0.1
     
-    # Internal flag to track auto-configuration
+    # Hardware-specific parameters
+    bit_precision: int = 16  # Bit precision for weights/states
+    quantization_levels: int = 256
+    enable_analog_compute: bool = False
+    enable_in_memory_compute: bool = False
+    
+    # Energy and timing
+    energy_per_spike: float = 1e-12  # Joules per spike
+    synaptic_delay_mean: float = 0.001
+    synaptic_delay_std: float = 0.0005
+    axonal_delay_mean: float = 0.002
+    axonal_delay_std: float = 0.001
+    
+    # Memristive parameters (for memristive platforms)
+    memristor_conductance_min: float = 1e-6
+    memristor_conductance_max: float = 1e-3
+    memristor_retention_time: float = 100.0  # seconds
+    memristor_switching_energy: float = 1e-15  # Joules
+    
+    # Input data characteristics
+    input_data_type: Optional[str] = None
+    expected_input_rate: Optional[float] = None
+    input_sparsity: Optional[float] = None
+    
+    # Monitoring and logging
+    enable_performance_monitoring: bool = True
+    enable_energy_monitoring: bool = False
+    enable_spike_monitoring: bool = False
+    monitoring_resolution: float = 0.01  # seconds
+    
+    # Real-time constraints
+    max_processing_latency: Optional[float] = None  # seconds
+    real_time_factor: float = 1.0  # 1.0 = real-time, >1 = faster than real-time
+    
+    # Safety and robustness
+    enable_fault_tolerance: bool = False
+    redundancy_factor: int = 1
+    error_correction: bool = False
+    
+    # Internal flags
     _auto_configure_phase_encoding: bool = True
+    _parameter_history: List[Dict[str, Any]] = field(default_factory=list)
     
     def __post_init__(self):
-        """Configure intelligent defaults after initialization."""
-        # Apply intelligent phase encoding configuration only if enabled
+        """Enhanced post-initialization with intelligent configuration."""
+        # Initialize default plasticity rules if none provided
+        if not self.plasticity_rules and self.enable_stdp:
+            self.plasticity_rules.append(
+                PlasticityRule(
+                    rule_type=PlasticityType.STDP,
+                    learning_rate=0.01,
+                    adaptive_learning_rate=True
+                )
+            )
+        
+        if self.enable_homeostatic_scaling:
+            self.plasticity_rules.append(
+                PlasticityRule(
+                    rule_type=PlasticityType.HOMEOSTATIC,
+                    learning_rate=0.001,
+                    target_rate=10.0
+                )
+            )
+        
+        # Configure platform-specific parameters
+        self._configure_platform_specifics()
+        
+        # Apply intelligent configuration
         if self._auto_configure_phase_encoding:
             self._configure_phase_encoding()
+        
+        # Initialize parameter history
+        self._log_parameter_state("initialization")
     
-    def _was_phase_encoding_explicitly_set(self, original_value: bool) -> bool:
-        """
-        Determine if phase encoding was explicitly set by the user.
-        
-        This is a heuristic: if the user provided any temporal coding parameters
-        or set the value to True, we assume it was intentional.
-        """
-        # If set to True, assume it was intentional
-        if original_value:
-            return True
-            
-        # If any temporal coding parameters are set, assume user is configuring manually
-        temporal_params_set = any([
-            self.enable_temporal_patterns,
-            self.enable_oscillatory_dynamics,
-            self.enable_sparse_coding
-        ])
-        
-        return temporal_params_set
-    
-    def _detect_hardware_phase_encoding_support(self) -> Tuple[bool, str]:
-        """
-        Detect hardware platform's phase encoding capabilities.
-        
-        Returns:
-            (supported: bool, reason: str) - Whether phase encoding is supported and reason
-        """
-        platform_capabilities = {
-            # 3rd generation platforms - full support
-            NeuromorphicPlatform.LOIHI2: (True, "Loihi2 has native phase encoding support"),
-            NeuromorphicPlatform.SPINNAKER2: (True, "SpiNNaker2 supports advanced temporal coding"),
-            NeuromorphicPlatform.GENERIC_V3: (True, "Generic V3 supports all temporal features"),
-            
-            # 2nd generation platforms - limited support
-            NeuromorphicPlatform.LOIHI: (False, "Loihi has limited phase encoding support"),
-            NeuromorphicPlatform.SPINNAKER: (False, "SpiNNaker has basic temporal coding only"),
-            NeuromorphicPlatform.TRUENORTH: (False, "TrueNorth does not support phase encoding"),
-            NeuromorphicPlatform.AKIDA: (False, "Akida has limited temporal coding support"),
-            NeuromorphicPlatform.GENERIC_SNN: (False, "Generic SNN has basic spike processing only"),
-            
-            # Simulation - full support for testing
-            NeuromorphicPlatform.SIMULATION: (True, "Simulation supports all features for testing")
+    def _configure_platform_specifics(self):
+        """Configure platform-specific optimizations."""
+        platform_configs = {
+            NeuromorphicPlatform.LOIHI2: {
+                'bit_precision': 8,
+                'enable_in_memory_compute': True,
+                'max_spike_rate': 1000.0,
+                'energy_per_spike': 23e-12
+            },
+            NeuromorphicPlatform.SPINNAKER2: {
+                'bit_precision': 16,
+                'enable_analog_compute': False,
+                'max_spike_rate': 10000.0,
+                'energy_per_spike': 45e-12
+            },
+            NeuromorphicPlatform.MEMRISTIVE_CROSSBAR: {
+                'bit_precision': 4,
+                'enable_analog_compute': True,
+                'enable_in_memory_compute': True,
+                'energy_per_spike': 0.1e-12
+            },
+            NeuromorphicPlatform.PHOTONIC_SNN: {
+                'bit_precision': 32,
+                'enable_analog_compute': True,
+                'max_spike_rate': 100000.0,
+                'energy_per_spike': 0.01e-12,
+                'temporal_resolution': 1e-6
+            }
         }
         
-        return platform_capabilities.get(self.platform, (False, f"Unknown platform: {self.platform}"))
+        if self.platform in platform_configs:
+            config = platform_configs[self.platform]
+            for param, value in config.items():
+                if hasattr(self, param):
+                    setattr(self, param, value)
+            logger.info(f"Applied {self.platform.value} specific configuration")
     
-    def _analyze_model_requirements(self) -> Tuple[bool, List[str]]:
+    def update_parameters_realtime(self, parameter_updates: Dict[str, Any], 
+                                 source: str = "manual") -> bool:
         """
-        Analyze model configuration to determine if phase encoding would be beneficial.
-        
-        Returns:
-            (should_enable: bool, reasons: List[str]) - Whether to enable and reasons
-        """
-        should_enable = False
-        reasons = []
-        
-        # Check temporal pattern requirements
-        if self.enable_temporal_patterns:
-            should_enable = True
-            reasons.append("Temporal patterns are enabled")
-        
-        # Check oscillatory dynamics
-        if self.enable_oscillatory_dynamics:
-            should_enable = True
-            reasons.append("Oscillatory dynamics are enabled")
-        
-        # Check hierarchical structure with multiple levels
-        if self.enable_hierarchical_structure and self.num_hierarchy_levels > 1:
-            should_enable = True
-            reasons.append(f"Hierarchical structure with {self.num_hierarchy_levels} levels")
-        
-        # Check 3rd generation advanced features
-        if self.generation >= 3:
-            advanced_features_enabled = any([
-                self.enable_multi_compartment,
-                self.enable_adaptive_threshold,
-                self.enable_burst_firing,
-                self.enable_stochastic_dynamics
-            ])
-            if advanced_features_enabled:
-                should_enable = True
-                reasons.append("Advanced 3rd generation neuron features are enabled")
-        
-        return should_enable, reasons
-    
-    def _analyze_input_data_characteristics(self) -> Tuple[bool, List[str]]:
-        """
-        Analyze input data characteristics to determine if phase encoding would be beneficial.
-        
-        Returns:
-            (should_enable: bool, reasons: List[str]) - Whether to enable and reasons
-        """
-        should_enable = False
-        reasons = []
-        
-        if self.input_data_type:
-            if self.input_data_type == 'sequential':
-                should_enable = True
-                reasons.append("Sequential data benefits from phase encoding")
-            elif self.input_data_type == 'high_dimensional':
-                should_enable = True
-                reasons.append("High-dimensional data benefits from temporal multiplexing")
-            elif self.input_data_type == 'temporal_patterns':
-                should_enable = True
-                reasons.append("Data has natural temporal patterns")
-        
-        return should_enable, reasons
-    
-    def _configure_phase_encoding(self):
-        """
-        Intelligently configure phase encoding based on hardware, model, and data characteristics.
-        """
-        # Store original value
-        original_value = self.enable_phase_encoding
-        
-        # Detect hardware capabilities
-        hw_supported, hw_reason = self._detect_hardware_phase_encoding_support()
-        
-        # Analyze model requirements
-        model_should_enable, model_reasons = self._analyze_model_requirements()
-        
-        # Analyze input data characteristics
-        data_should_enable, data_reasons = self._analyze_input_data_characteristics()
-        
-        # Combine all factors to make decision
-        should_enable = False
-        all_reasons = []
-        
-        if hw_supported:
-            if model_should_enable or data_should_enable:
-                should_enable = True
-                all_reasons.append(hw_reason)
-                all_reasons.extend(model_reasons)
-                all_reasons.extend(data_reasons)
-        else:
-            # Hardware doesn't support it - provide fallback guidance
-            if model_should_enable or data_should_enable:
-                logger.warning(
-                    f"Phase encoding would be beneficial but {hw_reason}. "
-                    f"Consider using simulation mode or upgrading to 3rd generation platform."
-                )
-        
-        # Apply auto-configuration only if user didn't explicitly set it to True
-        if not original_value and should_enable:
-            self.enable_phase_encoding = True
-            if all_reasons:
-                logger.info(
-                    f"Automatically enabled phase encoding. Reasons: {'; '.join(all_reasons)}"
-                )
-        elif original_value and not (hw_supported and (model_should_enable or data_should_enable)):
-            # User set it but conditions may not warrant it - provide guidance
-            if not hw_supported:
-                logger.warning(
-                    f"Phase encoding is enabled but {hw_reason}. "
-                    f"Consider using simulation mode for testing."
-                )
-            elif not (model_should_enable or data_should_enable):
-                logger.info(
-                    f"Phase encoding is enabled. Consider enabling temporal patterns or "
-                    f"oscillatory dynamics to fully utilize phase encoding capabilities."
-                )
-    
-    @classmethod
-    def create_with_explicit_phase_encoding(cls, enable_phase_encoding: bool, **kwargs):
-        """
-        Create a NeuromorphicConfig with explicit phase encoding setting.
-        
-        This factory method allows users to explicitly set phase encoding
-        and bypass auto-configuration.
+        Update neuromorphic parameters in real-time.
         
         Args:
-            enable_phase_encoding: Explicit phase encoding setting
-            **kwargs: Other configuration parameters
+            parameter_updates: Dictionary of parameter names and new values
+            source: Source of the update (manual, adaptive, performance, etc.)
             
         Returns:
-            NeuromorphicConfig with explicit phase encoding setting
+            bool: Success status of parameter update
         """
-        config = cls(_auto_configure_phase_encoding=False, 
-                    enable_phase_encoding=enable_phase_encoding, 
-                    **kwargs)
-        return config
+        try:
+            # Validate parameter updates
+            valid_updates = self._validate_parameter_updates(parameter_updates)
+            
+            # Apply updates
+            for param_name, new_value in valid_updates.items():
+                old_value = getattr(self, param_name)
+                setattr(self, param_name, new_value)
+                logger.debug(f"Updated {param_name}: {old_value} -> {new_value}")
+            
+            # Log parameter change
+            self._log_parameter_state(f"update_{source}")
+            
+            # Trigger reconfiguration if needed
+            if any(param in ['platform', 'neuron_type', 'generation'] 
+                   for param in valid_updates.keys()):
+                self._configure_platform_specifics()
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update parameters: {e}")
+            return False
+    
+    def _validate_parameter_updates(self, updates: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate parameter updates for safety and compatibility."""
+        valid_updates = {}
+        
+        for param_name, new_value in updates.items():
+            if not hasattr(self, param_name):
+                logger.warning(f"Unknown parameter: {param_name}")
+                continue
+            
+            # Type checking
+            current_value = getattr(self, param_name)
+            if not isinstance(new_value, type(current_value)):
+                logger.warning(f"Type mismatch for {param_name}: {type(new_value)} vs {type(current_value)}")
+                continue
+            
+            # Range validation
+            if param_name in ['dt', 'tau_mem', 'tau_syn'] and new_value <= 0:
+                logger.warning(f"Invalid value for {param_name}: must be positive")
+                continue
+            
+            if param_name == 'max_spike_rate' and new_value > 100000:
+                logger.warning(f"Spike rate {new_value} Hz may be too high for platform {self.platform.value}")
+            
+            valid_updates[param_name] = new_value
+        
+        return valid_updates
+    
+    def _log_parameter_state(self, event: str):
+        """Log current parameter state for history tracking."""
+        state = {
+            'timestamp': time.time(),
+            'event': event,
+            'dt': self.dt,
+            'v_threshold': self.v_threshold,
+            'tau_mem': self.tau_mem,
+            'learning_rates': [rule.learning_rate for rule in self.plasticity_rules],
+            'platform': self.platform.value
+        }
+        self._parameter_history.append(state)
+        
+        # Keep only recent history (last 1000 entries)
+        if len(self._parameter_history) > 1000:
+            self._parameter_history = self._parameter_history[-1000:]
+    
+    def get_adaptive_learning_rate(self, rule_index: int = 0, 
+                                 performance_metric: Optional[float] = None) -> float:
+        """
+        Calculate adaptive learning rate based on performance and time.
+        
+        Args:
+            rule_index: Index of plasticity rule
+            performance_metric: Current performance metric (0-1, higher is better)
+            
+        Returns:
+            Adaptive learning rate
+        """
+        if rule_index >= len(self.plasticity_rules):
+            return 0.01  # Default learning rate
+        
+        rule = self.plasticity_rules[rule_index]
+        base_lr = rule.learning_rate
+        
+        if not rule.adaptive_learning_rate:
+            return base_lr
+        
+        # Time-based decay
+        if self.real_time_adaptation.lr_schedule_type == "exponential":
+            time_factor = self.real_time_adaptation.lr_decay_rate ** (
+                len(self._parameter_history) / 100
+            )
+        else:
+            time_factor = 1.0
+        
+        # Performance-based adaptation
+        if performance_metric is not None:
+            if performance_metric < self.real_time_adaptation.performance_threshold:
+                # Poor performance - increase learning rate
+                perf_factor = 1.0 + (self.real_time_adaptation.adaptation_sensitivity * 
+                                   (self.real_time_adaptation.performance_threshold - performance_metric))
+            else:
+                # Good performance - maintain or slightly decrease learning rate
+                perf_factor = 1.0 - (0.1 * self.real_time_adaptation.adaptation_sensitivity)
+        else:
+            perf_factor = 1.0
+        
+        # Combine factors
+        adaptive_lr = base_lr * time_factor * perf_factor
+        
+        # Clamp to bounds
+        adaptive_lr = max(rule.min_learning_rate, 
+                         min(rule.max_learning_rate, adaptive_lr))
+        
+        return adaptive_lr
+    
+    def adapt_to_environment(self, environmental_data: Dict[str, float]) -> Dict[str, Any]:
+        """
+        Adapt neuromorphic parameters based on environmental conditions.
+        
+        Args:
+            environmental_data: Dictionary with environmental measurements
+            
+        Returns:
+            Dictionary of parameter adaptations made
+        """
+        adaptations = {}
+        
+        # Temperature compensation
+        if ('temperature' in environmental_data and 
+            self.real_time_adaptation.temperature_compensation):
+            
+            temp_celsius = environmental_data['temperature']
+            # Typical Q10 factor for biological systems
+            q10_factor = 2.0 ** ((temp_celsius - 25.0) / 10.0)
+            
+            # Adapt time constants
+            new_tau_mem = self.tau_mem / q10_factor
+            new_tau_syn = self.tau_syn / q10_factor
+            
+            adaptations.update({
+                'tau_mem': new_tau_mem,
+                'tau_syn': new_tau_syn
+            })
+        
+        # Noise adaptation
+        if ('noise_level' in environmental_data and 
+            self.real_time_adaptation.noise_adaptation):
+            
+            noise_level = environmental_data['noise_level']
+            # Increase threshold with higher noise
+            threshold_adjustment = 1.0 + (noise_level * 0.1)
+            new_threshold = self.v_threshold * threshold_adjustment
+            
+            adaptations['v_threshold'] = new_threshold
+        
+        # Power scaling
+        if ('available_power' in environmental_data and 
+            self.real_time_adaptation.power_scaling):
+            
+            power_ratio = environmental_data['available_power'] / 1.0  # Normalized
+            # Scale spike rate and precision based on available power
+            new_max_rate = self.max_spike_rate * power_ratio
+            
+            adaptations['max_spike_rate'] = new_max_rate
+        
+        # Apply adaptations
+        if adaptations:
+            success = self.update_parameters_realtime(adaptations, "environmental")
+            if success:
+                logger.info(f"Applied environmental adaptations: {list(adaptations.keys())}")
+        
+        return adaptations
+    
+    def export_config(self, filename: Optional[str] = None) -> Dict[str, Any]:
+        """Export configuration to dictionary or file."""
+        config_dict = {
+            'platform': self.platform.value,
+            'neuron_type': self.neuron_type.value,
+            'basic_params': {
+                'dt': self.dt,
+                'v_threshold': self.v_threshold,
+                'v_reset': self.v_reset,
+                'v_rest': self.v_rest,
+                'tau_mem': self.tau_mem,
+                'tau_syn': self.tau_syn
+            },
+            'plasticity_rules': [
+                {
+                    'type': rule.rule_type.value,
+                    'learning_rate': rule.learning_rate,
+                    'adaptive': rule.adaptive_learning_rate
+                } for rule in self.plasticity_rules
+            ],
+            'real_time_adaptation': {
+                'mode': self.real_time_adaptation.mode.value,
+                'update_frequency': self.real_time_adaptation.update_frequency,
+                'parameter_scaling': self.real_time_adaptation.parameter_scaling
+            },
+            'parameter_history_length': len(self._parameter_history)
+        }
+        
+        if filename:
+            with open(filename, 'w') as f:
+                json.dump(config_dict, f, indent=2)
+            logger.info(f"Exported configuration to {filename}")
+        
+        return config_dict
 
 
-@runtime_checkable
-class NeuromorphicBackend(Protocol):
-    """Protocol for neuromorphic hardware backends."""
-    
-    def initialize(self, config: NeuromorphicConfig) -> None:
-        """Initialize the neuromorphic backend."""
-        ...
-    
-    def encode_spikes(self, data: torch.Tensor) -> List[SpikeEvent]:
-        """Encode data as spike events."""
-        ...
-    
-    def decode_spikes(self, spikes: List[SpikeEvent]) -> torch.Tensor:
-        """Decode spike events back to tensor data."""
-        ...
-    
-    def run_network(self, spikes: List[SpikeEvent], network_params: Dict[str, Any]) -> List[SpikeEvent]:
-        """Run network inference on neuromorphic hardware."""
-        ...
-
-
-class LeakyIntegrateFireNeuron(nn.Module):
+class RealTimeParameterManager:
     """
-    Leaky Integrate-and-Fire (LIF) neuron model for neuromorphic compatibility.
-    
-    This implements a basic LIF neuron that can be used as a building block
-    for neuromorphic-compatible networks.
+    Manages real-time parameter adaptation for neuromorphic systems.
     """
     
     def __init__(self, config: NeuromorphicConfig):
+        self.config = config
+        self.adaptation_config = config.real_time_adaptation
+        
+        # Performance tracking
+        self.performance_history = deque(maxlen=1000)
+        self.energy_history = deque(maxlen=1000)
+        self.latency_history = deque(maxlen=1000)
+        
+        # Adaptation state
+        self.is_adapting = False
+        self.last_adaptation_time = 0.0
+        self.adaptation_thread = None
+        self.stop_adaptation = threading.Event()
+        
+        # Callbacks for parameter updates
+        self.update_callbacks: List[Callable[[Dict[str, Any]], None]] = []
+    
+    def start_adaptation(self):
+        """Start real-time parameter adaptation."""
+        if self.is_adapting:
+            return
+        
+        self.is_adapting = True
+        self.stop_adaptation.clear()
+        
+        if self.adaptation_config.mode == AdaptationMode.CONTINUOUS:
+            self.adaptation_thread = threading.Thread(
+                target=self._continuous_adaptation_loop
+            )
+            self.adaptation_thread.start()
+            logger.info("Started continuous parameter adaptation")
+    
+    def stop_adaptation_process(self):
+        """Stop real-time parameter adaptation."""
+        self.is_adapting = False
+        self.stop_adaptation.set()
+        
+        if self.adaptation_thread and self.adaptation_thread.is_alive():
+            self.adaptation_thread.join()
+        
+        logger.info("Stopped parameter adaptation")
+    
+    def _continuous_adaptation_loop(self):
+        """Continuous adaptation loop running in separate thread."""
+        while not self.stop_adaptation.wait(self.adaptation_config.update_frequency):
+            try:
+                self._perform_adaptation_step()
+            except Exception as e:
+                logger.error(f"Error in adaptation step: {e}")
+    
+    def _perform_adaptation_step(self):
+        """Perform a single adaptation step."""
+        current_time = time.time()
+        
+        # Skip if not enough time has passed
+        if (current_time - self.last_adaptation_time < 
+            self.adaptation_config.update_frequency):
+            return
+        
+        # Analyze current performance
+        performance_metrics = self._analyze_performance()
+        
+        # Determine necessary adaptations
+        adaptations = self._calculate_adaptations(performance_metrics)
+        
+        # Apply adaptations
+        if adaptations:
+            success = self.config.update_parameters_realtime(adaptations, "adaptive")
+            if success:
+                # Notify callbacks
+                for callback in self.update_callbacks:
+                    callback(adaptations)
+        
+        self.last_adaptation_time = current_time
+    
+    def _analyze_performance(self) -> Dict[str, float]:
+        """Analyze current system performance."""
+        metrics = {}
+        
+        # Calculate average performance over window
+        if self.performance_history:
+            recent_performance = list(self.performance_history)[-int(
+                self.adaptation_config.performance_window / 
+                self.adaptation_config.update_frequency
+            ):]
+            metrics['avg_performance'] = np.mean(recent_performance)
+            metrics['performance_trend'] = self._calculate_trend(recent_performance)
+        
+        # Energy efficiency
+        if self.energy_history and self.adaptation_config.monitor_energy:
+            recent_energy = list(self.energy_history)[-10:]
+            metrics['avg_energy'] = np.mean(recent_energy)
+            metrics['energy_trend'] = self._calculate_trend(recent_energy)
+        
+        # Latency analysis
+        if self.latency_history and self.adaptation_config.monitor_latency:
+            recent_latency = list(self.latency_history)[-10:]
+            metrics['avg_latency'] = np.mean(recent_latency)
+            metrics['latency_trend'] = self._calculate_trend(recent_latency)
+        
+        return metrics
+    
+    def _calculate_trend(self, data: List[float]) -> float:
+        """Calculate trend direction (-1 to 1) for a data series."""
+        if len(data) < 2:
+            return 0.0
+        
+        # Simple linear trend
+        x = np.arange(len(data))
+        coeffs = np.polyfit(x, data, 1)
+        return np.tanh(coeffs[0])  # Normalize to [-1, 1]
+    
+    def _calculate_adaptations(self, metrics: Dict[str, float]) -> Dict[str, Any]:
+        """Calculate parameter adaptations based on performance metrics."""
+        adaptations = {}
+        
+        # Performance-based learning rate adaptation
+        if 'avg_performance' in metrics:
+            perf = metrics['avg_performance']
+            
+            if perf < self.adaptation_config.performance_threshold:
+                # Poor performance - adapt more aggressively
+                if self.adaptation_config.parameter_scaling:
+                    # Increase learning rates
+                    for i, rule in enumerate(self.config.plasticity_rules):
+                        if rule.adaptive_learning_rate:
+                            new_lr = rule.learning_rate * 1.1
+                            new_lr = min(new_lr, rule.max_learning_rate)
+                            rule.learning_rate = new_lr
+                
+                # Adjust temporal resolution for better precision
+                if metrics.get('latency_trend', 0) < 0:  # Latency improving
+                    new_dt = self.config.dt * 0.95  # Finer time steps
+                    adaptations['dt'] = max(new_dt, 1e-5)
+        
+        # Energy-based adaptations
+        if ('avg_energy' in metrics and 
+            self.adaptation_config.energy_budget is not None):
+            
+            energy_ratio = metrics['avg_energy'] / self.adaptation_config.energy_budget
+            
+            if energy_ratio > 1.1:  # Over budget
+                # Reduce spike rate to save energy
+                new_rate = self.config.max_spike_rate * 0.9
+                adaptations['max_spike_rate'] = new_rate
+                
+                # Increase refractory period
+                new_refract = self.config.refractory_period * 1.05
+                adaptations['refractory_period'] = new_refract
+        
+        # Latency-based adaptations
+        if ('avg_latency' in metrics and 
+            self.adaptation_config.latency_budget is not None):
+            
+            if metrics['avg_latency'] > self.adaptation_config.latency_budget:
+                # Reduce precision to improve speed
+                if self.config.bit_precision > 4:
+                    adaptations['bit_precision'] = self.config.bit_precision - 1
+                
+                # Increase time step for faster processing
+                new_dt = self.config.dt * 1.05
+                adaptations['dt'] = min(new_dt, 0.01)
+        
+        return adaptations
+    
+    def add_update_callback(self, callback: Callable[[Dict[str, Any]], None]):
+        """Add callback to be notified of parameter updates."""
+        self.update_callbacks.append(callback)
+    
+    def log_performance(self, accuracy: float, energy: Optional[float] = None, 
+                       latency: Optional[float] = None):
+        """Log performance metrics for adaptation."""
+        self.performance_history.append(accuracy)
+        
+        if energy is not None:
+            self.energy_history.append(energy)
+        
+        if latency is not None:
+            self.latency_history.append(latency)
+
+
+class EnhancedLeakyIntegrateFireNeuron(nn.Module):
+    """
+    Enhanced Leaky Integrate-and-Fire neuron with advanced features.
+    """
+    
+    def __init__(self, config: NeuromorphicConfig, neuron_id: int = 0):
         super().__init__()
         self.config = config
+        self.neuron_id = neuron_id
         
-        # Neuron parameters  
-        self.register_buffer('v_mem', torch.zeros(1))  # Membrane potential
-        self.register_buffer('i_syn', torch.zeros(1))  # Synaptic current
+        # Basic LIF parameters
+        self.register_buffer('v_mem', torch.zeros(1))
+        self.register_buffer('i_syn', torch.zeros(1))
         
-        # Decay factors (exponential approximation)
+        # Advanced features
+        if config.enable_adaptive_threshold:
+            self.register_buffer('v_th_adapt', torch.full((1,), config.v_threshold))
+            self.register_buffer('spike_count', torch.zeros(1))
+        
+        if config.enable_calcium_dynamics:
+            self.register_buffer('calcium', torch.zeros(1))
+            self.tau_calcium = 0.05  # Calcium time constant
+        
+        # Stochastic dynamics
+        if config.enable_stochastic_dynamics:
+            self.noise_amplitude = config.noise_amplitude
+        
+        # Multi-compartment
+        if config.enable_multi_compartment and config.num_compartments > 1:
+            self.register_buffer('v_compartments', 
+                               torch.zeros(config.num_compartments))
+            self.compartment_weights = nn.Parameter(
+                torch.ones(config.num_compartments) / config.num_compartments
+            )
+        
+        # Decay factors
         self.alpha_mem = torch.tensor(np.exp(-config.dt / config.tau_mem))
         self.alpha_syn = torch.tensor(np.exp(-config.dt / config.tau_syn))
         
-    def forward(self, input_current: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        if config.enable_adaptive_threshold:
+            self.alpha_adapt = torch.tensor(np.exp(-config.dt / config.tau_adaptation))
+    
+    def forward(self, input_current: torch.Tensor, 
+                modulation: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """
-        Forward pass of LIF neuron.
+        Enhanced forward pass with multiple neuron features.
         
         Args:
-            input_current: Input current at this time step
-        
+            input_current: Input current
+            modulation: Neuromodulation signal (dopamine, etc.)
+            
         Returns:
-            (spike_output, membrane_potential)
+            (spike_output, neuron_states)
         """
         batch_size = input_current.shape[0]
         
-        # Expand state if needed
+        # Expand state buffers
         if self.v_mem.shape[0] != batch_size:
-            self.v_mem = self.v_mem.expand(batch_size, -1).contiguous()
-            self.i_syn = self.i_syn.expand(batch_size, -1).contiguous()
+            self._expand_states(batch_size)
+        
+        # Add stochastic noise
+        if self.config.enable_stochastic_dynamics:
+            noise = torch.randn_like(input_current) * self.noise_amplitude
+            input_current = input_current + noise
+        
+        # Apply neuromodulation
+        if modulation is not None:
+            input_current = input_current * (1.0 + modulation)
         
         # Update synaptic current
         self.i_syn = self.alpha_syn * self.i_syn + input_current
         
-        # Update membrane potential
-        self.v_mem = self.alpha_mem * self.v_mem + self.i_syn
+        # Multi-compartment processing
+        if self.config.enable_multi_compartment and hasattr(self, 'v_compartments'):
+            # Update each compartment
+            for i in range(self.config.num_compartments):
+                compartment_input = self.i_syn * self.compartment_weights[i]
+                self.v_compartments[i] = (self.alpha_mem * self.v_compartments[i] + 
+                                        compartment_input.squeeze())
+            
+            # Weighted sum for membrane potential
+            self.v_mem = torch.sum(self.v_compartments * self.compartment_weights.view(1, -1), 
+                                 dim=1, keepdim=True)
+        else:
+            # Standard single compartment
+            self.v_mem = self.alpha_mem * self.v_mem + self.i_syn
+        
+        # Determine spike threshold
+        if self.config.enable_adaptive_threshold:
+            threshold = self.v_th_adapt
+        else:
+            threshold = self.config.v_threshold
         
         # Check for spikes
-        spikes = (self.v_mem >= self.config.v_threshold).float()
+        spikes = (self.v_mem >= threshold).float()
+        
+        # Update adaptive threshold
+        if self.config.enable_adaptive_threshold:
+            # Increase threshold after spike
+            self.v_th_adapt = torch.where(
+                spikes.bool(),
+                self.v_th_adapt + self.config.adaptation_strength,
+                self.alpha_adapt * self.v_th_adapt + (1 - self.alpha_adapt) * self.config.v_threshold
+            )
+            self.spike_count += spikes
+        
+        # Update calcium dynamics
+        if self.config.enable_calcium_dynamics:
+            alpha_ca = torch.tensor(np.exp(-self.config.dt / self.tau_calcium))
+            self.calcium = alpha_ca * self.calcium + spikes
         
         # Reset spiked neurons
         self.v_mem = torch.where(spikes.bool(), 
-                                torch.tensor(self.config.v_reset), 
-                                self.v_mem)
+                               torch.tensor(self.config.v_reset), 
+                               self.v_mem)
         
-        return spikes, self.v_mem
+        # Prepare output states
+        states = {
+            'v_mem': self.v_mem,
+            'i_syn': self.i_syn,
+        }
+        
+        if self.config.enable_adaptive_threshold:
+            states['v_threshold'] = self.v_th_adapt
+            states['spike_count'] = self.spike_count
+        
+        if self.config.enable_calcium_dynamics:
+            states['calcium'] = self.calcium
+        
+        return spikes, states
     
-    def reset_state(self, batch_size: Optional[int] = None):
-        """Reset neuron state."""
-        if batch_size is not None:
-            self.v_mem = torch.full((batch_size, 1), self.config.v_rest)
-            self.i_syn = torch.zeros(batch_size, 1)
-        else:
-            self.v_mem.fill_(self.config.v_rest)
-            self.i_syn.fill_(0.0)
+    def _expand_states(self, batch_size: int):
+        """Expand state tensors for batch processing."""
+        self.v_mem = self.v_mem.expand(batch_size, -1).contiguous()
+        self.i_syn = self.i_syn.expand(batch_size, -1).contiguous()
+        
+        if self.config.enable_adaptive_threshold:
+            self.v_th_adapt = self.v_th_adapt.expand(batch_size, -1).contiguous()
+            self.spike_count = self.spike_count.expand(batch_size, -1).contiguous()
+        
+        if self.config.enable_calcium_dynamics:
+            self.calcium = self.calcium.expand(batch_size, -1).contiguous()
 
 
-class RateToSpikeEncoder:
+class AdaptivePlasticityManager:
     """
-    Convert continuous rate values to spike trains for neuromorphic processing.
-    
-    Supports different encoding schemes:
-    - Poisson encoding
-    - Rate encoding
-    - Temporal encoding
+    Manages multiple plasticity rules with real-time adaptation.
     """
     
-    def __init__(self, config: NeuromorphicConfig, encoding_type: str = "poisson"):
+    def __init__(self, config: NeuromorphicConfig):
         self.config = config
-        self.encoding_type = encoding_type
+        self.plasticity_rules = config.plasticity_rules
         
-    def encode(self, rates: torch.Tensor, duration: Optional[float] = None) -> List[SpikeEvent]:
+        # Plasticity state tracking
+        self.pre_spike_history = defaultdict(deque)
+        self.post_spike_history = defaultdict(deque)
+        self.weight_traces = {}
+        
+        # Homeostatic variables
+        self.firing_rates = defaultdict(float)
+        self.rate_targets = defaultdict(lambda: 10.0)  # Hz
+        
+        # Metaplasticity
+        self.plasticity_thresholds = defaultdict(lambda: 1.0)
+        
+    def update_synaptic_weights(self, pre_neurons: List[int], post_neurons: List[int],
+                              spike_times: Dict[int, List[float]], 
+                              weights: torch.Tensor) -> torch.Tensor:
         """
-        Encode rate values as spike events.
+        Update synaptic weights based on spike timing and plasticity rules.
         
         Args:
-            rates: Rate values to encode [batch_size, num_neurons]
-            duration: Encoding duration (uses config.encoding_window if None)
-        
+            pre_neurons: List of presynaptic neuron IDs
+            post_neurons: List of postsynaptic neuron IDs  
+            spike_times: Dictionary mapping neuron ID to spike times
+            weights: Current synaptic weight matrix
+            
         Returns:
-            List of spike events
+            Updated weight matrix
         """
-        if duration is None:
-            duration = self.config.encoding_window
+        updated_weights = weights.clone()
         
-        num_steps = int(duration / self.config.dt)
-        batch_size, num_neurons = rates.shape
+        # Apply each plasticity rule
+        for rule in self.plasticity_rules:
+            if rule.rule_type == PlasticityType.STDP:
+                updated_weights = self._apply_stdp(
+                    updated_weights, pre_neurons, post_neurons, spike_times, rule
+                )
+            elif rule.rule_type == PlasticityType.HOMEOSTATIC:
+                updated_weights = self._apply_homeostatic_scaling(
+                    updated_weights, post_neurons, spike_times, rule
+                )
+            elif rule.rule_type == PlasticityType.METAPLASTICITY:
+                updated_weights = self._apply_metaplasticity(
+                    updated_weights, pre_neurons, post_neurons, spike_times, rule
+                )
         
-        spikes = []
+        return updated_weights
+    
+    def _apply_stdp(self, weights: torch.Tensor, pre_neurons: List[int], 
+                   post_neurons: List[int], spike_times: Dict[int, List[float]], 
+                   rule: PlasticityRule) -> torch.Tensor:
+        """Apply Spike-Timing Dependent Plasticity (STDP)."""
+        learning_rate = self.config.get_adaptive_learning_rate(0)
         
-        if self.encoding_type == "poisson":
-            # Poisson encoding - spikes follow Poisson process
-            for batch_idx in range(batch_size):
-                for neuron_idx in range(num_neurons):
-                    rate = rates[batch_idx, neuron_idx].item()
+        for i, pre_id in enumerate(pre_neurons):
+            for j, post_id in enumerate(post_neurons):
+                if pre_id in spike_times and post_id in spike_times:
+                    pre_spikes = spike_times[pre_id]
+                    post_spikes = spike_times[post_id]
                     
-                    # Clamp rate to reasonable bounds
-                    rate = max(0, min(rate * self.config.max_spike_rate, self.config.max_spike_rate))
-                    
-                    # Generate Poisson spike times
-                    if rate > 0:
-                        # Expected number of spikes in duration
-                        lambda_param = rate * duration
-                        num_spikes = np.random.poisson(lambda_param)
-                        
-                        # Generate random spike times
-                        if num_spikes > 0:
-                            spike_times = np.sort(np.random.uniform(0, duration, num_spikes))
+                    # Calculate weight changes for all spike pairs
+                    for pre_time in pre_spikes:
+                        for post_time in post_spikes:
+                            dt = post_time - pre_time
                             
-                            for spike_time in spike_times:
-                                spikes.append(SpikeEvent(
-                                    neuron_id=batch_idx * num_neurons + neuron_idx,
-                                    timestamp=spike_time,
-                                    amplitude=1.0,
-                                    metadata={'batch_idx': batch_idx, 'neuron_idx': neuron_idx}
-                                ))
+                            if abs(dt) <= rule.time_window:
+                                if dt > 0:  # Pre before post - potentiation
+                                    dw = (learning_rate * rule.a_plus * 
+                                         np.exp(-dt / rule.tau_plus))
+                                else:  # Post before pre - depression  
+                                    dw = (-learning_rate * rule.a_minus * 
+                                         np.exp(dt / rule.tau_minus))
+                                
+                                # Apply modulation
+                                dw *= rule.modulation_factor
+                                
+                                # Update weight
+                                weights[i, j] += dw
         
-        elif self.encoding_type == "rate":
-            # Rate encoding - constant inter-spike interval based on rate
-            for batch_idx in range(batch_size):
-                for neuron_idx in range(num_neurons):
-                    rate = rates[batch_idx, neuron_idx].item()
-                    
-                    if rate > 0:
-                        # Calculate inter-spike interval
-                        isi = 1.0 / (rate * self.config.max_spike_rate)
-                        
-                        # Generate regularly spaced spikes
-                        current_time = isi
-                        while current_time < duration:
-                            spikes.append(SpikeEvent(
-                                neuron_id=batch_idx * num_neurons + neuron_idx,
-                                timestamp=current_time,
-                                amplitude=1.0,
-                                metadata={'batch_idx': batch_idx, 'neuron_idx': neuron_idx}
-                            ))
-                            current_time += isi
-        
-        return spikes
+        return weights
     
-    def decode(self, spikes: List[SpikeEvent], num_neurons: int, 
-              duration: Optional[float] = None) -> torch.Tensor:
-        """
-        Decode spike events back to rate values.
+    def _apply_homeostatic_scaling(self, weights: torch.Tensor, post_neurons: List[int],
+                                 spike_times: Dict[int, List[float]], 
+                                 rule: PlasticityRule) -> torch.Tensor:
+        """Apply homeostatic scaling to maintain target firing rates."""
+        current_time = max(max(times) if times else 0 for times in spike_times.values())
+        time_window = rule.adaptation_window
         
-        Args:
-            spikes: List of spike events
-            num_neurons: Total number of neurons
-            duration: Decoding duration
-        
-        Returns:
-            Decoded rates [batch_size, num_neurons]
-        """
-        if duration is None:
-            duration = self.config.encoding_window
-        
-        # Group spikes by neuron
-        spike_counts = {}
-        max_neuron_id = 0
-        
-        for spike in spikes:
-            neuron_id = spike.neuron_id
-            max_neuron_id = max(max_neuron_id, neuron_id)
-            
-            if neuron_id not in spike_counts:
-                spike_counts[neuron_id] = 0
-            spike_counts[neuron_id] += 1
-        
-        # Determine batch size
-        batch_size = (max_neuron_id // num_neurons) + 1 if spikes else 1
-        
-        # Create rate tensor
-        rates = torch.zeros(batch_size, num_neurons)
-        
-        for neuron_id, count in spike_counts.items():
-            batch_idx = neuron_id // num_neurons
-            neuron_idx = neuron_id % num_neurons
-            
-            # Convert spike count to rate
-            rate = count / duration / self.config.max_spike_rate
-            rates[batch_idx, neuron_idx] = rate
-        
-        return rates
-
-
-class SpikeBasedAdaptiveLayer(nn.Module):
-    """
-    Adaptive neural network layer using spike-based processing.
-    
-    This layer converts the standard adaptive dynamics to spike-based
-    computation for neuromorphic compatibility.
-    """
-    
-    def __init__(
-        self,
-        input_size: int,
-        hidden_size: int,
-        config: NeuromorphicConfig,
-        num_timesteps: int = 100
-    ):
-        super().__init__()
-        
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.config = config
-        self.num_timesteps = num_timesteps
-        
-        # LIF neurons for processing
-        self.lif_neurons = nn.ModuleList([
-            LeakyIntegrateFireNeuron(config) for _ in range(hidden_size)
-        ])
-        
-        # Synaptic weights
-        self.input_weights = nn.Linear(input_size, hidden_size, bias=False)
-        self.recurrent_weights = nn.Linear(hidden_size, hidden_size, bias=False)
-        
-        # Spike encoder/decoder
-        self.encoder = RateToSpikeEncoder(config)
-        
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass using spike-based processing.
-        
-        Args:
-            x: Input tensor [batch_size, input_size]
-        
-        Returns:
-            Output tensor [batch_size, hidden_size]
-        """
-        batch_size = x.shape[0]
-        
-        # Reset neuron states
-        for neuron in self.lif_neurons:
-            neuron.reset_state(batch_size)
-        
-        # Convert input to spikes
-        input_spikes = self.encoder.encode(x)
-        
-        # Process through time steps
-        output_spikes = []
-        
-        for t in range(self.num_timesteps):
-            current_time = t * self.config.dt
-            
-            # Get input spikes for current time step
-            input_current = torch.zeros(batch_size, self.input_size)
-            
-            for spike in input_spikes:
-                if abs(spike.timestamp - current_time) < self.config.dt / 2:
-                    metadata = spike.metadata or {}
-                    batch_idx = metadata.get('batch_idx', 0)
-                    neuron_idx = metadata.get('neuron_idx', 0)
-                    
-                    if batch_idx < batch_size and neuron_idx < self.input_size:
-                        input_current[batch_idx, neuron_idx] += spike.amplitude
-            
-            # Transform input through weights
-            weighted_input = self.input_weights(input_current)
-            
-            # Add recurrent input from previous step
-            if t > 0:
-                # Get previous spike output
-                prev_spikes = torch.zeros(batch_size, self.hidden_size)
-                for spike in output_spikes:
-                    if abs(spike.timestamp - (current_time - self.config.dt)) < self.config.dt / 2:
-                        metadata = spike.metadata or {}
-                        batch_idx = metadata.get('batch_idx', 0)
-                        neuron_idx = metadata.get('neuron_idx', 0)
-                        
-                        if batch_idx < batch_size and neuron_idx < self.hidden_size:
-                            prev_spikes[batch_idx, neuron_idx] += spike.amplitude
+        for j, post_id in enumerate(post_neurons):
+            if post_id in spike_times:
+                # Calculate recent firing rate
+                recent_spikes = [t for t in spike_times[post_id] 
+                               if t > current_time - time_window]
+                current_rate = len(recent_spikes) / time_window
                 
-                recurrent_input = self.recurrent_weights(prev_spikes)
-                total_input = weighted_input + recurrent_input
-            else:
-                total_input = weighted_input
-            
-            # Process through LIF neurons
-            for neuron_idx, neuron in enumerate(self.lif_neurons):
-                current_input = total_input[:, neuron_idx:neuron_idx+1]
-                spikes, _ = neuron(current_input)
+                # Update running average
+                alpha = 1.0 - np.exp(-self.config.dt / rule.tau_homeostatic)
+                self.firing_rates[post_id] = (alpha * current_rate + 
+                                            (1 - alpha) * self.firing_rates[post_id])
                 
-                # Record output spikes
-                for batch_idx in range(batch_size):
-                    if spikes[batch_idx, 0] > 0:
-                        output_spikes.append(SpikeEvent(
-                            neuron_id=batch_idx * self.hidden_size + neuron_idx,
-                            timestamp=current_time,
-                            amplitude=1.0,
-                            metadata={'batch_idx': batch_idx, 'neuron_idx': neuron_idx}
-                        ))
+                # Calculate scaling factor
+                rate_error = rule.target_rate - self.firing_rates[post_id]
+                scaling_factor = 1.0 + rule.learning_rate * rate_error / rule.target_rate
+                
+                # Apply scaling to all incoming weights
+                weights[:, j] *= scaling_factor
         
-        # Decode output spikes back to rates
-        output_rates = self.encoder.decode(
-            output_spikes, 
-            self.hidden_size,
-            duration=self.num_timesteps * self.config.dt
-        )
+        return weights
+    
+    def _apply_metaplasticity(self, weights: torch.Tensor, pre_neurons: List[int],
+                            post_neurons: List[int], spike_times: Dict[int, List[float]],
+                            rule: PlasticityRule) -> torch.Tensor:
+        """Apply metaplasticity - plasticity of plasticity."""
+        for i, pre_id in enumerate(pre_neurons):
+            for j, post_id in enumerate(post_neurons):
+                # Calculate recent activity correlation
+                if pre_id in spike_times and post_id in spike_times:
+                    pre_rate = len(spike_times[pre_id]) / rule.adaptation_window
+                    post_rate = len(spike_times[post_id]) / rule.adaptation_window
+                    
+                    # Update plasticity threshold based on activity
+                    activity_product = pre_rate * post_rate
+                    threshold_change = rule.meta_learning_rate * (
+                        activity_product - self.plasticity_thresholds[(pre_id, post_id)]
+                    )
+                    
+                    self.plasticity_thresholds[(pre_id, post_id)] += threshold_change
+                    
+                    # Modulate future plasticity based on threshold
+                    if rule.sliding_threshold:
+                        modulation = 1.0 / (1.0 + self.plasticity_thresholds[(pre_id, post_id)])
+                        rule.modulation_factor = modulation
         
-        return output_rates
+        return weights
 
 
-class NeuromorphicAdaptiveModel(nn.Module):
-    """
-    Complete adaptive neural network model with neuromorphic compatibility.
-    
-    This model can run on neuromorphic hardware or simulate neuromorphic
-    processing on conventional hardware.
-    """
-    
-    def __init__(
-        self,
-        input_dim: int,
-        output_dim: int,
-        hidden_dim: int = 128,
-        num_layers: int = 2,
-        config: Optional[NeuromorphicConfig] = None
-    ):
-        super().__init__()
-        
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.hidden_dim = hidden_dim
-        self.num_layers = num_layers
-        self.config = config or NeuromorphicConfig()
-        
-        # Build layers
-        layers = []
-        
-        # First layer
-        layers.append(SpikeBasedAdaptiveLayer(
-            input_dim, hidden_dim, self.config
-        ))
-        
-        # Hidden layers
-        for _ in range(num_layers - 2):
-            layers.append(SpikeBasedAdaptiveLayer(
-                hidden_dim, hidden_dim, self.config
-            ))
-        
-        # Output layer (if more than 1 layer)
-        if num_layers > 1:
-            layers.append(SpikeBasedAdaptiveLayer(
-                hidden_dim, output_dim, self.config
-            ))
-        
-        self.layers = nn.ModuleList(layers)
-        
-        # Final projection if needed
-        if num_layers == 1:
-            self.output_projection = nn.Linear(hidden_dim, output_dim)
-        else:
-            self.output_projection = None
-    
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass through neuromorphic model."""
-        # Flatten input if needed
-        if x.dim() > 2:
-            x = x.view(x.shape[0], -1)
-        
-        # Process through layers
-        for layer in self.layers:
-            x = layer(x)
-        
-        # Apply final projection if needed
-        if self.output_projection is not None:
-            x = self.output_projection(x)
-        
-        return x
-
-
-class SimulationBackend:
-    """
-    Simulation backend for neuromorphic processing.
-    
-    This provides a software simulation of neuromorphic hardware
-    for development and testing purposes.
-    """
-    
-    def __init__(self):
-        self.config = None
-        self.encoder = None
-    
-    def initialize(self, config: NeuromorphicConfig) -> None:
-        """Initialize simulation backend."""
-        self.config = config
-        self.encoder = RateToSpikeEncoder(config)
-        logger.info("Initialized neuromorphic simulation backend")
-    
-    def encode_spikes(self, data: torch.Tensor) -> List[SpikeEvent]:
-        """Encode data as spikes."""
-        if self.encoder is None:
-            raise RuntimeError("Backend not initialized")
-        return self.encoder.encode(data)
-    
-    def decode_spikes(self, spikes: List[SpikeEvent]) -> torch.Tensor:
-        """Decode spikes back to tensor."""
-        if self.encoder is None:
-            raise RuntimeError("Backend not initialized")
-        
-        # Determine tensor shape from spikes
-        if not spikes:
-            return torch.zeros(1, 1)
-        
-        max_neuron = max(spike.neuron_id for spike in spikes)
-        return self.encoder.decode(spikes, max_neuron + 1)
-    
-    def run_network(self, spikes: List[SpikeEvent], network_params: Dict[str, Any]) -> List[SpikeEvent]:
-        """Run network simulation."""
-        # This is a placeholder - in practice would run full SNN simulation
-        logger.info(f"Simulating neuromorphic network with {len(spikes)} input spikes")
-        
-        # Simple passthrough for now
-        return spikes
-
-
-def create_neuromorphic_model(
+# Factory function for creating enhanced neuromorphic models
+def create_enhanced_neuromorphic_model(
     input_dim: int,
     output_dim: int,
     platform: NeuromorphicPlatform = NeuromorphicPlatform.SIMULATION,
-    config: Optional[NeuromorphicConfig] = None
-) -> NeuromorphicAdaptiveModel:
+    config: Optional[NeuromorphicConfig] = None,
+    enable_real_time_adaptation: bool = True
+) -> Tuple[nn.Module, RealTimeParameterManager]:
     """
-    Factory function to create neuromorphic adaptive model.
+    Create enhanced neuromorphic model with real-time adaptation capabilities.
     
     Args:
         input_dim: Input dimension
         output_dim: Output dimension  
         platform: Target neuromorphic platform
         config: Neuromorphic configuration
+        enable_real_time_adaptation: Whether to enable real-time parameter adaptation
     
     Returns:
-        Configured neuromorphic model
+        (model, parameter_manager): Model and parameter adaptation manager
     """
     if config is None:
         config = NeuromorphicConfig(platform=platform)
+    
+    # Create parameter manager
+    param_manager = None
+    if enable_real_time_adaptation:
+        param_manager = RealTimeParameterManager(config)
+    
+    # Import and use the original model class (assuming it exists)
+    from . import NeuromorphicAdaptiveModel  # This would import from the existing code
     
     model = NeuromorphicAdaptiveModel(
         input_dim=input_dim,
@@ -749,35 +1101,78 @@ def create_neuromorphic_model(
         config=config
     )
     
-    logger.info(f"Created neuromorphic model for platform: {platform.value}")
+    logger.info(f"Created enhanced neuromorphic model for platform: {platform.value}")
     
-    return model
+    return model, param_manager
 
 
 if __name__ == "__main__":
-    # Example usage
+    # Example usage with enhanced features
     logging.basicConfig(level=logging.INFO)
     
-    # Create neuromorphic model
+    # Create enhanced configuration
     config = NeuromorphicConfig(
-        platform=NeuromorphicPlatform.SIMULATION,
-        dt=0.001,
-        v_threshold=1.0
+        platform=NeuromorphicPlatform.LOIHI2,
+        neuron_type=NeuronType.ADAPTIVE_LIF,
+        enable_adaptive_threshold=True,
+        enable_homeostatic_scaling=True,
+        enable_real_time_adaptation=True
     )
     
-    model = create_neuromorphic_model(
-        input_dim=784,  # MNIST
+    # Add custom plasticity rule
+    config.plasticity_rules.append(
+        PlasticityRule(
+            rule_type=PlasticityType.STDP,
+            learning_rate=0.01,
+            adaptive_learning_rate=True,
+            tau_plus=0.02,
+            tau_minus=0.02
+        )
+    )
+    
+    # Create model with parameter manager
+    model, param_manager = create_enhanced_neuromorphic_model(
+        input_dim=784,
         output_dim=10,
         config=config
     )
     
-    # Test forward pass
+    # Start real-time adaptation
+    if param_manager:
+        param_manager.start_adaptation()
+        
+        # Add callback for parameter updates
+        def on_parameter_update(updates):
+            print(f"Parameters updated: {list(updates.keys())}")
+        
+        param_manager.add_update_callback(on_parameter_update)
+    
+    # Test model
     batch_size = 4
     x = torch.randn(batch_size, 784)
+    output = model(x)
     
     print(f"Input shape: {x.shape}")
-    
-    output = model(x)
     print(f"Output shape: {output.shape}")
+    print(f"Platform: {config.platform.value}")
+    print(f"Neuron type: {config.neuron_type.value}")
     
-    print("Neuromorphic model test completed successfully!")
+    # Simulate environmental adaptation
+    environmental_data = {
+        'temperature': 30.0,  # Celsius
+        'noise_level': 0.1,   # Normalized
+        'available_power': 0.8  # Normalized
+    }
+    
+    adaptations = config.adapt_to_environment(environmental_data)
+    print(f"Environmental adaptations: {adaptations}")
+    
+    # Export configuration
+    config_export = config.export_config("neuromorphic_config.json")
+    print(f"Configuration exported with {len(config_export)} sections")
+    
+    # Stop adaptation when done
+    if param_manager:
+        param_manager.stop_adaptation_process()
+    
+    print("Enhanced neuromorphic model test completed successfully!")
