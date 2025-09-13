@@ -251,8 +251,17 @@ class NeuromorphicConfig:
     enable_gamma_oscillations: bool = False
     enable_theta_rhythms: bool = False
     enable_delta_waves: bool = False
+    enable_alpha_oscillations: bool = False  # NEW: 8-12 Hz
+    enable_beta_oscillations: bool = False   # NEW: 13-30 Hz
     oscillation_frequency: float = 40.0  # Hz for gamma
     phase_coupling_strength: float = 0.1
+    
+    # Brain wave frequency parameters
+    delta_frequency: float = 2.0   # 0.5-4 Hz
+    theta_frequency: float = 6.0   # 4-8 Hz
+    alpha_frequency: float = 10.0  # 8-12 Hz
+    beta_frequency: float = 20.0   # 13-30 Hz
+    gamma_frequency: float = 40.0  # 30-100 Hz
     
     # Hardware-specific parameters
     bit_precision: int = 16  # Bit precision for weights/states
@@ -364,6 +373,33 @@ class NeuromorphicConfig:
                 if hasattr(self, param):
                     setattr(self, param, value)
             logger.info(f"Applied {self.platform.value} specific configuration")
+    
+    def _configure_phase_encoding(self):
+        """Configure intelligent phase encoding based on platform and application."""
+        if self.platform in [NeuromorphicPlatform.PHOTONIC_SNN, NeuromorphicPlatform.LOIHI2]:
+            self.enable_phase_encoding = True
+            self.enable_oscillatory_dynamics = True
+            
+            # Enable multiple oscillation bands for advanced platforms
+            self.enable_gamma_oscillations = True
+            self.enable_alpha_oscillations = True
+            self.enable_beta_oscillations = True
+            
+            if self.generation >= 4:  # 4th generation platforms
+                self.enable_theta_rhythms = True
+                self.enable_delta_waves = True
+        
+        # Configure based on generation
+        if self.generation >= 3:
+            self.enable_alpha_oscillations = True
+            self.enable_beta_oscillations = True
+            self.enable_gamma_oscillations = True
+            
+            if self.generation >= 4:
+                self.enable_theta_rhythms = True
+                self.enable_delta_waves = True
+        
+        logger.debug(f"Configured phase encoding for {self.platform.value}")
     
     def update_parameters_realtime(self, parameter_updates: Dict[str, Any], 
                                  source: str = "manual") -> bool:
@@ -802,6 +838,8 @@ class EnhancedLeakyIntegrateFireNeuron(nn.Module):
         # Stochastic dynamics
         if config.enable_stochastic_dynamics:
             self.noise_amplitude = config.noise_amplitude
+        else:
+            self.noise_amplitude = 0.0
         
         # Multi-compartment
         if config.enable_multi_compartment and config.num_compartments > 1:
@@ -850,14 +888,18 @@ class EnhancedLeakyIntegrateFireNeuron(nn.Module):
         
         # Multi-compartment processing
         if self.config.enable_multi_compartment and hasattr(self, 'v_compartments'):
+            # Expand compartment states if needed
+            if self.v_compartments.shape[0] != batch_size:
+                self.v_compartments = self.v_compartments.unsqueeze(0).expand(batch_size, -1)
+            
             # Update each compartment
             for i in range(self.config.num_compartments):
                 compartment_input = self.i_syn * self.compartment_weights[i]
-                self.v_compartments[i] = (self.alpha_mem * self.v_compartments[i] + 
-                                        compartment_input.squeeze())
+                self.v_compartments[:, i] = (self.alpha_mem * self.v_compartments[:, i] + 
+                                           compartment_input.squeeze())
             
             # Weighted sum for membrane potential
-            self.v_mem = torch.sum(self.v_compartments * self.compartment_weights.view(1, -1), 
+            self.v_mem = torch.sum(self.v_compartments * self.compartment_weights.unsqueeze(0), 
                                  dim=1, keepdim=True)
         else:
             # Standard single compartment
@@ -880,11 +922,17 @@ class EnhancedLeakyIntegrateFireNeuron(nn.Module):
                 self.v_th_adapt + self.config.adaptation_strength,
                 self.alpha_adapt * self.v_th_adapt + (1 - self.alpha_adapt) * self.config.v_threshold
             )
-            self.spike_count += spikes
+            # Ensure spike_count has the same shape as spikes
+            if self.spike_count.shape != spikes.shape:
+                self.spike_count = self.spike_count.expand_as(spikes)
+            self.spike_count = self.spike_count + spikes
         
         # Update calcium dynamics
-        if self.config.enable_calcium_dynamics:
+        if self.config.enable_calcium_dynamics and hasattr(self, 'calcium'):
             alpha_ca = torch.tensor(np.exp(-self.config.dt / self.tau_calcium))
+            # Ensure calcium has the same shape as spikes
+            if self.calcium.shape != spikes.shape:
+                self.calcium = self.calcium.expand_as(spikes)
             self.calcium = alpha_ca * self.calcium + spikes
         
         # Reset spiked neurons
@@ -902,7 +950,7 @@ class EnhancedLeakyIntegrateFireNeuron(nn.Module):
             states['v_threshold'] = self.v_th_adapt
             states['spike_count'] = self.spike_count
         
-        if self.config.enable_calcium_dynamics:
+        if self.config.enable_calcium_dynamics and hasattr(self, 'calcium'):
             states['calcium'] = self.calcium
         
         return spikes, states
@@ -916,8 +964,295 @@ class EnhancedLeakyIntegrateFireNeuron(nn.Module):
             self.v_th_adapt = self.v_th_adapt.expand(batch_size, -1).contiguous()
             self.spike_count = self.spike_count.expand(batch_size, -1).contiguous()
         
-        if self.config.enable_calcium_dynamics:
+        if self.config.enable_calcium_dynamics and hasattr(self, 'calcium'):
             self.calcium = self.calcium.expand(batch_size, -1).contiguous()
+        
+        if self.config.enable_multi_compartment and hasattr(self, 'v_compartments'):
+            self.v_compartments = self.v_compartments.expand(batch_size, -1).contiguous()
+
+
+class BrainWaveOscillator:
+    """
+    Advanced brain wave oscillation generator supporting multiple frequency bands.
+    """
+    
+    def __init__(self, config: NeuromorphicConfig):
+        self.config = config
+        self.dt = config.dt
+        
+        # Oscillation parameters for different frequency bands
+        self.oscillators = {
+            'delta': {'freq_range': (0.5, 4.0), 'phase': 0.0, 'amplitude': 1.0},
+            'theta': {'freq_range': (4.0, 8.0), 'phase': 0.0, 'amplitude': 1.0},
+            'alpha': {'freq_range': (8.0, 12.0), 'phase': 0.0, 'amplitude': 1.0},
+            'beta': {'freq_range': (13.0, 30.0), 'phase': 0.0, 'amplitude': 1.0},
+            'gamma': {'freq_range': (30.0, 100.0), 'phase': 0.0, 'amplitude': 1.0}
+        }
+        
+        # Current time and phase tracking
+        self.current_time = 0.0
+        self.phase_coupling_matrix = {}
+        
+        # Neural rhythm synchronization parameters
+        self.sync_strength = config.phase_coupling_strength
+        self.enable_phase_locking = config.enable_phase_encoding
+        
+    def generate_oscillation(self, band: str, frequency: Optional[float] = None) -> float:
+        """Generate oscillation for specific frequency band."""
+        if band not in self.oscillators:
+            raise ValueError(f"Unknown oscillation band: {band}")
+        
+        osc = self.oscillators[band]
+        
+        # Use provided frequency or middle of range
+        if frequency is None:
+            freq = (osc['freq_range'][0] + osc['freq_range'][1]) / 2
+        else:
+            freq = np.clip(frequency, osc['freq_range'][0], osc['freq_range'][1])
+        
+        # Generate oscillation
+        oscillation = osc['amplitude'] * np.sin(2 * np.pi * freq * self.current_time + osc['phase'])
+        
+        return oscillation
+    
+    def update_phase_coupling(self, band1: str, band2: str, coupling_strength: float):
+        """Update phase coupling between frequency bands."""
+        self.phase_coupling_matrix[(band1, band2)] = coupling_strength
+        self.phase_coupling_matrix[(band2, band1)] = coupling_strength
+    
+    def generate_synchronized_oscillations(self) -> Dict[str, float]:
+        """Generate synchronized oscillations across all bands."""
+        oscillations = {}
+        
+        for band in self.oscillators.keys():
+            oscillations[band] = self.generate_oscillation(band)
+        
+        # Apply phase coupling
+        if self.enable_phase_locking:
+            for (band1, band2), coupling in self.phase_coupling_matrix.items():
+                phase_diff = self.oscillators[band1]['phase'] - self.oscillators[band2]['phase']
+                coupling_force = coupling * np.sin(phase_diff)
+                
+                # Adjust phases based on coupling
+                self.oscillators[band1]['phase'] -= coupling_force * self.dt * 0.1
+                self.oscillators[band2]['phase'] += coupling_force * self.dt * 0.1
+        
+        self.current_time += self.dt
+        return oscillations
+
+
+class NeuromodulationSystem:
+    """
+    Advanced neuromodulation system supporting multiple neurotransmitters.
+    """
+    
+    def __init__(self, config: NeuromorphicConfig):
+        self.config = config
+        
+        # Neurotransmitter concentrations and dynamics
+        self.neurotransmitters = {
+            'dopamine': {'concentration': 0.0, 'decay_rate': 0.1, 'baseline': 0.1},
+            'acetylcholine': {'concentration': 0.0, 'decay_rate': 0.05, 'baseline': 0.05},
+            'serotonin': {'concentration': 0.0, 'decay_rate': 0.08, 'baseline': 0.08},
+            'oxytocin': {'concentration': 0.0, 'decay_rate': 0.12, 'baseline': 0.02},
+            'norepinephrine': {'concentration': 0.0, 'decay_rate': 0.15, 'baseline': 0.03},
+            'gaba': {'concentration': 0.0, 'decay_rate': 0.2, 'baseline': 0.1}
+        }
+        
+        # Receptor sensitivity and dynamics
+        self.receptor_sensitivity = defaultdict(lambda: 1.0)
+        self.modulation_effects = {}
+        
+    def release_neurotransmitter(self, nt_type: str, amount: float):
+        """Release neurotransmitter with specified amount."""
+        if nt_type in self.neurotransmitters:
+            self.neurotransmitters[nt_type]['concentration'] += amount
+            logger.debug(f"Released {amount:.3f} {nt_type}")
+    
+    def update_concentrations(self):
+        """Update neurotransmitter concentrations with decay."""
+        for nt_type, params in self.neurotransmitters.items():
+            # Exponential decay towards baseline
+            decay_factor = np.exp(-params['decay_rate'] * self.config.dt)
+            current = params['concentration']
+            baseline = params['baseline']
+            
+            params['concentration'] = baseline + (current - baseline) * decay_factor
+    
+    def get_modulation_factor(self, nt_type: str, effect_type: str = 'excitatory') -> float:
+        """Get modulation factor for specific neurotransmitter and effect."""
+        if nt_type not in self.neurotransmitters:
+            return 1.0
+        
+        concentration = self.neurotransmitters[nt_type]['concentration']
+        sensitivity = self.receptor_sensitivity[nt_type]
+        
+        # Different neurotransmitters have different effect profiles
+        if nt_type == 'dopamine':
+            if effect_type == 'plasticity':
+                return 1.0 + concentration * sensitivity * 2.0  # Enhances plasticity
+            else:
+                return 1.0 + concentration * sensitivity
+        elif nt_type == 'acetylcholine':
+            if effect_type == 'attention':
+                return 1.0 + concentration * sensitivity * 1.5  # Enhances attention
+            else:
+                return 1.0 + concentration * sensitivity * 0.8
+        elif nt_type == 'serotonin':
+            if effect_type == 'mood':
+                return 1.0 + concentration * sensitivity * 1.2  # Affects mood regulation
+            else:
+                return 1.0 + concentration * sensitivity * 0.6
+        elif nt_type == 'gaba':
+            return 1.0 - concentration * sensitivity * 0.8  # Inhibitory
+        else:
+            return 1.0 + concentration * sensitivity
+
+
+class EnvironmentalAdaptationEngine:
+    """
+    Advanced environmental adaptation engine with multi-parameter optimization.
+    """
+    
+    def __init__(self, config: NeuromorphicConfig):
+        self.config = config
+        self.adaptation_config = config.real_time_adaptation
+        
+        # Environmental parameter tracking
+        self.environmental_history = defaultdict(deque)
+        self.adaptation_strategies = {}
+        
+        # Temperature adaptation parameters
+        self.temperature_q10 = 2.0  # Q10 factor for temperature effects
+        self.reference_temp = 25.0  # Reference temperature in Celsius
+        
+        # Humidity adaptation parameters
+        self.humidity_effects = {
+            'membrane_resistance': lambda h: 1.0 + 0.1 * (h - 0.5),
+            'ionic_conductance': lambda h: 1.0 - 0.05 * (h - 0.5)
+        }
+        
+        # Noise adaptation parameters
+        self.noise_threshold_scaling = 1.2
+        self.noise_adaptation_rate = 0.1
+        
+        # Power scaling parameters
+        self.power_efficiency_curves = {
+            'low_power': {'threshold_scale': 1.5, 'rate_scale': 0.7},
+            'normal_power': {'threshold_scale': 1.0, 'rate_scale': 1.0},
+            'high_power': {'threshold_scale': 0.8, 'rate_scale': 1.3}
+        }
+    
+    def adapt_to_temperature(self, temperature: float) -> Dict[str, float]:
+        """Adapt neural parameters based on temperature."""
+        adaptations = {}
+        
+        # Q10 temperature scaling
+        temp_factor = self.temperature_q10 ** ((temperature - self.reference_temp) / 10.0)
+        
+        # Adapt time constants (faster at higher temperatures)
+        adaptations['tau_mem'] = self.config.tau_mem / temp_factor
+        adaptations['tau_syn'] = self.config.tau_syn / temp_factor
+        adaptations['refractory_period'] = self.config.refractory_period / temp_factor
+        
+        # Adapt spike threshold (slightly higher at high temperatures)
+        thermal_noise_factor = 1.0 + 0.01 * (temperature - self.reference_temp)
+        adaptations['v_threshold'] = self.config.v_threshold * thermal_noise_factor
+        
+        logger.debug(f"Temperature adaptation at {temperature}°C: {list(adaptations.keys())}")
+        return adaptations
+    
+    def adapt_to_humidity(self, humidity: float) -> Dict[str, float]:
+        """Adapt neural parameters based on humidity (0-1 normalized)."""
+        adaptations = {}
+        
+        # Membrane resistance changes with humidity
+        resistance_factor = self.humidity_effects['membrane_resistance'](humidity)
+        adaptations['tau_mem'] = self.config.tau_mem * resistance_factor
+        
+        # Ionic conductance effects
+        conductance_factor = self.humidity_effects['ionic_conductance'](humidity)
+        adaptations['v_threshold'] = self.config.v_threshold / conductance_factor
+        
+        logger.debug(f"Humidity adaptation at {humidity:.2f}: {list(adaptations.keys())}")
+        return adaptations
+    
+    def adapt_to_noise(self, noise_level: float) -> Dict[str, float]:
+        """Adapt neural parameters based on environmental noise."""
+        adaptations = {}
+        
+        # Increase threshold to maintain signal-to-noise ratio
+        threshold_adjustment = 1.0 + noise_level * self.noise_threshold_scaling
+        adaptations['v_threshold'] = self.config.v_threshold * threshold_adjustment
+        
+        # Adjust noise amplitude in neurons
+        adaptations['noise_amplitude'] = self.config.noise_amplitude + noise_level * 0.1
+        
+        # Adapt integration time for better noise filtering
+        if noise_level > 0.3:  # High noise environment
+            adaptations['tau_mem'] = self.config.tau_mem * 1.2  # Longer integration
+        
+        logger.debug(f"Noise adaptation at level {noise_level:.2f}: {list(adaptations.keys())}")
+        return adaptations
+    
+    def adapt_to_power_constraints(self, available_power: float) -> Dict[str, float]:
+        """Adapt neural parameters based on available power (0-1 normalized)."""
+        adaptations = {}
+        
+        # Determine power mode
+        if available_power < 0.3:
+            power_mode = 'low_power'
+        elif available_power > 0.8:
+            power_mode = 'high_power'
+        else:
+            power_mode = 'normal_power'
+        
+        power_params = self.power_efficiency_curves[power_mode]
+        
+        # Scale threshold and spike rates
+        adaptations['v_threshold'] = self.config.v_threshold * power_params['threshold_scale']
+        adaptations['max_spike_rate'] = self.config.max_spike_rate * power_params['rate_scale']
+        
+        # Adjust bit precision for power efficiency
+        if power_mode == 'low_power':
+            adaptations['bit_precision'] = max(4, self.config.bit_precision - 2)
+        elif power_mode == 'high_power':
+            adaptations['bit_precision'] = min(32, self.config.bit_precision + 2)
+        
+        logger.debug(f"Power adaptation in {power_mode} mode: {list(adaptations.keys())}")
+        return adaptations
+    
+    def comprehensive_environmental_adaptation(self, env_data: Dict[str, float]) -> Dict[str, float]:
+        """Perform comprehensive adaptation based on multiple environmental factors."""
+        all_adaptations = {}
+        
+        # Temperature adaptation
+        if 'temperature' in env_data:
+            temp_adaptations = self.adapt_to_temperature(env_data['temperature'])
+            all_adaptations.update(temp_adaptations)
+        
+        # Humidity adaptation
+        if 'humidity' in env_data:
+            humid_adaptations = self.adapt_to_humidity(env_data['humidity'])
+            all_adaptations.update(humid_adaptations)
+        
+        # Noise adaptation
+        if 'noise_level' in env_data:
+            noise_adaptations = self.adapt_to_noise(env_data['noise_level'])
+            all_adaptations.update(noise_adaptations)
+        
+        # Power adaptation
+        if 'available_power' in env_data:
+            power_adaptations = self.adapt_to_power_constraints(env_data['available_power'])
+            all_adaptations.update(power_adaptations)
+        
+        # Store environmental history
+        for param, value in env_data.items():
+            self.environmental_history[param].append(value)
+            if len(self.environmental_history[param]) > 1000:  # Keep recent history
+                self.environmental_history[param].popleft()
+        
+        return all_adaptations
 
 
 class AdaptivePlasticityManager:
@@ -940,6 +1275,11 @@ class AdaptivePlasticityManager:
         
         # Metaplasticity
         self.plasticity_thresholds = defaultdict(lambda: 1.0)
+        
+        # Advanced plasticity features
+        self.meta_learning_rates = defaultdict(lambda: 0.001)
+        self.structural_plasticity_enabled = config.enable_structural_plasticity
+        self.connectivity_changes = defaultdict(list)
         
     def update_synaptic_weights(self, pre_neurons: List[int], post_neurons: List[int],
                               spike_times: Dict[int, List[float]], 
@@ -1039,7 +1379,7 @@ class AdaptivePlasticityManager:
     def _apply_metaplasticity(self, weights: torch.Tensor, pre_neurons: List[int],
                             post_neurons: List[int], spike_times: Dict[int, List[float]],
                             rule: PlasticityRule) -> torch.Tensor:
-        """Apply metaplasticity - plasticity of plasticity."""
+        """Apply enhanced metaplasticity - plasticity of plasticity with learning rule adaptation."""
         for i, pre_id in enumerate(pre_neurons):
             for j, post_id in enumerate(post_neurons):
                 # Calculate recent activity correlation
@@ -1055,12 +1395,637 @@ class AdaptivePlasticityManager:
                     
                     self.plasticity_thresholds[(pre_id, post_id)] += threshold_change
                     
+                    # Adaptive learning rate based on meta-plasticity
+                    meta_lr = self.meta_learning_rates[(pre_id, post_id)]
+                    activity_variance = abs(activity_product - self.plasticity_thresholds[(pre_id, post_id)])
+                    
+                    # Adjust meta-learning rate based on stability
+                    if activity_variance < 0.1:  # Stable, reduce meta-learning
+                        meta_lr *= 0.99
+                    else:  # Unstable, increase meta-learning
+                        meta_lr *= 1.01
+                    
+                    self.meta_learning_rates[(pre_id, post_id)] = np.clip(meta_lr, 1e-6, 0.1)
+                    
                     # Modulate future plasticity based on threshold
                     if rule.sliding_threshold:
                         modulation = 1.0 / (1.0 + self.plasticity_thresholds[(pre_id, post_id)])
                         rule.modulation_factor = modulation
+                    
+                    # Learning rule adaptation based on performance
+                    if activity_product > 2.0 * rule.target_rate:  # High activity
+                        # Switch to more selective learning
+                        rule.a_plus *= 0.95
+                        rule.a_minus *= 1.05
+                    elif activity_product < 0.5 * rule.target_rate:  # Low activity
+                        # Switch to more permissive learning
+                        rule.a_plus *= 1.05
+                        rule.a_minus *= 0.95
         
         return weights
+    
+    def apply_structural_plasticity(self, weights: torch.Tensor, 
+                                  connection_strengths: torch.Tensor) -> torch.Tensor:
+        """Apply structural plasticity - dynamic connectivity adaptation."""
+        if not self.structural_plasticity_enabled:
+            return weights
+        
+        # Prune weak connections
+        pruning_mask = torch.abs(weights) > self.config.real_time_adaptation.pruning_threshold
+        weights = weights * pruning_mask.float()
+        
+        # Grow new connections based on activity patterns
+        # This is a simplified version - in practice, would use more sophisticated rules
+        growth_probability = torch.sigmoid(connection_strengths - self.config.real_time_adaptation.growth_threshold)
+        new_connections = torch.bernoulli(growth_probability * 0.01)  # Low probability of new connections
+        
+        # Initialize new connections with small random weights
+        new_weights = torch.randn_like(weights) * 0.01 * new_connections
+        weights = weights + new_weights
+        
+        # Track connectivity changes
+        pruned_connections = (~pruning_mask).sum().item()
+        grown_connections = new_connections.sum().item()
+        
+        self.connectivity_changes['pruned'].append(pruned_connections)
+        self.connectivity_changes['grown'].append(grown_connections)
+        
+        return weights
+    
+    def apply_neuromodulated_plasticity(self, weights: torch.Tensor, 
+                                      neuromodulation: NeuromodulationSystem,
+                                      rule: PlasticityRule) -> torch.Tensor:
+        """Apply plasticity with neuromodulator influence."""
+        # Get modulation factors for different neurotransmitters
+        dopamine_factor = neuromodulation.get_modulation_factor('dopamine', 'plasticity')
+        acetylcholine_factor = neuromodulation.get_modulation_factor('acetylcholine', 'attention')
+        
+        # Modulate learning rates
+        modulated_lr = rule.learning_rate * dopamine_factor * acetylcholine_factor
+        
+        # Apply to weight updates (this would be integrated with STDP in practice)
+        rule.learning_rate = np.clip(modulated_lr, rule.min_learning_rate, rule.max_learning_rate)
+        
+        return weights
+
+
+class RealTimeMonitoringSystem:
+    """
+    Advanced real-time monitoring and performance assessment system.
+    """
+    
+    def __init__(self, config: NeuromorphicConfig):
+        self.config = config
+        self.monitoring_config = config.real_time_adaptation
+        
+        # Performance metrics tracking
+        self.metrics_history = {
+            'accuracy': deque(maxlen=1000),
+            'convergence_rate': deque(maxlen=1000),
+            'energy_efficiency': deque(maxlen=1000),
+            'latency': deque(maxlen=1000),
+            'spike_rate': deque(maxlen=1000),
+            'weight_stability': deque(maxlen=1000),
+            'connectivity_density': deque(maxlen=1000)
+        }
+        
+        # Quality assessment metrics
+        self.quality_metrics = {
+            'signal_to_noise_ratio': 0.0,
+            'network_health_score': 1.0,
+            'plasticity_efficiency': 1.0,
+            'temporal_coherence': 1.0
+        }
+        
+        # Energy monitoring
+        self.energy_consumption = {
+            'spike_energy': 0.0,
+            'synaptic_energy': 0.0,
+            'plasticity_energy': 0.0,
+            'total_energy': 0.0
+        }
+        
+        # Latency tracking
+        self.latency_measurements = {
+            'processing_latency': deque(maxlen=100),
+            'adaptation_latency': deque(maxlen=100),
+            'response_latency': deque(maxlen=100)
+        }
+        
+        # Adaptive thresholds
+        self.performance_thresholds = {
+            'accuracy_threshold': 0.8,
+            'energy_threshold': 1e-9,  # Joules
+            'latency_threshold': 0.1,  # seconds
+            'convergence_threshold': 0.95
+        }
+    
+    def update_performance_metrics(self, accuracy: float, convergence_rate: float, 
+                                 energy_used: float, latency: float):
+        """Update core performance metrics."""
+        self.metrics_history['accuracy'].append(accuracy)
+        self.metrics_history['convergence_rate'].append(convergence_rate)
+        self.metrics_history['energy_efficiency'].append(1.0 / (energy_used + 1e-12))
+        self.metrics_history['latency'].append(latency)
+        
+        # Update energy consumption
+        self.energy_consumption['total_energy'] += energy_used
+    
+    def calculate_network_health_score(self, spike_rates: List[float], 
+                                     weight_matrix: torch.Tensor) -> float:
+        """Calculate comprehensive network health score."""
+        # Spike rate diversity (avoid silent or over-active neurons)
+        spike_rate_cv = np.std(spike_rates) / (np.mean(spike_rates) + 1e-6)
+        rate_health = 1.0 / (1.0 + spike_rate_cv)  # Lower CV is better
+        
+        # Weight distribution health
+        weight_std = torch.std(weight_matrix).item()
+        weight_mean = torch.mean(torch.abs(weight_matrix)).item()
+        weight_cv = weight_std / (weight_mean + 1e-6)
+        weight_health = 1.0 / (1.0 + weight_cv)
+        
+        # Connectivity health (avoid too sparse or too dense)
+        non_zero_weights = (torch.abs(weight_matrix) > 1e-6).float().mean().item()
+        connectivity_health = 1.0 - abs(non_zero_weights - 0.3)  # Optimal around 30%
+        
+        # Combine health metrics
+        overall_health = (rate_health + weight_health + connectivity_health) / 3.0
+        self.quality_metrics['network_health_score'] = overall_health
+        
+        return overall_health
+    
+    def calculate_signal_to_noise_ratio(self, signal: torch.Tensor, 
+                                      noise_level: float) -> float:
+        """Calculate signal-to-noise ratio."""
+        signal_power = torch.mean(signal ** 2).item()
+        noise_power = noise_level ** 2
+        snr = 10 * np.log10(signal_power / (noise_power + 1e-12))
+        
+        self.quality_metrics['signal_to_noise_ratio'] = snr
+        return snr
+    
+    def assess_temporal_coherence(self, spike_times: Dict[int, List[float]]) -> float:
+        """Assess temporal coherence of neural activity."""
+        if not spike_times:
+            return 0.0
+        
+        # Calculate inter-spike interval variability
+        isi_cvs = []
+        for neuron_id, times in spike_times.items():
+            if len(times) > 2:
+                isis = np.diff(times)
+                if len(isis) > 1:
+                    cv = np.std(isis) / (np.mean(isis) + 1e-6)
+                    isi_cvs.append(cv)
+        
+        if isi_cvs:
+            temporal_coherence = 1.0 / (1.0 + np.mean(isi_cvs))
+        else:
+            temporal_coherence = 0.5
+        
+        self.quality_metrics['temporal_coherence'] = temporal_coherence
+        return temporal_coherence
+    
+    def get_performance_summary(self) -> Dict[str, Any]:
+        """Get comprehensive performance summary."""
+        summary = {}
+        
+        # Current metrics
+        for metric, history in self.metrics_history.items():
+            if history:
+                summary[f'{metric}_current'] = history[-1]
+                summary[f'{metric}_mean'] = np.mean(history)
+                summary[f'{metric}_std'] = np.std(history)
+        
+        # Quality metrics
+        summary['quality_metrics'] = self.quality_metrics.copy()
+        
+        # Energy breakdown
+        summary['energy_consumption'] = self.energy_consumption.copy()
+        
+        # Performance flags
+        summary['performance_flags'] = self._check_performance_flags()
+        
+        return summary
+    
+    def _check_performance_flags(self) -> Dict[str, bool]:
+        """Check if performance metrics meet thresholds."""
+        flags = {}
+        
+        if self.metrics_history['accuracy']:
+            flags['accuracy_ok'] = self.metrics_history['accuracy'][-1] >= self.performance_thresholds['accuracy_threshold']
+        
+        if self.metrics_history['latency']:
+            flags['latency_ok'] = self.metrics_history['latency'][-1] <= self.performance_thresholds['latency_threshold']
+        
+        if self.metrics_history['convergence_rate']:
+            flags['convergence_ok'] = self.metrics_history['convergence_rate'][-1] >= self.performance_thresholds['convergence_threshold']
+        
+        flags['energy_ok'] = self.energy_consumption['total_energy'] <= self.performance_thresholds['energy_threshold']
+        flags['network_health_ok'] = self.quality_metrics['network_health_score'] >= 0.7
+        
+        return flags
+
+
+class StochasticProcessingEngine:
+    """
+    Advanced stochastic processing engine with adaptive filtering.
+    """
+    
+    def __init__(self, config: NeuromorphicConfig):
+        self.config = config
+        
+        # Stochastic parameters
+        self.noise_models = {
+            'gaussian': {'std': 0.1, 'mean': 0.0},
+            'poisson': {'rate': 10.0},
+            'uniform': {'low': -0.1, 'high': 0.1},
+            'pink': {'exponent': -1.0, 'std': 0.1}
+        }
+        
+        # Adaptive filtering parameters
+        self.filter_coefficients = torch.ones(5) / 5  # Simple moving average
+        self.adaptive_learning_rate = 0.01
+        self.noise_estimation_window = 100
+        
+        # Probabilistic spike generation
+        self.spike_probability_model = 'exponential'  # exponential, sigmoid, linear
+        self.refractory_noise = True
+        
+        # Noise history for adaptation
+        self.noise_history = deque(maxlen=self.noise_estimation_window)
+        self.signal_history = deque(maxlen=self.noise_estimation_window)
+    
+    def generate_stochastic_noise(self, shape: Tuple[int, ...], 
+                                noise_type: str = 'gaussian') -> torch.Tensor:
+        """Generate stochastic noise with specified characteristics."""
+        if noise_type == 'gaussian':
+            params = self.noise_models['gaussian']
+            noise = torch.normal(params['mean'], params['std'], size=shape)
+        elif noise_type == 'poisson':
+            params = self.noise_models['poisson']
+            noise = torch.poisson(torch.full(shape, params['rate'])) - params['rate']
+        elif noise_type == 'uniform':
+            params = self.noise_models['uniform']
+            noise = torch.rand(shape) * (params['high'] - params['low']) + params['low']
+        elif noise_type == 'pink':
+            # Simplified pink noise (would need proper implementation for real use)
+            white_noise = torch.randn(shape)
+            noise = self._apply_pink_filter(white_noise)
+        else:
+            noise = torch.zeros(shape)
+        
+        return noise
+    
+    def _apply_pink_filter(self, white_noise: torch.Tensor) -> torch.Tensor:
+        """Apply pink noise filtering (simplified implementation)."""
+        # This is a simplified version - proper pink noise requires frequency domain filtering
+        # For multi-dimensional inputs, flatten and process
+        original_shape = white_noise.shape
+        flattened = white_noise.flatten()
+        
+        if len(flattened) < len(self.filter_coefficients):
+            return white_noise  # Too small to filter
+        
+        # Simple convolution-based filtering
+        padded = torch.nn.functional.pad(flattened.unsqueeze(0).unsqueeze(0), 
+                                       (len(self.filter_coefficients)//2, len(self.filter_coefficients)//2))
+        filtered = torch.nn.functional.conv1d(
+            padded,
+            self.filter_coefficients.unsqueeze(0).unsqueeze(0)
+        ).squeeze()
+        
+        # Reshape back to original
+        return filtered[:len(flattened)].view(original_shape)
+    
+    def probabilistic_spike_generation(self, membrane_potential: torch.Tensor, 
+                                     threshold: float, temperature: float = 1.0) -> torch.Tensor:
+        """Generate spikes probabilistically based on membrane potential."""
+        if self.spike_probability_model == 'exponential':
+            # Exponential probability model
+            prob = 1.0 - torch.exp(-(membrane_potential - threshold) / temperature)
+        elif self.spike_probability_model == 'sigmoid':
+            # Sigmoid probability model
+            prob = torch.sigmoid((membrane_potential - threshold) / temperature)
+        elif self.spike_probability_model == 'linear':
+            # Linear probability model with clipping
+            prob = torch.clamp((membrane_potential - threshold) / temperature, 0, 1)
+        else:
+            # Default: threshold-based
+            prob = (membrane_potential >= threshold).float()
+        
+        # Add refractory noise if enabled
+        if self.refractory_noise:
+            noise = self.generate_stochastic_noise(prob.shape, 'gaussian') * 0.01
+            prob = torch.clamp(prob + noise, 0, 1)
+        
+        # Generate spikes based on probability
+        spikes = torch.bernoulli(prob)
+        return spikes
+    
+    def adaptive_noise_filtering(self, signal: torch.Tensor, 
+                               estimated_noise_level: float) -> torch.Tensor:
+        """Apply adaptive noise filtering based on estimated noise level."""
+        # Update noise estimation
+        self.noise_history.append(estimated_noise_level)
+        self.signal_history.append(torch.mean(torch.abs(signal)).item())
+        
+        if len(self.noise_history) >= 10:
+            # Adapt filter based on signal-to-noise ratio
+            avg_signal = np.mean(list(self.signal_history)[-10:])
+            avg_noise = np.mean(list(self.noise_history)[-10:])
+            snr = avg_signal / (avg_noise + 1e-12)
+            
+            # Adjust filter strength based on SNR
+            if snr < 1.0:  # High noise
+                filter_strength = 0.8
+            elif snr > 10.0:  # Low noise
+                filter_strength = 0.2
+            else:
+                filter_strength = 0.5
+            
+            # Apply adaptive filtering
+            filtered_signal = signal * (1 - filter_strength) + \
+                            torch.mean(signal) * filter_strength
+            
+            return filtered_signal
+        
+        return signal
+    
+    def estimate_noise_level(self, signal: torch.Tensor, 
+                           method: str = 'mad') -> float:
+        """Estimate noise level in the signal."""
+        if method == 'mad':  # Median Absolute Deviation
+            median = torch.median(signal)
+            mad = torch.median(torch.abs(signal - median))
+            noise_level = mad * 1.4826  # Scale factor for Gaussian noise
+        elif method == 'std':  # Standard deviation (assumes zero-mean noise)
+            noise_level = torch.std(signal - torch.mean(signal))
+        else:
+            noise_level = torch.tensor(0.1)  # Default estimate
+        
+        return noise_level.item()
+
+
+class NeuromorphicAdaptiveModel(nn.Module):
+    """
+    Main neuromorphic adaptive model with advanced real-time adaptation capabilities.
+    """
+    
+    def __init__(self, input_dim: int, output_dim: int, config: Optional[NeuromorphicConfig] = None):
+        super().__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.config = config or NeuromorphicConfig()
+        
+        # Core neural components
+        self.neurons = nn.ModuleList([
+            EnhancedLeakyIntegrateFireNeuron(self.config, i) 
+            for i in range(output_dim)
+        ])
+        
+        # Advanced systems
+        self.oscillator = BrainWaveOscillator(self.config)
+        self.neuromodulation = NeuromodulationSystem(self.config)
+        self.environmental_adapter = EnvironmentalAdaptationEngine(self.config)
+        self.plasticity_manager = AdaptivePlasticityManager(self.config)
+        self.monitoring_system = RealTimeMonitoringSystem(self.config)
+        self.stochastic_engine = StochasticProcessingEngine(self.config)
+        
+        # Parameter manager
+        self.parameter_manager = RealTimeParameterManager(self.config)
+        
+        # Synaptic weights
+        self.input_weights = nn.Parameter(torch.randn(input_dim, output_dim, dtype=torch.float32) * 0.1)
+        self.recurrent_weights = nn.Parameter(torch.randn(output_dim, output_dim, dtype=torch.float32) * 0.05)
+        
+        # Encoding and decoding layers
+        self.encoder = nn.Linear(input_dim, input_dim)  # Optional input preprocessing
+        self.decoder = nn.Linear(output_dim, output_dim)  # Optional output postprocessing
+        
+        # State tracking
+        self.time_step = 0
+        self.spike_history = defaultdict(list)
+        self.performance_history = []
+        
+        logger.info(f"Initialized NeuromorphicAdaptiveModel with {len(self.neurons)} neurons")
+    
+    def forward(self, x: torch.Tensor, environmental_data: Optional[Dict[str, float]] = None) -> torch.Tensor:
+        """
+        Forward pass with comprehensive neuromorphic processing.
+        
+        Args:
+            x: Input tensor
+            environmental_data: Optional environmental parameters
+            
+        Returns:
+            Output spikes and neural states
+        """
+        batch_size = x.shape[0]
+        start_time = time.time()
+        
+        # Environmental adaptation
+        if environmental_data is not None:
+            adaptations = self.environmental_adapter.comprehensive_environmental_adaptation(environmental_data)
+            if adaptations:
+                self.config.update_parameters_realtime(adaptations, "environmental")
+        
+        # Brain wave oscillations
+        oscillations = self.oscillator.generate_synchronized_oscillations()
+        
+        # Input encoding with stochastic processing
+        encoded_input = self.encoder(x)
+        if self.config.enable_stochastic_dynamics:
+            noise = self.stochastic_engine.generate_stochastic_noise(
+                encoded_input.shape, 'gaussian'
+            )
+            encoded_input = encoded_input + noise
+        
+        # Neural processing
+        outputs = []
+        all_states = []
+        
+        for i, neuron in enumerate(self.neurons):
+            # Calculate input current
+            input_current = torch.matmul(encoded_input, self.input_weights[:, i:i+1])
+            
+            # Add recurrent input
+            if len(outputs) > 0:
+                # Stack previous outputs and compute recurrent input
+                prev_outputs = torch.stack(outputs, dim=1)  # [batch, num_prev_neurons, 1]
+                recurrent_weights_slice = self.recurrent_weights[:len(outputs), i:i+1].float()  # [num_prev_neurons, 1]
+                recurrent_input = torch.matmul(
+                    prev_outputs.squeeze(-1),  # [batch, num_prev_neurons]
+                    recurrent_weights_slice.squeeze(-1)  # [num_prev_neurons]
+                ).unsqueeze(-1)  # [batch, 1]
+                input_current = input_current + recurrent_input
+            
+            # Add oscillatory modulation
+            osc_modulation = sum(oscillations.values()) / len(oscillations)
+            input_current = input_current * (1.0 + 0.1 * osc_modulation)
+            
+            # Neuromodulation
+            dopamine_mod = self.neuromodulation.get_modulation_factor('dopamine')
+            neuromod_signal = torch.tensor(dopamine_mod - 1.0).unsqueeze(0).expand(batch_size, 1)
+            
+            # Process through neuron
+            spike_output, neuron_states = neuron(input_current, neuromod_signal)
+            
+            # Stochastic spike generation if enabled
+            if self.config.enable_stochastic_dynamics:
+                spike_output = self.stochastic_engine.probabilistic_spike_generation(
+                    neuron_states['v_mem'], 
+                    self.config.v_threshold,
+                    temperature=0.1
+                )
+            
+            outputs.append(spike_output)
+            all_states.append(neuron_states)
+            
+            # Track spikes for plasticity
+            spike_times = [self.time_step * self.config.dt] * int(spike_output.sum().item())
+            self.spike_history[i].extend(spike_times)
+        
+        # Stack outputs
+        output_tensor = torch.stack(outputs, dim=1).squeeze(-1)
+        
+        # Apply plasticity
+        if self.training:
+            self._update_synaptic_weights()
+        
+        # Update neuromodulator concentrations
+        self.neuromodulation.update_concentrations()
+        
+        # Performance monitoring
+        processing_latency = time.time() - start_time
+        self._update_performance_metrics(output_tensor, processing_latency)
+        
+        # Decode output
+        decoded_output = self.decoder(output_tensor)
+        
+        self.time_step += 1
+        
+        return decoded_output
+    
+    def _update_synaptic_weights(self):
+        """Update synaptic weights using plasticity rules."""
+        pre_neurons = list(range(self.input_dim))
+        post_neurons = list(range(self.output_dim))
+        
+        # Apply plasticity to input weights
+        updated_input_weights = self.plasticity_manager.update_synaptic_weights(
+            pre_neurons, post_neurons, self.spike_history, self.input_weights
+        )
+        self.input_weights.data = updated_input_weights
+        
+        # Apply plasticity to recurrent weights
+        updated_recurrent_weights = self.plasticity_manager.update_synaptic_weights(
+            post_neurons, post_neurons, self.spike_history, self.recurrent_weights
+        )
+        self.recurrent_weights.data = updated_recurrent_weights
+        
+        # Apply structural plasticity if enabled
+        if self.config.enable_structural_plasticity:
+            connection_strengths = torch.abs(self.input_weights) + torch.abs(self.recurrent_weights.mean(dim=0, keepdim=True).T)
+            self.input_weights.data = self.plasticity_manager.apply_structural_plasticity(
+                self.input_weights, connection_strengths
+            )
+    
+    def _update_performance_metrics(self, output: torch.Tensor, latency: float):
+        """Update performance monitoring metrics."""
+        # Calculate basic metrics
+        spike_rate = output.float().mean().item()
+        energy_estimate = spike_rate * self.config.energy_per_spike * len(self.neurons)
+        
+        # Estimate accuracy (this would be based on actual task performance)
+        accuracy_estimate = 0.8  # Placeholder - would be computed based on task
+        convergence_rate = 0.9  # Placeholder - would track learning convergence
+        
+        # Update monitoring system
+        self.monitoring_system.update_performance_metrics(
+            accuracy_estimate, convergence_rate, energy_estimate, latency
+        )
+        
+        # Calculate network health
+        spike_rates = [len(spikes) for spikes in self.spike_history.values()]
+        weight_matrix = torch.cat([self.input_weights.flatten(), self.recurrent_weights.flatten()])
+        health_score = self.monitoring_system.calculate_network_health_score(
+            spike_rates, weight_matrix.unsqueeze(0)
+        )
+    
+    def adapt_to_environment(self, environmental_data: Dict[str, float]) -> Dict[str, Any]:
+        """Adapt the model to environmental conditions."""
+        return self.environmental_adapter.comprehensive_environmental_adaptation(environmental_data)
+    
+    def get_performance_summary(self) -> Dict[str, Any]:
+        """Get comprehensive performance summary."""
+        return self.monitoring_system.get_performance_summary()
+    
+    def start_real_time_adaptation(self):
+        """Start real-time parameter adaptation."""
+        self.parameter_manager.start_adaptation()
+        
+        # Add callback to update model when parameters change
+        def on_parameter_update(updates):
+            logger.info(f"Real-time parameter update: {list(updates.keys())}")
+        
+        self.parameter_manager.add_update_callback(on_parameter_update)
+    
+    def stop_real_time_adaptation(self):
+        """Stop real-time parameter adaptation."""
+        self.parameter_manager.stop_adaptation_process()
+    
+    def configure_brain_waves(self, wave_config: Dict[str, Dict[str, float]]):
+        """Configure brain wave oscillations."""
+        for band, params in wave_config.items():
+            if band in self.oscillator.oscillators:
+                self.oscillator.oscillators[band].update(params)
+        
+        logger.info(f"Configured brain waves: {list(wave_config.keys())}")
+    
+    def release_neurotransmitter(self, nt_type: str, amount: float):
+        """Release neurotransmitter for neuromodulation."""
+        self.neuromodulation.release_neurotransmitter(nt_type, amount)
+    
+    def reset_state(self):
+        """Reset model state for new sequence."""
+        for neuron in self.neurons:
+            neuron.v_mem.zero_()
+            neuron.i_syn.zero_()
+            if hasattr(neuron, 'calcium'):
+                neuron.calcium.zero_()
+        
+        self.spike_history.clear()
+        self.time_step = 0
+        
+        logger.debug("Model state reset")
+
+
+# Enhanced configuration additions
+@dataclass
+class BrainWaveConfig:
+    """Configuration for brain wave oscillations."""
+    enable_delta: bool = False  # 0.5-4 Hz
+    enable_theta: bool = False  # 4-8 Hz  
+    enable_alpha: bool = False  # 8-12 Hz
+    enable_beta: bool = False   # 13-30 Hz
+    enable_gamma: bool = False  # 30-100 Hz
+    
+    # Frequency parameters
+    delta_freq: float = 2.0
+    theta_freq: float = 6.0
+    alpha_freq: float = 10.0
+    beta_freq: float = 20.0
+    gamma_freq: float = 40.0
+    
+    # Phase coupling
+    enable_cross_frequency_coupling: bool = False
+    theta_gamma_coupling: float = 0.1
+    alpha_beta_coupling: float = 0.05
+    
+    # Amplitude modulation
+    enable_amplitude_modulation: bool = False
+    modulation_depth: float = 0.2
 
 
 # Factory function for creating enhanced neuromorphic models
@@ -1070,7 +2035,7 @@ def create_enhanced_neuromorphic_model(
     platform: NeuromorphicPlatform = NeuromorphicPlatform.SIMULATION,
     config: Optional[NeuromorphicConfig] = None,
     enable_real_time_adaptation: bool = True
-) -> Tuple[nn.Module, RealTimeParameterManager]:
+) -> Tuple[NeuromorphicAdaptiveModel, Optional[RealTimeParameterManager]]:
     """
     Create enhanced neuromorphic model with real-time adaptation capabilities.
     
@@ -1087,23 +2052,48 @@ def create_enhanced_neuromorphic_model(
     if config is None:
         config = NeuromorphicConfig(platform=platform)
     
-    # Create parameter manager
-    param_manager = None
-    if enable_real_time_adaptation:
-        param_manager = RealTimeParameterManager(config)
+    # Enhance config with brain wave support
+    _update_neuromorphic_config_with_brain_waves(config)
     
-    # Import and use the original model class (assuming it exists)
-    from . import NeuromorphicAdaptiveModel  # This would import from the existing code
-    
+    # Create model
     model = NeuromorphicAdaptiveModel(
         input_dim=input_dim,
         output_dim=output_dim,
         config=config
     )
     
+    # Create parameter manager
+    param_manager = None
+    if enable_real_time_adaptation:
+        param_manager = RealTimeParameterManager(config)
+        
+        # Connect parameter manager to model
+        def on_parameter_update(updates):
+            logger.info(f"Applied parameter updates: {list(updates.keys())}")
+        
+        param_manager.add_update_callback(on_parameter_update)
+    
     logger.info(f"Created enhanced neuromorphic model for platform: {platform.value}")
     
     return model, param_manager
+
+
+def _update_neuromorphic_config_with_brain_waves(config: NeuromorphicConfig):
+    """Update neuromorphic config with enhanced brain wave support."""
+    # Enable advanced oscillation features based on generation
+    if config.generation >= 3:
+        config.enable_alpha_oscillations = True
+        config.enable_beta_oscillations = True
+        config.enable_gamma_oscillations = True
+        
+        if config.generation >= 4:
+            config.enable_theta_rhythms = True
+            config.enable_delta_waves = True
+        
+        # Configure phase coupling
+        config.phase_coupling_strength = 0.1
+        config.enable_phase_encoding = True
+        config.enable_oscillatory_dynamics = True
 
 
 if __name__ == "__main__":
