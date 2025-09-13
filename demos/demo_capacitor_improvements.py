@@ -6,6 +6,11 @@ This script showcases all the improvements and features of the capacitor.py modu
 Run this to see the enhanced capabilities in action.
 """
 
+import sys
+import os
+# Add parent directory to path so we can import project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from core.capacitor import CapacitorInSpace
 import numpy as np
 import logging

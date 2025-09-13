@@ -3,6 +3,11 @@
 Demo script showcasing production-ready signal processing features
 """
 
+import sys
+import os
+# Add parent directory to path so we can import project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import time
 import json
 from core.alive_node import AliveLoopNode, SocialSignal, Memory

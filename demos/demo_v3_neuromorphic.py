@@ -5,6 +5,11 @@ This demo showcases the advanced capabilities of the V3 neuromorphic implementat
 including continual learning, few-shot learning, and sensory processing.
 """
 
+import sys
+import os
+# Add parent directory to path so we can import project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import torch
 import torch.nn as nn
 import numpy as np

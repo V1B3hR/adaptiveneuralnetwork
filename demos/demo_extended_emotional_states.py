@@ -9,6 +9,11 @@ future node states.
 
 import sys
 import os
+# Add parent directory to path so we can import project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import sys
+import os
 import time
 
 # Add the parent directory to the path so we can import from core

@@ -53,7 +53,7 @@ This implementation addresses all requirements from the problem statement:
 ### Files Modified
 - `core/time_series_tracker.py` - Core security improvements
 - `tests/test_sql_security.py` - Comprehensive security tests
-- `demo_sql_security.py` - Demonstration script
+- `demos/demo_sql_security.py` - Demonstration script
 
 ### Key Methods Added
 - `_validate_query_parameters()` - Input validation and type coercion

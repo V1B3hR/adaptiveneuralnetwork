@@ -9,6 +9,11 @@ This script demonstrates:
 4. Enhanced phase controllers with sparsity metrics
 """
 
+import sys
+import os
+# Add parent directory to path so we can import project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import torch
 from adaptiveneuralnetwork.api.config import AdaptiveConfig
 from adaptiveneuralnetwork.api.model import AdaptiveModel

@@ -8,6 +8,11 @@ including joy sharing, grief support, celebration invites, and comfort requests.
 
 import sys
 import os
+# Add parent directory to path so we can import project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import sys
+import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
 
 from core.alive_node import AliveLoopNode
