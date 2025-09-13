@@ -148,7 +148,7 @@ The solution includes comprehensive tests:
 
 Run the demonstration:
 ```bash
-python demo_time_mitigation.py
+python demos/demo_time_mitigation.py
 ```
 
 ## Migration Guide

@@ -275,9 +275,9 @@ python -m unittest tests.test_production_signal_processing -v
 
 ## Demo
 
-Interactive demonstration available in `demo_production_signal_processing.py` showcasing all features with example scenarios.
+Interactive demonstration available in `demos/demo_production_signal_processing.py` showcasing all features with example scenarios.
 
 Run demo with:
 ```bash
-python demo_production_signal_processing.py
+python demos/demo_production_signal_processing.py
 ```

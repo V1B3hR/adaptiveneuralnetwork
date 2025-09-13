@@ -7,6 +7,11 @@ separates simulation time from real-world time, solving the original
 problem of mixed time representations.
 """
 
+import sys
+import os
+# Add parent directory to path so we can import project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import time
 import sys
 from core.time_manager import TimeManager, TimeConfig, set_time_manager

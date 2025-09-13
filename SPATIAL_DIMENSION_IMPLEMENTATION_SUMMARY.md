@@ -39,12 +39,12 @@ This document summarizes the successful implementation of the spatial dimension 
 - **All tests pass**: 23/23 tests successful (15 new + 8 existing)
 
 ### Phase 4: Demonstration and Validation ✅
-- **Created comprehensive demo** (`demo_3d_capabilities.py`) showcasing:
+- **Created comprehensive demo** (`demos/demo_3d_capabilities.py`) showcasing:
   - 2D vs 3D network operation comparison
   - Multi-dimensional scaling (2D → 10D)
   - 3D trust network formation
   - Configuration-driven dimension switching
-- **Generated demo results** (`3d_demo_results.json`) with performance metrics
+- **Generated demo results** (`demos/3d_demo_results.json`) with performance metrics
 
 ## Key Achievements
 
@@ -121,7 +121,7 @@ System supports arbitrary dimensional spaces.
 | `experiments/extreme_scale_test.py` | Config-driven dimensions | +15 |
 | `core/robustness_validator.py` | Dimension-aware testing | +50 |
 | `tests/test_spatial_dimensions.py` | **NEW** comprehensive tests | +350 |
-| `demo_3d_capabilities.py` | **NEW** demonstration | +400 |
+| `demos/demo_3d_capabilities.py` | **NEW** demonstration | +400 |
 
 **Total**: 7 modified files, 2 new modules, ~1057 lines of new/modified code
 

@@ -12,6 +12,11 @@ Shows:
 
 import sys
 import os
+# Add parent directory to path so we can import project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import sys
+import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from core.alive_node import AliveLoopNode

@@ -6,6 +6,11 @@ This script demonstrates the newly implemented dimension-agnostic features
 of the adaptive neural network, showing seamless operation in 3D space.
 """
 
+import sys
+import os
+# Add parent directory to path so we can import project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import numpy as np
 import json
 from config.network_config import load_network_config

@@ -107,7 +107,7 @@ python -m pytest tests/test_enhanced_trust_network.py -v
 ### Demonstration
 See the full system in action:
 ```bash
-python demo_enhanced_trust_system.py
+python demos/demo_enhanced_trust_system.py
 ```
 
 ### Integration Tests
