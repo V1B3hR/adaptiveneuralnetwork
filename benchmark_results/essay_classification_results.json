@@ -1,0 +1,70 @@
+{
+  "final_test_accuracy": 0.4,
+  "best_test_accuracy": 0.6,
+  "final_train_accuracy": 0.525,
+  "best_train_accuracy": 0.525,
+  "final_train_loss": 0.6949770053227743,
+  "min_train_loss": 0.6899057030677795,
+  "train_losses": [
+    0.7023191650708517,
+    0.691910962263743,
+    0.6899057030677795,
+    0.7023547887802124,
+    0.6949770053227743
+  ],
+  "train_accuracies": [
+    0.525,
+    0.475,
+    0.525,
+    0.525,
+    0.525
+  ],
+  "test_accuracies": [
+    0.6,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+  ],
+  "training_time": 2.9977853298187256,
+  "total_time": 2.9978535175323486,
+  "epochs": 5,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "vocab_size": 5000,
+  "max_length": 256,
+  "train_samples": 80,
+  "test_samples": 20,
+  "model_parameters": 49746,
+  "config": {
+    "num_nodes": 100,
+    "hidden_dim": 128,
+    "input_dim": 256,
+    "output_dim": 2,
+    "spatial_dim": 2,
+    "energy_decay": 0.01,
+    "activity_threshold": 0.5,
+    "connection_radius": 1.0,
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "num_epochs": 5,
+    "adaptation_rate": 0.1,
+    "circadian_period": 100,
+    "phase_weights": {
+      "active": 0.6,
+      "interactive": 0.25,
+      "sleep": 0.1,
+      "inspired": 0.05
+    },
+    "backend": "pytorch",
+    "device": "cpu",
+    "dtype": "float32",
+    "seed": 42,
+    "log_interval": 100,
+    "save_checkpoint": true,
+    "checkpoint_dir": "checkpoints",
+    "metrics_file": "metrics.json",
+    "enable_continual_learning": false,
+    "enable_ablation_study": false
+  }
+}
