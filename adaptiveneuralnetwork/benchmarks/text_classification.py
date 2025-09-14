@@ -197,6 +197,7 @@ class TextClassificationBenchmark:
         """
         self.config = self._update_config_for_text(config)
         self.device = device or torch.device(config.device)
+        # Initialize model placeholder - will be created when needed with proper input dimensions
         self.model = None
         
     def _update_config_for_text(self, config: AdaptiveConfig) -> AdaptiveConfig:
@@ -206,6 +207,17 @@ class TextClassificationBenchmark:
         # Will be set based on dataset
         new_config.output_dim = 2  # Binary classification
         return new_config
+    
+    def _create_model(self, vocab_size: int, max_length: int) -> None:
+        """Create the adaptive model with proper dimensions."""
+        # Update config with dataset-specific parameters
+        self.config.input_dim = max_length
+        self.config.vocab_size = vocab_size  # Store for reference
+        
+        # Create model
+        from ..api import create_adaptive_model
+        self.model = create_adaptive_model(self.config)
+        self.model.to(self.device)
     
     def run_essay_classification_benchmark(
         self,
@@ -241,11 +253,6 @@ class TextClassificationBenchmark:
                 max_length=256
             )
         
-        # Update config with dataset-specific parameters
-        # For text classification, we need to handle sequence data properly
-        # The input will be flattened sequence tokens, so input_dim should be max_length
-        self.config.input_dim = dataset.max_length
-        
         # Split dataset
         total_size = len(dataset)
         test_size = int(total_size * test_split)
@@ -257,10 +264,8 @@ class TextClassificationBenchmark:
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
         
-        # Create model
-        from ..api import create_adaptive_model
-        self.model = create_adaptive_model(self.config)
-        self.model.to(self.device)
+        # Create model with proper dimensions
+        self._create_model(len(dataset.vocab), dataset.max_length)
         
         # Setup optimizer
         optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
@@ -354,10 +359,8 @@ class TextClassificationBenchmark:
             
             optimizer.zero_grad()
             
-            # Reset model state to avoid gradient graph issues
-            with torch.no_grad():
-                if hasattr(model, 'reset_state'):
-                    model.reset_state()
+            # Reset model state before each forward pass to avoid gradient issues
+            model.reset_state()
             
             # Convert token indices to float for the model
             # The data shape is [batch_size, seq_length] with token indices
@@ -380,10 +383,6 @@ class TextClassificationBenchmark:
         total = 0
         
         with torch.no_grad():
-            # Reset model state for evaluation
-            if hasattr(model, 'reset_state'):
-                model.reset_state()
-                
             for data, target in test_loader:
                 data, target = data.to(device), target.to(device)
                 # Convert token indices to float for the model
