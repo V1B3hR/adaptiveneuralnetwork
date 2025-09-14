@@ -30,27 +30,56 @@ def setup_logging(verbose: bool = False):
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
-def load_kaggle_dataset(data_path: str) -> EssayDataset:
+def load_kaggle_dataset(data_path: str, dataset_type: str = "auto") -> EssayDataset:
     """
-    Load the Human vs AI Generated Essays dataset from Kaggle.
+    Load Kaggle datasets specified in the problem statement.
     
-    This is a placeholder implementation. In practice, you would:
-    1. Download the dataset from Kaggle
-    2. Parse the CSV/JSON files
-    3. Extract texts and labels
-    4. Return an EssayDataset instance
+    Supports:
+    1. ANNOMI Motivational Interviewing Dataset
+    2. Mental Health FAQs Dataset
     
     Args:
         data_path: Path to the dataset files
+        dataset_type: Type of dataset ("annomi", "mental_health", or "auto")
         
     Returns:
         EssayDataset instance
     """
-    # Placeholder - would implement actual dataset loading here
-    # For now, return None to use synthetic data
-    print(f"Note: Real dataset loading from {data_path} not implemented yet.")
-    print("Using synthetic dataset for demonstration.")
-    return None
+    from adaptiveneuralnetwork.data import (
+        load_annomi_dataset, 
+        load_mental_health_faqs_dataset,
+        print_dataset_info
+    )
+    
+    try:
+        if dataset_type == "auto":
+            # Try to detect dataset type from path
+            path_lower = data_path.lower()
+            if "annomi" in path_lower or "motivational" in path_lower:
+                dataset_type = "annomi"
+            elif "mental" in path_lower or "health" in path_lower or "faq" in path_lower:
+                dataset_type = "mental_health"
+            else:
+                print(f"Could not auto-detect dataset type from path: {data_path}")
+                print("Please specify --dataset-type manually")
+                print_dataset_info()
+                return None
+        
+        print(f"Loading {dataset_type} dataset from {data_path}")
+        
+        if dataset_type == "annomi":
+            return load_annomi_dataset(data_path)
+        elif dataset_type == "mental_health":
+            return load_mental_health_faqs_dataset(data_path)
+        else:
+            print(f"Unknown dataset type: {dataset_type}")
+            print("Supported types: annomi, mental_health")
+            return None
+            
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        print("Falling back to synthetic dataset for demonstration.")
+        return None
 
 def main():
     """Main function to run the essay classification benchmark."""
@@ -63,6 +92,12 @@ def main():
         "--data-path", 
         type=str, 
         help="Path to the Kaggle dataset directory"
+    )
+    parser.add_argument(
+        "--dataset-type",
+        choices=["auto", "annomi", "mental_health"],
+        default="auto",
+        help="Type of Kaggle dataset (auto-detect by default)"
     )
     parser.add_argument(
         "--synthetic", 
@@ -80,7 +115,7 @@ def main():
     parser.add_argument(
         "--epochs", 
         type=int, 
-        default=50, 
+        default=100,  # Changed default to 100 as per problem statement
         help="Number of training epochs"
     )
     parser.add_argument(
@@ -140,7 +175,7 @@ def main():
     # Load dataset
     dataset = None
     if args.data_path and not args.synthetic:
-        dataset = load_kaggle_dataset(args.data_path)
+        dataset = load_kaggle_dataset(args.data_path, args.dataset_type)
     
     if dataset is None:
         logger.info("Creating synthetic dataset...")
