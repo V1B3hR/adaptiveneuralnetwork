@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+title: "Adaptive Neural Network"
+message: "If you use this software, please cite it using the metadata below."
+type: software
+authors:
+  - name: "Adaptive Neural Network Contributors"
+repository-code: "https://github.com/V1B3hR/adaptiveneuralnetwork"
+license: GPL-3.0-only
+version: "0.3.0"
+date-released: "2025-01-01"
+keywords:
+  - adaptive learning
+  - biologically inspired
+  - neural networks
+  - robustness
