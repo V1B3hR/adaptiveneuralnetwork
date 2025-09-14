@@ -149,3 +149,6 @@ Thumbs.db
 
 # CI-generated artifacts (available as GitHub Actions artifacts)
 node_timeseries.db
+# POS tagging output directories
+pos_tagging_output/
+eval_results/
