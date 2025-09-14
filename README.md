@@ -1,235 +1,308 @@
 # Adaptive Neural Network
 [![CI](https://github.com/V1B3hR/adaptiveneuralnetwork/workflows/CI%20-%20Train,%20Test,%20Coverage%20&%20Artifacts/badge.svg)](https://github.com/V1B3hR/adaptiveneuralnetwork/actions)
 ![Coverage](https://img.shields.io/badge/coverage-71%25-yellow)
+![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue)
+![Python Versions](https://img.shields.io/pypi/pyversions/adaptiveneuralnetwork)
 
-A production-ready biologically-inspired neural network with vectorized training capabilities and adaptive learning mechanisms. This library provides a PyTorch-compatible implementation of adaptive neural networks with phase-based dynamics, energy management, and continual learning support.
+A production‑ready, biologically‑inspired adaptive neural network framework featuring:
+- Vectorized phase‑driven dynamics (active / sleep / interactive / inspired).
+- Energy & sparsity–aware node regulation.
+- Multi‑backend support (PyTorch, JAX, neuromorphic abstraction layer).
+- Robustness, adversarial & multimodal benchmarks.
+- Structured validation guides (intelligence, robustness, spatial reasoning, production signal processing).
+
+> Why Adaptive vs Conventional Architectures?  
+> Adaptive Neural Network focuses on *dynamic internal state evolution* + *phase transitions* and *energy modulation* rather than static feed‑forward passes. This enables emerging behaviors: selective activation, contextual plasticity, and graceful degradation under domain shift.
+
+---
+
+## 🔥 Feature Tiers
+
+| Tier | Capabilities | Files / Guides |
+|------|--------------|----------------|
+| Basic | Core nodes, phases, PyTorch backend, MNIST benchmark | `core/`, `benchmark_cli.py`, `vision/mnist.py` |
+| Intermediate | Energy dynamics, CIFAR-10 standard & corrupted, profiling, config system | `dynamics.py`, `scripts/profile.py`, `config/` |
+| Advanced | JAX backend, multimodal (text+image), neuromorphic layer, continual learning, robustness | `benchmarks/multimodal/`, `enhanced_robustness_results.json`, `ROBUSTNESS_VALIDATION_GUIDE.md` |
+| Research | Adversarial evaluation, spatial dimension integration, intelligence benchmark readiness | `adversarial_results.json`, `SPATIAL_DIMENSION_IMPLEMENTATION_SUMMARY.md`, `INTELLIGENCE_BENCHMARK_GUIDE.md` |
+
+---
 
 ## 🚀 Quick Start
 
-### Installation
+### Installation (Editable Dev)
 
 ```bash
-# Basic installation
+git clone https://github.com/V1B3hR/adaptiveneuralnetwork.git
+cd adaptiveneuralnetwork
 pip install -e .
+```
 
-# With JAX backend support
-pip install -e ".[jax]"
+### Extras
 
-# With neuromorphic hardware support
-pip install -e ".[neuromorphic]"
+| Extra | Purpose | Included |
+|-------|---------|----------|
+| jax | JAX backend acceleration | jax, jaxlib, flax, optax |
+| neuromorphic | Visualization + spike abstractions | scipy, matplotlib |
+| multimodal | Text + image fusion | transformers, tokenizers |
+| dev | Dev tooling | pytest, coverage, ruff, mypy, black |
+| docs | Documentation build | sphinx, myst-parser |
 
-# With multi-modal support
-pip install -e ".[multimodal]"
-
-# Full installation with all backends
+Install with multiple extras:
+```bash
 pip install -e ".[jax,neuromorphic,multimodal]"
 ```
 
-### Basic Usage
+### Minimal Runtime Example
 
 ```python
 from adaptiveneuralnetwork.api import create_adaptive_model, AdaptiveConfig
 
-# Create configuration
 config = AdaptiveConfig(
-    num_nodes=100,
-    hidden_dim=64,
-    backend="pytorch"  # or "jax", "neuromorphic"
-)
-
-# Create model with backend selection
-model = create_adaptive_model(config)
-
-# Or use convenience function
-model = create_adaptive_model(
-    backend="pytorch",  # Choose your backend
     num_nodes=128,
-    hidden_dim=64
+    hidden_dim=64,
+    backend="pytorch"   # "jax" or "neuromorphic" also valid
 )
+model = create_adaptive_model(config)
+```
 
-# Standard PyTorch training loop
+### Training Loop (PyTorch)
+
+```python
 import torch
-optimizer = torch.optim.Adam(model.parameters())
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
 for batch in dataloader:
     optimizer.zero_grad()
-    output = model(batch.data)
+    output = model(batch.data)        # Internally phases may modulate activity
     loss = criterion(output, batch.target)
     loss.backward()
     optimizer.step()
 ```
 
-### Run Benchmarks
+### CLI Utilities
 
+```
+adaptive-benchmark --help
+adaptive-profile  --help
+```
+
+Example:
 ```bash
-# MNIST benchmark (classic)
-python scripts/run_benchmark.py --dataset mnist --epochs 10
+adaptive-benchmark --dataset mnist --epochs 10 --backend pytorch
+adaptive-benchmark --dataset cifar10 --epochs 5 --corruptions gaussian_noise,brightness
+```
 
-# CIFAR-10 standard benchmark
-python -c "
-from adaptiveneuralnetwork.benchmarks.vision.cifar10 import run_cifar10_benchmark
-results = run_cifar10_benchmark(epochs=5, batch_size=64)
-print(f'CIFAR-10 accuracy: {results[\"standard\"][\"final_test_accuracy\"]:.3f}')
-"
+---
 
-# CIFAR-10 robustness benchmark
-python -c "
+## 🧪 Benchmarks & Evaluation
+
+Benchmark JSON artifacts already in repo:
+- `benchmark_results.json` (General classification)
+- `enhanced_robustness_results.json` (Corruption / domain shift)
+- `adversarial_results.json` (Adversarial / perturbation resilience)
+- `final_validation.json` (Aggregated final phase / node stats)
+
+### Example (Load & Print)
+```python
+import json, pathlib
+data = json.loads(pathlib.Path("benchmark_results.json").read_text())
+print("Available runs:", list(data.keys()))
+```
+
+### (Placeholder) Current Snapshot
+| Model Variant | Dataset | Test Acc | Active Node % | Notes |
+|---------------|---------|----------|---------------|-------|
+| Adaptive‑100  | MNIST   | ~0.95*   | ~60%*         | Preliminary |
+| Adaptive‑200  | MNIST   | TBD      | TBD           | Pending |
+| Adaptive‑128  | CIFAR10 | (fill)   | (fill)        | From `benchmark_results.json` |
+| Adaptive‑JAX  | CIFAR10 | (fill)   | (fill)        | JIT accelerated |
+| Multimodal‑Small | Text+Image | (fill) | (fill) | `run_multimodal_benchmark` |
+
+*Replace placeholder values by running:
+```bash
+python scripts/run_benchmark.py --dataset mnist --epochs 10 --output benchmark_results.json
+python scripts/run_benchmark.py --dataset cifar10 --epochs 5 --output benchmark_results.json
+```
+
+### Robustness / Corruption Testing
+```python
 from adaptiveneuralnetwork.benchmarks.vision.cifar10 import CIFAR10Benchmark
 from adaptiveneuralnetwork.api import AdaptiveConfig
-
-config = AdaptiveConfig(num_nodes=64, hidden_dim=32)
-benchmark = CIFAR10Benchmark(config)
-
-# Run robustness test
+benchmark = CIFAR10Benchmark(AdaptiveConfig(num_nodes=64, hidden_dim=32))
 results = benchmark.run_robustness_benchmark(
-    corruption_types=['gaussian_noise', 'brightness'],
-    severities=[1, 3, 5]
+    corruption_types=['gaussian_noise','brightness'],
+    severities=[1,3,5]
 )
-robustness = results['robustness_results']['relative_robustness']
-print(f'Domain shift robustness: {robustness:.3f}')
-"
-
-# Multi-modal benchmark
-python -c "
-from adaptiveneuralnetwork.benchmarks.multimodal import run_multimodal_benchmark
-results = run_multimodal_benchmark(
-    modalities=['text', 'image'], 
-    epochs=3, 
-    batch_size=16
-)
-print(f'Multi-modal accuracy: {results[\"final_test_accuracy\"]:.3f}')
-"
+print(results['robustness_results']['relative_robustness'])
 ```
 
-### Performance Profiling
+### Adversarial & Stress Tests
+See: `adversarial_results.json` + `ROBUSTNESS_VALIDATION_GUIDE.md` for methodology.
 
+---
+
+## 📈 Performance & Profiling
+
+Use:
 ```bash
 python scripts/profile.py --profile-type comprehensive
+adaptive-profile --profile-type phases
 ```
 
-## 🏗 Architecture
-
-### Core Components
-
-- **`adaptiveneuralnetwork/core/`** — Vectorized node states, phase scheduling, and dynamics
-  - `nodes.py` — Tensor-based node state management
-  - `phases.py` — Phase scheduling (active, sleep, interactive, inspired)
-  - `dynamics.py` — Core dynamics engine with energy and activity updates
-
-- **`adaptiveneuralnetwork/training/`** — Training infrastructure
-  - `datasets.py` — MNIST and synthetic dataset loaders
-  - `loops.py` — Training loops with metrics tracking and checkpointing
-
-- **`adaptiveneuralnetwork/benchmarks/`** — Standardized benchmarks
-  - `vision/mnist.py` — MNIST classification benchmark
-
-- **`adaptiveneuralnetwork/api/`** — High-level API
-  - `model.py` — Main AdaptiveModel class
-  - `config.py` — Configuration management with YAML support
-
-### Key Features
-
-- **Vectorized Operations**: Efficient batch processing for training and inference
-- **Phase-Based Dynamics**: Biologically-inspired phases (active, sleep, interactive, inspired)
-- **Energy Management**: Node energy levels influence behavior and phase transitions
-- **Adaptive Learning**: Dynamic adaptation rates and node connectivity
-- **Multi-Backend Support**: PyTorch, JAX, and neuromorphic hardware compatibility
-- **Domain Shift Robustness**: CIFAR-10 corrupted benchmarks for testing robustness
-- **Multi-Modal Learning**: Text + image processing capabilities
-- **Neuromorphic Compatibility**: Spike-based computation and hardware abstraction
-- **Production-Ready**: Comprehensive testing, CI/CD, and packaging
-
-## 🔬 Backend Comparison
-
-| Backend | Use Case | Performance | Features |
-|---------|----------|-------------|----------|
-| **PyTorch** | General purpose, GPU/CPU | High | Dynamic graphs, CUDA, standard ML |
-| **JAX** | Research, TPU, functional | Very High | JIT compilation, auto-vectorization, functional programming |
-| **Neuromorphic** | Edge computing, low power | Specialized | Spike-based, event-driven, hardware simulation |
-
-## 📊 Benchmark Results
-
-| Model | Dataset | Accuracy | Training Time | Active Nodes |
-|-------|---------|----------|---------------|--------------|
-| Adaptive-100 | MNIST | ~95%* | ~60s* | ~60%* |
-| Adaptive-200 | MNIST | TBD | TBD | TBD |
-
-*Preliminary results - benchmarks in progress
-
-## 🛠 Development
-
-### Running Tests
-
+Collect coverage & type safety:
 ```bash
-# Unit tests
-pytest adaptiveneuralnetwork/tests/ -v
-
-# Integration tests
-pytest adaptiveneuralnetwork/tests/test_integration.py -v
-
-# Skip slow tests
-pytest -m "not slow"
+pytest --cov adaptiveneuralnetwork --cov-report term-missing
+mypy adaptiveneuralnetwork/
 ```
 
-### Code Quality
+See `docs/performance.md` (proposed) for:
+- Phase transition cost breakdown
+- Node activation sparsity histograms
+- Energy pool convergence curves
+- Backend comparison (PyTorch vs JAX wall‑clock)
+- Memory footprint of dynamic node sets
 
-```bash
-# Linting
-ruff check adaptiveneuralnetwork/
+---
 
-# Formatting
-black adaptiveneuralnetwork/
+## 🏗 Architecture Overview
 
-# Type checking  
-mypy adaptiveneuralnetwork/core/ adaptiveneuralnetwork/api/
-```
+Phases: ACTIVE → (optional INTERACTIVE) → SLEEP → INSPIRED (creative recombination)  
+Each phase can adjust:
+- Learning rate scaling
+- Node recruitment / dropout
+- Energy redistribution
+
+Core Modules:
+- `core/nodes.py` — Vectorized node state (energy, activity, adaptivity)
+- `core/phases.py` — Scheduler & transitions
+- `core/dynamics.py` — Energy dynamics, plasticity updates
+- `api/model.py` — High-level `AdaptiveModel`
+- `api/config.py` — Declarative YAML/obj config
+- `benchmarks/` — Standard + robustness + multimodal
+- `scripts/` — Benchmarking, profiling
+
+(Consider adding an SVG diagram in `docs/images/architecture.svg`.)
+
+---
+
+## 🛡 Responsible & Ethical AI
+
+This project includes explicit artifacts:
+- `AI Ethics Framework` / `ethicsframework.md`
+- `ROBUSTNESS_VALIDATION_GUIDE.md`
+- `INTELLIGENCE_BENCHMARK_GUIDE.md`
+- `PRODUCTION_SIGNAL_PROCESSING.md`
+- `SPATIAL_DIMENSION_IMPLEMENTATION_SUMMARY.md`
+
+Recommended next steps:
+1. Add automated ethical compliance checklist script.
+2. Integrate fairness/stability metrics into benchmark output schema.
+3. Add gating CI job that fails if robustness regression > threshold.
+
+---
 
 ## 🗺 Roadmap
 
-### Current Version (0.3.0)
-- [x] Vectorized core abstractions
-- [x] MNIST benchmark pipeline
-- [x] Basic training loops and metrics
-- [x] Configuration system
-- [x] Profiling utilities
-- [x] CI/CD infrastructure
-- [x] **Domain shift robustness (CIFAR-10 corrupted)**
-- [x] **JAX backend for advanced acceleration**
-- [x] **Multi-modal benchmarks (text + image)**
-- [x] **Neuromorphic hardware compatibility layer**
+### Current (0.3.0)
+- Vectorized core abstractions
+- MNIST + CIFAR-10 + corrupted domain shift
+- JAX backend
+- Multimodal (text+image) benchmark
+- Neuromorphic compatibility layer
+- Robustness + adversarial JSON outputs
+- Profiling + coverage
 
-### Previous Versions
-#### Version 0.2.0
-- [x] Continual learning (Split MNIST)
-- [x] Advanced phase controllers (anxiety/restorative mechanics)
-- [x] Energy/activity sparsity metrics
-- [x] Sleep-phase ablation studies
+### Proposed 0.4.0 (Planned)
+- Distributed training (Ray / torch.distributed)
+- ONNX export + model introspection
+- Automated README benchmark table generation script
+- Enhanced continual learning scenarios (e.g., blurred → corrupted → adversarial progression)
+- Adaptive pruning & self-healing node lifecycle
+- Energy-aware optimizer variants (meta-adaptation)
+- Plugin system for custom phases
+- Dataset abstraction unification + streaming (WebDataset / HuggingFace Datasets)
+- Optional Graph / Spatial reasoning integration module
+- Reproducibility harness (seed isolation + determinism report)
 
-#### Version 0.1.0 
-- [x] Basic adaptive neural network implementation
-- [x] PyTorch integration
-- [x] MNIST benchmarking
+### Longer-Term
+- Formal intelligence evaluation harness integration
+- Neuromorphic hardware backends (Loihi / custom spike simulators)
+- Probabilistic phase scheduling (stochastic policy)
+- Mixed precision + quantization aware phases
+
+---
+
+## 🧪 Testing & Quality
+
+```bash
+# Unit tests
+pytest adaptiveneuralnetwork/tests -m "unit"
+
+# Integration
+pytest -m "integration"
+
+# Skip slow
+pytest -m "not slow"
+
+# Static quality
+ruff check adaptiveneuralnetwork/
+black --check adaptiveneuralnetwork/
+mypy adaptiveneuralnetwork/
+```
+
+Suggested pre-commit hooks:
+```
+black .
+ruff check --fix .
+mypy adaptiveneuralnetwork/
+pytest -q
+```
+
+---
 
 ## 📖 Documentation
 
-- [API Reference](docs/api/) — Detailed API documentation
-- [Configuration Guide](docs/configuration.md) — Configuration options and examples
-- [Benchmarking Guide](docs/benchmarking.md) — Running and interpreting benchmarks
-- [Contributing Guide](CONTRIBUTING.md) — Development setup and contribution guidelines
+- API Reference: `docs/api/`
+- Configuration: `docs/configuration.md`
+- Benchmarking: `docs/benchmarking.md`
+- Performance: `docs/performance.md` (proposed new)
+- Robustness: `ROBUSTNESS_VALIDATION_GUIDE.md`
+- Intelligence Benchmarks: `INTELLIGENCE_BENCHMARK_GUIDE.md`
+
+---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
-- Development setup
-- Code style guidelines
-- Testing requirements
+See [CONTRIBUTING.md](CONTRIBUTING.md):
+- Dev environment, style, test matrix
 - Issue and PR templates
+- Ethical + robustness contribution standards
 
-## 📄 License
-
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+---
 
 ## 🔗 Links
-
-- [GitHub Repository](https://github.com/V1B3hR/adaptiveneuralnetwork)
+- [Repository](https://github.com/V1B3hR/adaptiveneuralnetwork)
 - [Issue Tracker](https://github.com/V1B3hR/adaptiveneuralnetwork/issues)
 - [Changelog](CHANGELOG.md)
+- [Roadmap](roadmap.md)
+
+---
+
+## ✍️ Citation
+
+If you use this project in research:
+
+```bibtex
+@software{adaptive_neural_network,
+  title        = {Adaptive Neural Network: Phase-Driven Biologically Inspired Adaptive Learning},
+  author       = {{Adaptive Neural Network Contributors}},
+  year         = {2025},
+  url          = {https://github.com/V1B3hR/adaptiveneuralnetwork},
+  version      = {0.3.0}
+}
+```
+
+---
+
+## 📄 License
+GNU General Public License v3.0 – see [LICENSE](LICENSE).
