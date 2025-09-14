@@ -44,6 +44,7 @@ pip install -e .
 | jax | JAX backend acceleration | jax, jaxlib, flax, optax |
 | neuromorphic | Visualization + spike abstractions | scipy, matplotlib |
 | multimodal | Text + image fusion | transformers, tokenizers |
+| pos | Part-of-Speech tagging support | seqeval, scikit-learn |
 | dev | Dev tooling | pytest, coverage, ruff, mypy, black |
 | docs | Documentation build | sphinx, myst-parser |
 
@@ -138,6 +139,29 @@ print(results['robustness_results']['relative_robustness'])
 
 ### Adversarial & Stress Tests
 See: `adversarial_results.json` + `ROBUSTNESS_VALIDATION_GUIDE.md` for methodology.
+
+### Part-of-Speech Tagging (NEW)
+Sequence labeling with adaptive epoch/sample heuristics:
+
+```bash
+# Train on Kaggle POS dataset with automatic heuristics
+python train_pos_tagging.py --data-path /path/to/pos_dataset --auto
+
+# Quick test with synthetic data
+python train_pos_tagging.py --synthetic --epochs 2 --max-sentences 100
+
+# Evaluate trained model
+python evaluate_pos_tagging.py --checkpoint pos_tagging_output/best_model.pt --data-path /path/to/test_data
+```
+
+**Features:**
+- **Dynamic Heuristics**: Automatic epoch (12-40) and batch size selection based on dataset size
+- **Model Options**: BiLSTM (default) or Transformer encoder
+- **Comprehensive Metrics**: Token accuracy, macro/micro F1, per-tag F1 scores  
+- **Flexible Loading**: Auto-detects CSV columns (sentence/word/pos)
+- **Memory Optimization**: Gradient accumulation for large datasets
+
+See `POS_TAGGING_GUIDE.md` for detailed usage and expected performance.
 
 ---
 

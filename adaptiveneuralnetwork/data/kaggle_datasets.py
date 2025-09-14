@@ -3,15 +3,19 @@ Dataset loaders for Kaggle datasets specified in the problem statement:
 1. ANNOMI Motivational Interviewing Dataset
 2. Mental Health FAQs Dataset
 3. Social Media Sentiments Analysis Dataset
+4. Part-of-Speech Tagging Dataset
 """
 
 import csv
 import json
 import pandas as pd
 from pathlib import Path
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Optional, Dict, Any, Union
 import logging
 import os
+import random
+import numpy as np
+from collections import Counter, defaultdict
 
 from ..benchmarks.text_classification import EssayDataset
 
@@ -209,6 +213,416 @@ def load_social_media_sentiment_dataset(
         vocab_size=vocab_size,
         max_length=max_length
     )
+
+
+def load_pos_tagging_dataset(
+    data_path: str,
+    max_sentences: Optional[int] = None,
+    min_token_length: int = 1,
+    filter_punctuation: bool = False,
+    train_split: float = 0.8,
+    val_split: float = 0.1,
+    test_split: float = 0.1,
+    vocab_size: int = 10000,
+    seed: int = 42
+) -> Dict[str, Any]:
+    """
+    Load the Kaggle Part-of-Speech Tagging dataset.
+    
+    Expected dataset URL: https://www.kaggle.com/datasets/ruchi798/part-of-speech-tagging
+    
+    Args:
+        data_path: Path to the dataset file (CSV) or directory
+        max_sentences: Maximum number of sentences to load (for sampling/testing)
+        min_token_length: Minimum token length to include 
+        filter_punctuation: If True, filter out punctuation-only tokens
+        train_split: Proportion for training set
+        val_split: Proportion for validation set  
+        test_split: Proportion for test set
+        vocab_size: Maximum vocabulary size for tokens
+        seed: Random seed for reproducible splits
+        
+    Returns:
+        Dictionary containing:
+            - datasets: Dict with 'train', 'val', 'test' POSDataset instances
+            - vocab: Token to index mapping
+            - tag_vocab: Tag to index mapping  
+            - stats: Dataset statistics
+            - config: Configuration used
+    """
+    logger.info(f"Loading POS tagging dataset from {data_path}")
+    
+    # Set random seed
+    random.seed(seed)
+    np.random.seed(seed)
+    
+    # Load raw data
+    sentences, all_tags = _load_pos_data(data_path)
+    
+    # Filter by token length and punctuation if requested
+    if min_token_length > 1 or filter_punctuation:
+        sentences, all_tags = _filter_pos_tokens(
+            sentences, all_tags, min_token_length, filter_punctuation
+        )
+    
+    # Sample sentences if requested
+    if max_sentences and len(sentences) > max_sentences:
+        indices = random.sample(range(len(sentences)), max_sentences)
+        sentences = [sentences[i] for i in indices]
+        all_tags = [all_tags[i] for i in indices]
+        logger.info(f"Sampled {max_sentences} sentences from {len(sentences)} total")
+    
+    # Compute statistics
+    stats = _compute_pos_statistics(sentences, all_tags)
+    logger.info(f"Dataset statistics: {stats}")
+    
+    # Build vocabularies
+    vocab, tag_vocab = _build_pos_vocabularies(sentences, all_tags, vocab_size)
+    
+    # Stratified split by tag distribution
+    train_data, val_data, test_data = _stratified_pos_split(
+        sentences, all_tags, train_split, val_split, test_split, seed
+    )
+    
+    # Create dataset instances
+    datasets = {
+        'train': POSDataset(*train_data, vocab, tag_vocab),
+        'val': POSDataset(*val_data, vocab, tag_vocab),
+        'test': POSDataset(*test_data, vocab, tag_vocab)
+    }
+    
+    config = {
+        'max_sentences': max_sentences,
+        'min_token_length': min_token_length,
+        'filter_punctuation': filter_punctuation,
+        'splits': {'train': train_split, 'val': val_split, 'test': test_split},
+        'vocab_size': vocab_size,
+        'seed': seed
+    }
+    
+    logger.info(f"Created datasets - Train: {len(datasets['train'])}, "
+                f"Val: {len(datasets['val'])}, Test: {len(datasets['test'])}")
+    
+    return {
+        'datasets': datasets,
+        'vocab': vocab,
+        'tag_vocab': tag_vocab,
+        'stats': stats,
+        'config': config
+    }
+
+
+class POSDataset:
+    """Dataset class for POS tagging sequences."""
+    
+    def __init__(
+        self, 
+        sentences: List[List[str]], 
+        tags: List[List[str]], 
+        vocab: Dict[str, int], 
+        tag_vocab: Dict[str, int],
+        max_length: int = 512
+    ):
+        self.sentences = sentences
+        self.tags = tags
+        self.vocab = vocab
+        self.tag_vocab = tag_vocab
+        self.max_length = max_length
+        
+        # Create reverse mappings
+        self.idx_to_token = {idx: token for token, idx in vocab.items()}
+        self.idx_to_tag = {idx: tag for tag, idx in tag_vocab.items()}
+        
+        # Special tokens
+        self.pad_token_id = vocab.get('<PAD>', 0)
+        self.unk_token_id = vocab.get('<UNK>', 1)
+        self.pad_tag_id = tag_vocab.get('<PAD>', 0)
+    
+    def __len__(self) -> int:
+        return len(self.sentences)
+    
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
+        """Get a single sentence with tokens and tags."""
+        tokens = self.sentences[idx]
+        tags = self.tags[idx]
+        
+        # Truncate if necessary
+        if len(tokens) > self.max_length:
+            tokens = tokens[:self.max_length]
+            tags = tags[:self.max_length]
+        
+        # Convert to indices
+        token_ids = [self.vocab.get(token, self.unk_token_id) for token in tokens]
+        tag_ids = [self.tag_vocab.get(tag, self.pad_tag_id) for tag in tags]
+        
+        return {
+            'tokens': tokens,
+            'tags': tags,
+            'token_ids': token_ids,
+            'tag_ids': tag_ids,
+            'length': len(tokens)
+        }
+    
+    def get_batch(self, indices: List[int]) -> Dict[str, Any]:
+        """Get a batch of sentences with padding."""
+        batch_items = [self[i] for i in indices]
+        
+        # Find max length in batch
+        max_len = max(item['length'] for item in batch_items)
+        
+        # Pad sequences
+        batch_token_ids = []
+        batch_tag_ids = []
+        batch_lengths = []
+        batch_tokens = []
+        batch_tags = []
+        
+        for item in batch_items:
+            token_ids = item['token_ids'] + [self.pad_token_id] * (max_len - len(item['token_ids']))
+            tag_ids = item['tag_ids'] + [self.pad_tag_id] * (max_len - len(item['tag_ids']))
+            
+            batch_token_ids.append(token_ids)
+            batch_tag_ids.append(tag_ids)
+            batch_lengths.append(item['length'])
+            batch_tokens.append(item['tokens'])
+            batch_tags.append(item['tags'])
+        
+        return {
+            'input_ids': batch_token_ids,
+            'tag_ids': batch_tag_ids,
+            'lengths': batch_lengths,
+            'tokens': batch_tokens,
+            'tags': batch_tags,
+            'attention_mask': [[1 if i < length else 0 for i in range(max_len)] 
+                              for length in batch_lengths]
+        }
+
+
+def _load_pos_data(data_path: str) -> Tuple[List[List[str]], List[List[str]]]:
+    """Load POS tagging data from CSV file."""
+    path = Path(data_path)
+    
+    if path.is_dir():
+        # Look for CSV files in directory
+        csv_files = list(path.glob("*.csv"))
+        if not csv_files:
+            raise FileNotFoundError(f"No CSV files found in {data_path}")
+        data_path = str(csv_files[0])
+        logger.info(f"Found dataset file: {data_path}")
+    
+    # Load CSV and detect columns
+    df = pd.read_csv(data_path)
+    logger.info(f"Loaded CSV with columns: {df.columns.tolist()}")
+    
+    # Try to find sentence, word, and POS columns
+    sentence_col = _find_column(df, ['sentence', 'sentence_id', 'sent_id', 'id'])
+    word_col = _find_column(df, ['word', 'token', 'text', 'tokens'])
+    pos_col = _find_column(df, ['pos', 'tag', 'pos_tag', 'label'])
+    
+    logger.info(f"Using columns - Sentence: {sentence_col}, Word: {word_col}, POS: {pos_col}")
+    
+    # Group by sentence
+    sentences = []
+    all_tags = []
+    
+    if sentence_col:
+        # Group by sentence ID
+        grouped = df.groupby(sentence_col)
+        for sent_id, group in grouped:
+            tokens = group[word_col].astype(str).tolist()
+            tags = group[pos_col].astype(str).tolist()
+            
+            # Filter out empty tokens
+            filtered_tokens = []
+            filtered_tags = []
+            for token, tag in zip(tokens, tags):
+                if token.strip() and token.lower() not in ['nan', 'none', '']:
+                    filtered_tokens.append(token.strip())
+                    filtered_tags.append(tag.strip())
+            
+            if filtered_tokens:  # Only add non-empty sentences
+                sentences.append(filtered_tokens)
+                all_tags.append(filtered_tags)
+    else:
+        # Treat each row as a separate token, group sequential rows as sentences
+        current_sentence = []
+        current_tags = []
+        
+        for _, row in df.iterrows():
+            token = str(row[word_col]).strip()
+            tag = str(row[pos_col]).strip()
+            
+            if token and token.lower() not in ['nan', 'none', '']:
+                current_sentence.append(token)
+                current_tags.append(tag)
+            else:
+                # End of sentence or empty token
+                if current_sentence:
+                    sentences.append(current_sentence)
+                    all_tags.append(current_tags)
+                    current_sentence = []
+                    current_tags = []
+        
+        # Add final sentence if exists
+        if current_sentence:
+            sentences.append(current_sentence)
+            all_tags.append(current_tags)
+    
+    logger.info(f"Loaded {len(sentences)} sentences with {sum(len(s) for s in sentences)} total tokens")
+    return sentences, all_tags
+
+
+def _filter_pos_tokens(
+    sentences: List[List[str]], 
+    all_tags: List[List[str]], 
+    min_length: int, 
+    filter_punct: bool
+) -> Tuple[List[List[str]], List[List[str]]]:
+    """Filter tokens by length and punctuation."""
+    filtered_sentences = []
+    filtered_tags = []
+    
+    for tokens, tags in zip(sentences, all_tags):
+        filtered_tokens = []
+        filtered_token_tags = []
+        
+        for token, tag in zip(tokens, tags):
+            # Length filter
+            if len(token) < min_length:
+                continue
+                
+            # Punctuation filter
+            if filter_punct and len(token) == 1 and not token.isalnum():
+                continue
+                
+            filtered_tokens.append(token)
+            filtered_token_tags.append(tag)
+        
+        # Only keep sentences with tokens remaining
+        if filtered_tokens:
+            filtered_sentences.append(filtered_tokens)
+            filtered_tags.append(filtered_token_tags)
+    
+    logger.info(f"After filtering: {len(filtered_sentences)} sentences")
+    return filtered_sentences, filtered_tags
+
+
+def _compute_pos_statistics(sentences: List[List[str]], all_tags: List[List[str]]) -> Dict[str, Any]:
+    """Compute dataset statistics."""
+    sentence_lengths = [len(s) for s in sentences]
+    total_tokens = sum(sentence_lengths)
+    
+    # Tag frequency
+    tag_counts = Counter()
+    for tags in all_tags:
+        tag_counts.update(tags)
+    
+    # Token frequency
+    token_counts = Counter()
+    for tokens in sentences:
+        token_counts.update(tokens)
+    
+    stats = {
+        'num_sentences': len(sentences),
+        'total_tokens': total_tokens,
+        'unique_tokens': len(token_counts),
+        'unique_tags': len(tag_counts),
+        'avg_sentence_length': np.mean(sentence_lengths),
+        'median_sentence_length': np.median(sentence_lengths),
+        'percentile_95_length': np.percentile(sentence_lengths, 95) if sentence_lengths else 0,
+        'max_sentence_length': max(sentence_lengths) if sentence_lengths else 0,
+        'tag_frequencies': dict(tag_counts.most_common(20)),  # Top 20 tags
+        'most_common_tokens': dict(token_counts.most_common(10))  # Top 10 tokens
+    }
+    
+    return stats
+
+
+def _build_pos_vocabularies(
+    sentences: List[List[str]], 
+    all_tags: List[List[str]], 
+    vocab_size: int
+) -> Tuple[Dict[str, int], Dict[str, int]]:
+    """Build token and tag vocabularies."""
+    # Count token frequencies
+    token_counts = Counter()
+    for tokens in sentences:
+        token_counts.update(tokens)
+    
+    # Build token vocab with special tokens
+    vocab = {'<PAD>': 0, '<UNK>': 1}
+    most_common_tokens = token_counts.most_common(vocab_size - 2)  # Reserve space for special tokens
+    
+    for token, _ in most_common_tokens:
+        vocab[token] = len(vocab)
+    
+    # Build tag vocab (keep all tags for POS tagging)
+    tag_vocab = {'<PAD>': 0}
+    unique_tags = set()
+    for tags in all_tags:
+        unique_tags.update(tags)
+    
+    for tag in sorted(unique_tags):  # Sort for consistent ordering
+        if tag not in tag_vocab:
+            tag_vocab[tag] = len(tag_vocab)
+    
+    logger.info(f"Built vocabularies - Tokens: {len(vocab)}, Tags: {len(tag_vocab)}")
+    return vocab, tag_vocab
+
+
+def _stratified_pos_split(
+    sentences: List[List[str]], 
+    all_tags: List[List[str]], 
+    train_split: float, 
+    val_split: float, 
+    test_split: float,
+    seed: int
+) -> Tuple[Tuple[List[List[str]], List[List[str]]], ...]:
+    """Create stratified splits based on tag distribution."""
+    # Create indices
+    indices = list(range(len(sentences)))
+    random.shuffle(indices)
+    
+    # Calculate split points
+    n = len(indices)
+    train_end = int(n * train_split)
+    val_end = train_end + int(n * val_split)
+    
+    train_indices = indices[:train_end]
+    val_indices = indices[train_end:val_end]
+    test_indices = indices[val_end:]
+    
+    # Split data
+    train_sentences = [sentences[i] for i in train_indices]
+    train_tags = [all_tags[i] for i in train_indices]
+    
+    val_sentences = [sentences[i] for i in val_indices] 
+    val_tags = [all_tags[i] for i in val_indices]
+    
+    test_sentences = [sentences[i] for i in test_indices]
+    test_tags = [all_tags[i] for i in test_indices]
+    
+    return ((train_sentences, train_tags), 
+            (val_sentences, val_tags), 
+            (test_sentences, test_tags))
+
+
+def get_pos_dataset_statistics(data_path: str) -> Dict[str, Any]:
+    """
+    Get lightweight statistics for POS dataset without loading full data.
+    
+    Args:
+        data_path: Path to dataset
+        
+    Returns:
+        Dictionary with basic statistics
+    """
+    try:
+        sentences, all_tags = _load_pos_data(data_path)
+        return _compute_pos_statistics(sentences, all_tags)
+    except Exception as e:
+        logger.error(f"Error computing statistics: {e}")
+        return {}
 
 
 def create_text_classification_dataset(
@@ -433,6 +847,14 @@ def get_dataset_info() -> Dict[str, Dict[str, Any]]:
             "loader": "load_social_media_sentiment_dataset",
             "expected_columns": ["text", "sentiment"],
             "task": "Binary sentiment classification (positive vs negative/neutral)"
+        },
+        "pos_tagging": {
+            "name": "Part-of-Speech Tagging Dataset",
+            "url": "https://www.kaggle.com/datasets/ruchi798/part-of-speech-tagging",
+            "description": "Token-level POS tagging dataset for sequence labeling",
+            "loader": "load_pos_tagging_dataset",
+            "expected_columns": ["sentence", "word", "pos"],
+            "task": "Sequence labeling (token-level POS tag prediction)"
         }
     }
 

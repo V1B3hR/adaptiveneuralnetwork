@@ -75,7 +75,7 @@ def main():
     
     parser.add_argument(
         "--dataset",
-        choices=["annomi", "mental_health", "social_media_sentiment", "both"],
+        choices=["annomi", "mental_health", "social_media_sentiment", "pos_tagging", "both"],
         default="social_media_sentiment",
         help="Which dataset(s) to train on"
     )
@@ -150,6 +150,7 @@ def main():
     print("- Support ANNOMI Motivational Interviewing Dataset")
     print("- Support Mental Health FAQs Dataset")
     print("- Support Social Media Sentiments Analysis Dataset")
+    print("- Support Part-of-Speech Tagging Dataset (sequence labeling)")
     print("=" * 80)
     
     print_dataset_info()

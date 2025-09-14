@@ -62,6 +62,10 @@ docs = [
     "sphinx-rtd-theme>=1.0.0",
     "myst-parser>=0.18.0",
 ]
+pos = [
+    "seqeval>=1.2.2",
+    "scikit-learn>=1.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/V1B3hR/adaptiveneuralnetwork"
