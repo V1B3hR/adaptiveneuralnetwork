@@ -1,28 +1,40 @@
 {
-  "final_test_accuracy": 0.0,
-  "best_test_accuracy": 0.0,
-  "final_train_accuracy": 0.75,
-  "best_train_accuracy": 0.75,
-  "final_train_loss": 0.6809220314025879,
-  "min_train_loss": 0.6809220314025879,
+  "final_test_accuracy": 0.5,
+  "best_test_accuracy": 0.5,
+  "final_train_accuracy": 0.625,
+  "best_train_accuracy": 0.625,
+  "final_train_loss": 0.6581528186798096,
+  "min_train_loss": 0.6581528186798096,
   "train_losses": [
-    0.6809220314025879
+    0.6713054180145264,
+    0.6659502983093262,
+    0.6619183421134949,
+    0.6594606637954712,
+    0.6581528186798096
   ],
   "train_accuracies": [
-    0.75
+    0.625,
+    0.625,
+    0.625,
+    0.625,
+    0.625
   ],
   "test_accuracies": [
-    0.0
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5
   ],
-  "training_time": 0.03564310073852539,
-  "total_time": 0.0357363224029541,
-  "epochs": 1,
+  "training_time": 0.6276595592498779,
+  "total_time": 0.6277248859405518,
+  "epochs": 5,
   "batch_size": 32,
   "learning_rate": 0.001,
-  "vocab_size": 22,
+  "vocab_size": 70,
   "max_length": 512,
-  "train_samples": 4,
-  "test_samples": 1,
+  "train_samples": 16,
+  "test_samples": 4,
   "model_parameters": 82514,
   "config": {
     "num_nodes": 100,
@@ -35,7 +47,7 @@
     "connection_radius": 1.0,
     "learning_rate": 0.001,
     "batch_size": 32,
-    "num_epochs": 1,
+    "num_epochs": 5,
     "adaptation_rate": 0.1,
     "circadian_period": 100,
     "phase_weights": {
@@ -54,6 +66,6 @@
     "metrics_file": "metrics.json",
     "enable_continual_learning": false,
     "enable_ablation_study": false,
-    "vocab_size": 22
+    "vocab_size": 70
   }
 }
