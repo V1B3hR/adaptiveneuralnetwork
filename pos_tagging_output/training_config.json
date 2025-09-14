@@ -1,0 +1,58 @@
+{
+  "model_config": {
+    "vocab_size": 20,
+    "num_tags": 11,
+    "embedding_dim": 128,
+    "hidden_dim": 256,
+    "num_layers": 2,
+    "dropout": 0.3,
+    "model_type": "bilstm",
+    "max_length": 512,
+    "pad_token_id": 0,
+    "num_heads": 8,
+    "feedforward_dim": 512,
+    "layer_norm": true
+  },
+  "training_args": {
+    "data_path": null,
+    "max_sentences": 10,
+    "min_token_length": 1,
+    "filter_punctuation": false,
+    "epochs": 2,
+    "batch_size": null,
+    "learning_rate": 0.001,
+    "gradient_accumulation_steps": 1,
+    "early_stop_patience": 5,
+    "min_improve": 0.001,
+    "model": "bilstm",
+    "embedding_dim": 128,
+    "hidden_dim": 256,
+    "num_layers": 2,
+    "dropout": 0.3,
+    "vocab_size": 10000,
+    "max_len": 512,
+    "seed": 42,
+    "device": "auto",
+    "output_dir": "./pos_tagging_output",
+    "verbose": true,
+    "auto": false,
+    "synthetic": true
+  },
+  "heuristics": {
+    "epochs": 2,
+    "batch_size": 32,
+    "gradient_accumulation_steps": 1,
+    "reasoning": {
+      "epoch_rule": "Sentences: 40 -> 2 epochs",
+      "batch_rule": "Tokens: 180 -> batch_size 32",
+      "grad_accum_rule": "Effective tokens/batch: 144 -> 1 steps"
+    }
+  },
+  "dataset_stats": {
+    "num_sentences": 40,
+    "total_tokens": 180,
+    "unique_tokens": 20,
+    "unique_tags": 11,
+    "avg_sentence_length": 4.5
+  }
+}
