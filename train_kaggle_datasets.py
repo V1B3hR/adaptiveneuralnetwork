@@ -70,13 +70,13 @@ def train_dataset(dataset_type, args):
 def main():
     """Main function for comprehensive Kaggle dataset training."""
     parser = argparse.ArgumentParser(
-        description="Train Adaptive Neural Network on Kaggle Datasets (100 epochs)"
+        description="Train Adaptive Neural Network on Kaggle Datasets (50 epochs for sentiment analysis)"
     )
     
     parser.add_argument(
         "--dataset",
-        choices=["annomi", "mental_health", "both"],
-        default="annomi",
+        choices=["annomi", "mental_health", "social_media_sentiment", "both"],
+        default="social_media_sentiment",
         help="Which dataset(s) to train on"
     )
     parser.add_argument(
@@ -87,8 +87,8 @@ def main():
     parser.add_argument(
         "--epochs",
         type=int, 
-        default=100,
-        help="Number of training epochs (default: 100)"
+        default=None,
+        help="Number of training epochs (default: 50 for sentiment analysis, 100 for others)"
     )
     parser.add_argument(
         "--batch-size",
@@ -134,14 +134,22 @@ def main():
     
     args = parser.parse_args()
     
+    # Set default epochs based on dataset choice
+    if args.epochs is None:
+        if args.dataset == "social_media_sentiment":
+            args.epochs = 50  # As specified in problem statement
+        else:
+            args.epochs = 100  # Original default for other datasets
+    
     # Print dataset information
     print("=" * 80)
     print("KAGGLE DATASETS TRAINING - ADAPTIVE NEURAL NETWORK")
     print("=" * 80)
     print("Problem Statement Requirements:")
-    print("- Train adaptive neural network for 100 epochs")
+    print("- Train adaptive neural network (50 epochs for sentiment analysis)")
     print("- Support ANNOMI Motivational Interviewing Dataset")
     print("- Support Mental Health FAQs Dataset")
+    print("- Support Social Media Sentiments Analysis Dataset")
     print("=" * 80)
     
     print_dataset_info()
@@ -154,7 +162,9 @@ def main():
             print("1. Download: https://www.kaggle.com/datasets/rahulmenon1758/annomi-motivational-interviewing")
         elif args.dataset == "mental_health":
             print("2. Download: https://www.kaggle.com/datasets/ragishehab/mental-healthfaqs")
-        print(f"3. Run: python train_kaggle_datasets.py --dataset {args.dataset} --data-path /path/to/dataset")
+        elif args.dataset == "social_media_sentiment":
+            print("3. Download: https://www.kaggle.com/datasets/kashishparmar02/social-media-sentiments-analysis-dataset")
+        print(f"4. Run: python train_kaggle_datasets.py --dataset {args.dataset} --data-path /path/to/dataset")
         print()
     
     # Train based on dataset selection

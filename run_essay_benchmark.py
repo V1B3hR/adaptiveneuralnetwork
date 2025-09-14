@@ -37,10 +37,11 @@ def load_kaggle_dataset(data_path: str, dataset_type: str = "auto") -> EssayData
     Supports:
     1. ANNOMI Motivational Interviewing Dataset
     2. Mental Health FAQs Dataset
+    3. Social Media Sentiments Analysis Dataset
     
     Args:
         data_path: Path to the dataset files
-        dataset_type: Type of dataset ("annomi", "mental_health", or "auto")
+        dataset_type: Type of dataset ("annomi", "mental_health", "social_media_sentiment", or "auto")
         
     Returns:
         EssayDataset instance
@@ -48,6 +49,7 @@ def load_kaggle_dataset(data_path: str, dataset_type: str = "auto") -> EssayData
     from adaptiveneuralnetwork.data import (
         load_annomi_dataset, 
         load_mental_health_faqs_dataset,
+        load_social_media_sentiment_dataset,
         print_dataset_info
     )
     
@@ -59,6 +61,8 @@ def load_kaggle_dataset(data_path: str, dataset_type: str = "auto") -> EssayData
                 dataset_type = "annomi"
             elif "mental" in path_lower or "health" in path_lower or "faq" in path_lower:
                 dataset_type = "mental_health"
+            elif "sentiment" in path_lower or "social" in path_lower or "media" in path_lower:
+                dataset_type = "social_media_sentiment"
             else:
                 print(f"Could not auto-detect dataset type from path: {data_path}")
                 print("Please specify --dataset-type manually")
@@ -71,9 +75,11 @@ def load_kaggle_dataset(data_path: str, dataset_type: str = "auto") -> EssayData
             return load_annomi_dataset(data_path)
         elif dataset_type == "mental_health":
             return load_mental_health_faqs_dataset(data_path)
+        elif dataset_type == "social_media_sentiment":
+            return load_social_media_sentiment_dataset(data_path)
         else:
             print(f"Unknown dataset type: {dataset_type}")
-            print("Supported types: annomi, mental_health")
+            print("Supported types: annomi, mental_health, social_media_sentiment")
             return None
             
     except Exception as e:
@@ -95,7 +101,7 @@ def main():
     )
     parser.add_argument(
         "--dataset-type",
-        choices=["auto", "annomi", "mental_health"],
+        choices=["auto", "annomi", "mental_health", "social_media_sentiment"],
         default="auto",
         help="Type of Kaggle dataset (auto-detect by default)"
     )

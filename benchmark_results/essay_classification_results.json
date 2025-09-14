@@ -1,36 +1,33 @@
 {
-  "final_test_accuracy": 0.575,
-  "best_test_accuracy": 0.575,
-  "final_train_accuracy": 0.48125,
-  "best_train_accuracy": 0.48125,
-  "final_train_loss": 0.6949692130088806,
-  "min_train_loss": 0.6949692130088806,
+  "final_test_accuracy": 0.0,
+  "best_test_accuracy": 0.0,
+  "final_train_accuracy": 0.75,
+  "best_train_accuracy": 0.75,
+  "final_train_loss": 0.6809220314025879,
+  "min_train_loss": 0.6809220314025879,
   "train_losses": [
-    0.6960689187049866,
-    0.6949692130088806
+    0.6809220314025879
   ],
   "train_accuracies": [
-    0.475,
-    0.48125
+    0.75
   ],
   "test_accuracies": [
-    0.575,
-    0.575
+    0.0
   ],
-  "training_time": 2.1965911388397217,
-  "total_time": 2.196660280227661,
-  "epochs": 2,
+  "training_time": 0.03564310073852539,
+  "total_time": 0.0357363224029541,
+  "epochs": 1,
   "batch_size": 32,
   "learning_rate": 0.001,
-  "vocab_size": 5000,
-  "max_length": 256,
-  "train_samples": 160,
-  "test_samples": 40,
-  "model_parameters": 49746,
+  "vocab_size": 22,
+  "max_length": 512,
+  "train_samples": 4,
+  "test_samples": 1,
+  "model_parameters": 82514,
   "config": {
     "num_nodes": 100,
     "hidden_dim": 128,
-    "input_dim": 256,
+    "input_dim": 512,
     "output_dim": 2,
     "spatial_dim": 2,
     "energy_decay": 0.01,
@@ -38,7 +35,7 @@
     "connection_radius": 1.0,
     "learning_rate": 0.001,
     "batch_size": 32,
-    "num_epochs": 2,
+    "num_epochs": 1,
     "adaptation_rate": 0.1,
     "circadian_period": 100,
     "phase_weights": {
@@ -57,6 +54,6 @@
     "metrics_file": "metrics.json",
     "enable_continual_learning": false,
     "enable_ablation_study": false,
-    "vocab_size": 5000
+    "vocab_size": 22
   }
 }
