@@ -2,6 +2,7 @@
 Dataset loaders for Kaggle datasets specified in the problem statement:
 1. ANNOMI Motivational Interviewing Dataset
 2. Mental Health FAQs Dataset
+3. Social Media Sentiments Analysis Dataset
 """
 
 import csv
@@ -132,6 +133,74 @@ def load_mental_health_faqs_dataset(
     binary_labels = _convert_to_binary_labels(labels)
     
     logger.info(f"Loaded {len(texts)} samples from Mental Health FAQs dataset")
+    logger.info(f"Label distribution: {_get_label_distribution(binary_labels)}")
+    
+    return EssayDataset(
+        texts=texts,
+        labels=binary_labels,
+        vocab_size=vocab_size,
+        max_length=max_length
+    )
+
+
+def load_social_media_sentiment_dataset(
+    data_path: str,
+    text_column: str = "text",
+    sentiment_column: str = "sentiment",
+    vocab_size: int = 10000,
+    max_length: int = 512
+) -> EssayDataset:
+    """
+    Load the Social Media Sentiments Analysis Dataset.
+    
+    Expected dataset URL: https://www.kaggle.com/datasets/kashishparmar02/social-media-sentiments-analysis-dataset
+    
+    Args:
+        data_path: Path to the dataset file (CSV, JSON, Excel, or TSV)
+        text_column: Name of the column containing text data
+        sentiment_column: Name of the column containing sentiment labels
+        vocab_size: Maximum vocabulary size
+        max_length: Maximum sequence length
+        
+    Returns:
+        EssayDataset instance
+        
+    Notes:
+        This dataset contains social media posts with sentiment labels.
+        Common sentiment labels include: positive, negative, neutral
+        The function supports flexible format loading (CSV/JSON/Excel/TSV).
+    """
+    logger.info(f"Loading Social Media Sentiment dataset from {data_path}")
+    
+    # Load the data - try different possible column names
+    possible_text_cols = [text_column, "Text", "content", "message", "post", "tweet", "comment"]
+    possible_sentiment_cols = [sentiment_column, "Sentiment", "label", "emotion", "feeling", "class"]
+    
+    data = _load_dataset_file(data_path)
+    
+    # Find the correct column names
+    text_col = _find_column(data, possible_text_cols)
+    sentiment_col = _find_column(data, possible_sentiment_cols)
+    
+    texts = []
+    labels = []
+    
+    for _, row in data.iterrows():
+        text = str(row[text_col]).strip()
+        sentiment = str(row[sentiment_col]).strip().lower()
+        
+        # Skip empty texts
+        if not text or text.lower() in ['nan', 'none', '']:
+            continue
+            
+        texts.append(text)
+        labels.append(sentiment)
+    
+    # Convert labels to binary for sentiment analysis
+    # Common sentiment mappings: positive=1, negative/neutral=0
+    binary_labels = _convert_sentiment_to_binary_labels(labels)
+    
+    logger.info(f"Loaded {len(texts)} samples from Social Media Sentiment dataset")
     logger.info(f"Label distribution: {_get_label_distribution(binary_labels)}")
     
     return EssayDataset(
@@ -290,6 +359,43 @@ def _convert_to_binary_labels(labels: List[str]) -> List[int]:
     return [label_map[label] for label in labels]
 
 
+def _convert_sentiment_to_binary_labels(labels: List[str]) -> List[int]:
+    """Convert sentiment labels to binary labels with sentiment-specific logic."""
+    # Normalize labels to lowercase for consistency
+    normalized_labels = [label.lower().strip() for label in labels]
+    unique_labels = list(set(normalized_labels))
+    
+    # Define positive sentiment keywords
+    positive_keywords = ['positive', 'pos', 'good', 'happy', 'joy', 'love', '1']
+    negative_keywords = ['negative', 'neg', 'bad', 'sad', 'anger', 'hate', '0']
+    neutral_keywords = ['neutral', 'neu', 'mixed']
+    
+    # Create mapping based on sentiment analysis conventions
+    label_map = {}
+    
+    for label in unique_labels:
+        if any(keyword in label for keyword in positive_keywords):
+            label_map[label] = 1  # Positive = 1
+        elif any(keyword in label for keyword in negative_keywords):
+            label_map[label] = 0  # Negative = 0  
+        elif any(keyword in label for keyword in neutral_keywords):
+            label_map[label] = 0  # Neutral = 0 (group with negative for binary)
+        else:
+            # If unknown sentiment, try to infer from numerical values or default to negative
+            try:
+                val = float(label)
+                label_map[label] = 1 if val > 0.5 else 0
+            except ValueError:
+                # Default unknown sentiments to negative class
+                label_map[label] = 0
+    
+    logger.info(f"Sentiment label mapping: {label_map}")
+    
+    # Convert using the mapping
+    binary_labels = [label_map[label] for label in normalized_labels]
+    return binary_labels
+
+
 def _get_label_distribution(labels: List[int]) -> Dict[int, int]:
     """Get distribution of binary labels."""
     return {0: labels.count(0), 1: labels.count(1)}
@@ -319,6 +425,14 @@ def get_dataset_info() -> Dict[str, Dict[str, Any]]:
             "loader": "load_mental_health_faqs_dataset",
             "expected_columns": ["question", "answer", "category"],
             "task": "Binary classification (anxiety vs depression, etc.)"
+        },
+        "social_media_sentiment": {
+            "name": "Social Media Sentiments Analysis Dataset",
+            "url": "https://www.kaggle.com/datasets/kashishparmar02/social-media-sentiments-analysis-dataset",
+            "description": "Social media posts with sentiment labels for sentiment analysis",
+            "loader": "load_social_media_sentiment_dataset",
+            "expected_columns": ["text", "sentiment"],
+            "task": "Binary sentiment classification (positive vs negative/neutral)"
         }
     }
 
