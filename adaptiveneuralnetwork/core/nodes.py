@@ -95,16 +95,35 @@ class NodeState:
         return self.hidden_state.shape[0]
 
     def expand_batch(self, new_batch_size: int) -> None:
-        """Expand state tensors to accommodate larger batch size."""
-        if new_batch_size <= self.get_batch_size():
+        """Expand or contract state tensors to accommodate different batch size."""
+        current_batch_size = self.get_batch_size()
+        if new_batch_size == current_batch_size:
             return
-
-        # Expand all tensors to new batch size
-        self.hidden_state = self.hidden_state.expand(new_batch_size, -1, -1).contiguous()
-        self.energy = self.energy.expand(new_batch_size, -1, -1).contiguous()
-        self.activity = self.activity.expand(new_batch_size, -1, -1).contiguous()
-        self.position = self.position.expand(new_batch_size, -1, -1).contiguous()
-        self.phase_mask = self.phase_mask.expand(new_batch_size, -1, -1).contiguous()
+        
+        if new_batch_size > current_batch_size:
+            # Expand by repeating the first sample for additional batch entries
+            num_repeats = new_batch_size - current_batch_size
+            
+            # Take the first sample and repeat it
+            extra_hidden = self.hidden_state[:1].expand(num_repeats, -1, -1)
+            extra_energy = self.energy[:1].expand(num_repeats, -1, -1)
+            extra_activity = self.activity[:1].expand(num_repeats, -1, -1)
+            extra_position = self.position[:1].expand(num_repeats, -1, -1)
+            extra_phase_mask = self.phase_mask[:1].expand(num_repeats, -1, -1)
+            
+            # Concatenate with existing tensors
+            self.hidden_state = torch.cat([self.hidden_state, extra_hidden], dim=0).contiguous()
+            self.energy = torch.cat([self.energy, extra_energy], dim=0).contiguous()
+            self.activity = torch.cat([self.activity, extra_activity], dim=0).contiguous()
+            self.position = torch.cat([self.position, extra_position], dim=0).contiguous()
+            self.phase_mask = torch.cat([self.phase_mask, extra_phase_mask], dim=0).contiguous()
+        else:
+            # Contract to smaller batch size by taking first n entries
+            self.hidden_state = self.hidden_state[:new_batch_size].contiguous()
+            self.energy = self.energy[:new_batch_size].contiguous()
+            self.activity = self.activity[:new_batch_size].contiguous()
+            self.position = self.position[:new_batch_size].contiguous()
+            self.phase_mask = self.phase_mask[:new_batch_size].contiguous()
 
     def to(self, device: torch.device) -> "NodeState":
         """Move state to specified device."""
