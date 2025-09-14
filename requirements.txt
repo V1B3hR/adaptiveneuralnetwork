@@ -1,3 +1,8 @@
-numpy
-scipy
-matplotlib
+# Minimal runtime requirements (mirror of pyproject base; pin or widen as desired)
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+scipy>=1.10.0
+rich>=13.0.0
+pyyaml>=6.0
+typing-extensions>=4.8.0
