@@ -2,7 +2,8 @@
 Dataset utilities for adaptive neural network training.
 
 This module provides dataset loading and preprocessing for various
-benchmarks including MNIST.
+benchmarks including MNIST, with domain randomization for cross-domain
+generalization as required by Phase 2.1.
 """
 
 import torch
@@ -10,7 +11,141 @@ import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
-from typing import Optional, Callable, Union
+from typing import Optional, Callable, Union, List, Dict, Any
+import random
+
+
+class DomainRandomizedDataset(Dataset):
+    """Dataset with domain randomization for cross-domain generalization."""
+    
+    def __init__(
+        self,
+        base_dataset: Dataset,
+        domain_configs: List[Dict[str, Any]],
+        randomization_prob: float = 0.5
+    ):
+        """
+        Initialize domain randomized dataset.
+        
+        Args:
+            base_dataset: Base dataset to apply domain randomization to
+            domain_configs: List of domain configuration dictionaries
+            randomization_prob: Probability of applying domain randomization
+        """
+        self.base_dataset = base_dataset
+        self.domain_configs = domain_configs
+        self.randomization_prob = randomization_prob
+        
+    def __len__(self) -> int:
+        return len(self.base_dataset)
+        
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        data, target = self.base_dataset[idx]
+        
+        # Apply domain randomization with probability
+        if random.random() < self.randomization_prob and self.domain_configs:
+            domain_config = random.choice(self.domain_configs)
+            data = self._apply_domain_transform(data, domain_config)
+            
+        return data, target
+        
+    def _apply_domain_transform(self, data: torch.Tensor, config: Dict[str, Any]) -> torch.Tensor:
+        """Apply domain-specific transformations to data."""
+        transformed_data = data.clone()
+        
+        # Noise injection
+        if 'noise_level' in config:
+            noise = torch.randn_like(transformed_data) * config['noise_level']
+            transformed_data += noise
+            
+        # Brightness/contrast adjustment
+        if 'brightness_factor' in config:
+            transformed_data *= config['brightness_factor']
+            
+        if 'contrast_factor' in config:
+            mean = transformed_data.mean()
+            transformed_data = (transformed_data - mean) * config['contrast_factor'] + mean
+            
+        # Blur simulation
+        if 'blur_kernel_size' in config and config['blur_kernel_size'] > 1:
+            # Simple blur approximation
+            kernel_size = config['blur_kernel_size']
+            if kernel_size % 2 == 0:
+                kernel_size += 1  # Ensure odd kernel size
+            # Apply simple averaging filter as blur approximation
+            if len(transformed_data.shape) >= 2:
+                padded = torch.nn.functional.pad(transformed_data, 
+                                               (kernel_size//2, kernel_size//2, kernel_size//2, kernel_size//2), 
+                                               mode='reflect')
+                # Simple box filter
+                blurred = torch.nn.functional.avg_pool2d(
+                    padded.unsqueeze(0).unsqueeze(0), 
+                    kernel_size, 
+                    stride=1,
+                    padding=0
+                ).squeeze()
+                transformed_data = blurred
+        
+        # Clamp values to valid range
+        transformed_data = torch.clamp(transformed_data, 0.0, 1.0)
+        
+        return transformed_data
+
+
+def create_cross_domain_loaders(
+    base_dataset: Dataset,
+    batch_size: int = 64,
+    num_domains: int = 3
+) -> List[DataLoader]:
+    """
+    Create data loaders with different domain configurations for cross-domain generalization.
+    
+    Args:
+        base_dataset: Base dataset to create domains from
+        batch_size: Batch size for data loaders
+        num_domains: Number of different domains to create
+        
+    Returns:
+        List of data loaders with different domain configurations
+    """
+    domain_configs = [
+        # Clean domain (no modifications)
+        {},
+        # Noisy domain
+        {'noise_level': 0.1, 'brightness_factor': 0.8},
+        # High contrast domain
+        {'contrast_factor': 1.5, 'brightness_factor': 1.2},
+        # Blurred domain
+        {'blur_kernel_size': 3, 'noise_level': 0.05},
+        # Low light domain
+        {'brightness_factor': 0.5, 'contrast_factor': 1.3},
+        # High noise domain
+        {'noise_level': 0.2, 'brightness_factor': 0.9, 'contrast_factor': 0.8}
+    ]
+    
+    # Select configurations for requested number of domains
+    selected_configs = domain_configs[:num_domains] if num_domains <= len(domain_configs) else domain_configs
+    
+    loaders = []
+    for i, config in enumerate(selected_configs):
+        if config:  # If config is not empty, apply domain randomization
+            domain_dataset = DomainRandomizedDataset(
+                base_dataset=base_dataset,
+                domain_configs=[config],
+                randomization_prob=1.0  # Always apply for domain-specific loaders
+            )
+        else:
+            domain_dataset = base_dataset
+            
+        loader = DataLoader(
+            domain_dataset,
+            batch_size=batch_size,
+            shuffle=False,  # No shuffle for consistent evaluation
+            num_workers=0
+        )
+        loaders.append(loader)
+        
+    return loaders
 
 
 def load_mnist(
