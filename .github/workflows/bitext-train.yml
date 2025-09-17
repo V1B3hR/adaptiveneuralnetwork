@@ -1,0 +1,320 @@
+name: Bitext Training Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Training mode'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - benchmark
+      subset_size:
+        description: 'Maximum number of samples to use'
+        required: false
+        default: '100'
+        type: string
+      epochs:
+        description: 'Number of training epochs'
+        required: false
+        default: '1'
+        type: string
+      dataset_name:
+        description: 'Kaggle dataset name (optional)'
+        required: false
+        type: string
+  schedule:
+    # Run smoke test daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  bitext-training:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+      fail-fast: false
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-bitext-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-bitext-${{ matrix.python-version }}-
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[nlp]
+
+    - name: Check dependencies
+      run: |
+        python -m adaptiveneuralnetwork.training.run_bitext_training --check-deps
+
+    - name: Set training parameters
+      id: params
+      run: |
+        # Set defaults for scheduled runs
+        if [ "${{ github.event_name }}" = "schedule" ]; then
+          echo "mode=smoke" >> $GITHUB_OUTPUT
+          echo "subset_size=50" >> $GITHUB_OUTPUT
+          echo "epochs=1" >> $GITHUB_OUTPUT
+          echo "dataset_name=" >> $GITHUB_OUTPUT
+        else
+          # Use workflow_dispatch inputs
+          echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
+          echo "subset_size=${{ github.event.inputs.subset_size }}" >> $GITHUB_OUTPUT
+          echo "epochs=${{ github.event.inputs.epochs }}" >> $GITHUB_OUTPUT
+          echo "dataset_name=${{ github.event.inputs.dataset_name }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Run bitext training (without Kaggle credentials)
+      if: ${{ !secrets.KAGGLE_USERNAME || !secrets.KAGGLE_KEY }}
+      run: |
+        echo "Running without Kaggle credentials (will use synthetic data)"
+        python -m adaptiveneuralnetwork.training.run_bitext_training \
+          --mode ${{ steps.params.outputs.mode }} \
+          --subset-size ${{ steps.params.outputs.subset_size }} \
+          --epochs ${{ steps.params.outputs.epochs }} \
+          --output-dir outputs/python${{ matrix.python-version }} \
+          --verbose
+
+    - name: Run bitext training (with Kaggle credentials)
+      if: ${{ secrets.KAGGLE_USERNAME && secrets.KAGGLE_KEY }}
+      env:
+        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+      run: |
+        echo "Running with Kaggle credentials"
+        python -m adaptiveneuralnetwork.training.run_bitext_training \
+          --mode ${{ steps.params.outputs.mode }} \
+          --subset-size ${{ steps.params.outputs.subset_size }} \
+          --epochs ${{ steps.params.outputs.epochs }} \
+          --dataset-name "${{ steps.params.outputs.dataset_name }}" \
+          --output-dir outputs/python${{ matrix.python-version }} \
+          --verbose
+
+    - name: Validate output files
+      run: |
+        output_dir="outputs/python${{ matrix.python-version }}"
+        
+        echo "Checking output directory: $output_dir"
+        ls -la "$output_dir" || echo "Output directory not found"
+        
+        # Check for expected output files
+        if [ "${{ steps.params.outputs.mode }}" = "smoke" ]; then
+          expected_files=("smoke_test_results.json" "smoke_test_model.pkl")
+        else
+          expected_files=("benchmark_results.json" "benchmark_model.pkl")
+        fi
+        
+        for file in "${expected_files[@]}"; do
+          if [ -f "$output_dir/$file" ]; then
+            echo "✓ Found expected file: $file"
+            # Show file size
+            ls -lh "$output_dir/$file"
+          else
+            echo "✗ Missing expected file: $file"
+            exit 1
+          fi
+        done
+        
+        # Validate JSON results
+        if [ "${{ steps.params.outputs.mode }}" = "smoke" ]; then
+          results_file="$output_dir/smoke_test_results.json"
+        else
+          results_file="$output_dir/benchmark_results.json"
+        fi
+        
+        if [ -f "$results_file" ]; then
+          echo "Validating results JSON..."
+          python -c "
+import json
+import sys
+
+try:
+    with open('$results_file') as f:
+        results = json.load(f)
+    
+    # Check required fields
+    assert 'success' in results, 'Missing success field'
+    assert 'mode' in results, 'Missing mode field'
+    assert 'runtime_seconds' in results, 'Missing runtime_seconds field'
+    
+    if results['success']:
+        assert 'dataset_info' in results, 'Missing dataset_info field'
+        assert 'model_info' in results, 'Missing model_info field'
+        print('✓ Results JSON validation passed')
+        print(f'  Mode: {results[\"mode\"]}')
+        print(f'  Success: {results[\"success\"]}')
+        print(f'  Runtime: {results[\"runtime_seconds\"]:.2f}s')
+        if 'dataset_info' in results:
+            info = results['dataset_info']
+            print(f'  Data: {info.get(\"train_samples\", 0)} train, {info.get(\"val_samples\", 0)} val samples')
+    else:
+        print(f'✗ Training failed: {results.get(\"error\", \"Unknown error\")}')
+        sys.exit(1)
+        
+except Exception as e:
+    print(f'✗ Results JSON validation failed: {e}')
+    sys.exit(1)
+          "
+        fi
+
+    - name: Upload training artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: bitext-training-artifacts-python${{ matrix.python-version }}-${{ steps.params.outputs.mode }}
+        path: |
+          outputs/python${{ matrix.python-version }}/*.json
+          outputs/python${{ matrix.python-version }}/*.pkl
+          outputs/python${{ matrix.python-version }}/*.png
+        retention-days: 7
+        if-no-files-found: warn
+
+    - name: Generate training summary
+      if: always()
+      run: |
+        output_dir="outputs/python${{ matrix.python-version }}"
+        
+        echo "## Bitext Training Summary (Python ${{ matrix.python-version }})" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Configuration:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Mode: ${{ steps.params.outputs.mode }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Subset Size: ${{ steps.params.outputs.subset_size }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Epochs: ${{ steps.params.outputs.epochs }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Dataset: ${{ steps.params.outputs.dataset_name || 'synthetic' }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Try to extract results from JSON
+        if [ "${{ steps.params.outputs.mode }}" = "smoke" ]; then
+          results_file="$output_dir/smoke_test_results.json"
+        else
+          results_file="$output_dir/benchmark_results.json"
+        fi
+        
+        if [ -f "$results_file" ]; then
+          python -c "
+import json
+import os
+
+try:
+    with open('$results_file') as f:
+        results = json.load(f)
+    
+    with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+        f.write('**Results:**\n')
+        f.write(f'- Status: {\"✅ Success\" if results.get(\"success\") else \"❌ Failed\"}\n')
+        f.write(f'- Runtime: {results.get(\"runtime_seconds\", 0):.2f} seconds\n')
+        
+        if 'dataset_info' in results:
+            info = results['dataset_info']
+            f.write(f'- Training Samples: {info.get(\"train_samples\", 0)}\n')
+            f.write(f'- Validation Samples: {info.get(\"val_samples\", 0)}\n')
+        
+        if 'train_metrics' in results:
+            train_acc = results['train_metrics'].get('train_accuracy', 0)
+            f.write(f'- Training Accuracy: {train_acc:.4f}\n')
+        
+        if 'eval_metrics' in results:
+            val_acc = results['eval_metrics'].get('accuracy', 0)
+            f.write(f'- Validation Accuracy: {val_acc:.4f}\n')
+        
+        f.write('\n')
+except:
+    pass
+          "
+        fi
+
+  consolidate-results:
+    needs: bitext-training
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: all-artifacts
+
+    - name: Create consolidated summary
+      run: |
+        echo "# Bitext Training Results Summary" >> summary.md
+        echo "" >> summary.md
+        echo "**Workflow:** ${{ github.event_name }}" >> summary.md
+        echo "**Trigger:** ${{ github.event_name == 'schedule' && 'Scheduled' || 'Manual' }}" >> summary.md
+        echo "**Timestamp:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> summary.md
+        echo "" >> summary.md
+        
+        echo "## Results by Python Version" >> summary.md
+        echo "" >> summary.md
+        
+        # List all result files
+        find all-artifacts -name "*.json" -type f | sort | while read -r file; do
+          echo "Processing: $file"
+          
+          # Extract Python version and mode from path
+          python_version=$(echo "$file" | grep -o 'python[0-9]\+\.[0-9]\+' | head -1)
+          mode=$(echo "$file" | grep -o '\(smoke\|benchmark\)' | head -1)
+          
+          if [ -n "$python_version" ] && [ -n "$mode" ]; then
+            echo "### $python_version ($mode mode)" >> summary.md
+            
+            # Extract key results
+            python3 -c "
+import json
+import sys
+
+try:
+    with open('$file') as f:
+        results = json.load(f)
+    
+    success = results.get('success', False)
+    runtime = results.get('runtime_seconds', 0)
+    
+    print(f'- Status: {\"✅ Success\" if success else \"❌ Failed\"}')
+    print(f'- Runtime: {runtime:.2f}s')
+    
+    if success and 'dataset_info' in results:
+        info = results['dataset_info']
+        print(f'- Data: {info.get(\"train_samples\", 0)} train, {info.get(\"val_samples\", 0)} val')
+    
+    if success and 'train_metrics' in results:
+        acc = results['train_metrics'].get('train_accuracy', 0)
+        print(f'- Train Accuracy: {acc:.4f}')
+        
+    if success and 'eval_metrics' in results:
+        acc = results['eval_metrics'].get('accuracy', 0) 
+        print(f'- Val Accuracy: {acc:.4f}')
+        
+except Exception as e:
+    print(f'- Error: {e}')
+            " >> summary.md
+            echo "" >> summary.md
+          fi
+        done
+        
+        cat summary.md
+
+    - name: Upload consolidated summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: bitext-training-summary
+        path: summary.md
+        retention-days: 30

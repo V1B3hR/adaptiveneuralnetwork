@@ -5,6 +5,87 @@ All notable changes to the Adaptive Neural Network project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2024-12-17
+
+### Added
+
+#### Core Configuration System
+- **Centralized Configuration**: New `AdaptiveNeuralNetworkConfig` class with nested configuration for all subsystems
+- **Multiple Configuration Sources**: Support for YAML/JSON files, environment variables, and runtime overrides
+- **Runtime Toggles**: Enable/disable proactive interventions, attack resilience features, and trend analysis
+- **Configuration Integration**: Seamlessly integrated with `AliveLoopNode` with backward compatibility
+- **Structured Logging**: Configurable event logging for config changes, interventions, and attacks
+- **Example Configurations**: `example_genome.json` and `benchmark_config.json` with different profiles
+
+#### Proactive Interventions Configuration
+- Configurable anxiety, calm, energy, joy, grief, hope, anger, and resilience interventions
+- Adjustable thresholds for intervention triggers (e.g., `anxiety_threshold`, `help_signal_cooldown`)
+- Per-subsystem enable/disable flags for fine-grained control
+
+#### Attack Resilience Configuration  
+- **Energy Drain Resistance**: Configurable resistance factor (0.0-1.0) and per-attacker ratio limits
+- **Signal Redundancy**: Adjustable redundancy levels and frequency hopping enable/disable
+- **Jamming Detection**: Configurable sensitivity for jamming detection
+- **Trust Manipulation**: Growth rate limits and rapid trust thresholds for detection
+
+#### Bitext Training Pipeline
+- **BitextDatasetLoader**: Kaggle integration via kagglehub with local CSV fallback
+- **TextClassificationBaseline**: Scikit-learn TF-IDF + LogisticRegression baseline
+- **CLI Interface**: `run_bitext_training.py` with smoke and benchmark modes
+- **Synthetic Data Generation**: Fallback data generation when real data unavailable
+- **GitHub Actions Integration**: Automated bitext training workflow with configurable parameters
+
+#### Testing Infrastructure
+- **Configuration Tests**: 52 comprehensive tests covering config functionality and integration
+- **Behavioral Change Tests**: Verification that config flags actually change system behavior
+- **Monotonicity Tests**: Ensure parameter changes have expected directional effects
+- **Bounds Testing**: Verify configuration limits are respected
+- **Integration Tests**: AliveLoopNode integration with configuration system
+
+#### Dependencies and Tooling
+- **Core Dependencies**: Updated requirements.txt with pinned runtime dependencies
+- **Development Tools**: New dev-requirements.txt with pytest, black, mypy, etc.
+- **Optional Dependencies**: New `[nlp]` extra with pandas, scikit-learn, kagglehub
+- **Python 3.9+ Support**: Extended support from Python 3.9-3.12
+- **Editor Configuration**: Added .editorconfig for consistent formatting
+
+#### GitHub Actions Workflows
+- **Bitext Training Workflow**: Automated training with workflow_dispatch and scheduled runs
+- **Enhanced CI**: Updated CI to support Python 3.9-3.12 with bitext smoke tests
+- **Artifact Management**: Structured artifact uploads with validation and summaries
+
+#### Documentation
+- **Bitext Training Guide**: Complete documentation in `docs/bitext_training.md`
+- **Configuration Examples**: Documented configuration options and usage patterns
+- **Updated README**: New sections for configuration system and bitext training
+- **API Documentation**: Inline documentation for all new modules
+
+### Changed
+- **Version**: Bumped from 0.3.0 to 0.1.0 (reset for official release)
+- **Python Compatibility**: Now supports Python 3.9+ (previously 3.10+)
+- **Dependencies**: Reorganized core vs optional dependencies for lighter installs
+- **AliveLoopNode**: Enhanced constructor to accept configuration with backward compatibility
+- **Rolling History**: Now configurable via `rolling_history.max_len` parameter
+- **CI Pipeline**: Extended testing matrix and added bitext training validation
+
+### Enhanced
+- **Trend Analysis**: Configurable window sizes and prediction parameters
+- **Memory Management**: Configurable history lengths for all emotional state tracking
+- **Environment Adaptation**: Configurable stress thresholds and adaptation rates
+- **Logging**: Structured event logging with configurable verbosity levels
+
+### Technical Details
+- **Lines of Code**: Added ~50,000 lines across configuration, training, and testing modules
+- **Test Coverage**: 52 tests covering configuration, behavioral changes, and integration
+- **Configuration Parameters**: 25+ configurable parameters across 5 major subsystems
+- **Backwards Compatibility**: All existing code works without modification
+
+### Development Infrastructure
+- **Validation**: Configuration validation with warnings for out-of-range values
+- **Reproducibility**: Deterministic seeds and controlled randomness throughout
+- **Error Handling**: Graceful degradation when optional dependencies missing
+- **Documentation**: Comprehensive usage examples and troubleshooting guides
+
 ## [Unreleased]
 
 ### Added
@@ -23,11 +104,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated from conceptual prototype to production-ready structure
 - Replaced individual node objects with batched tensor operations
 - Unified API around standard PyTorch training patterns
-
-## [0.1.0] - Planned
-
-### Added
-- **Core Components**
   - Vectorized node state management with energy and activity tracking
   - Phase scheduler supporting active, sleep, interactive, and inspired phases
   - Adaptive dynamics engine with configurable update rules

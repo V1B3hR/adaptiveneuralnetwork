@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adaptiveneuralnetwork"
-version = "0.3.0"
+version = "0.1.0"
 description = "Biologically inspired adaptive neural network with vectorized training"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -18,21 +18,22 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11", 
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 dependencies = [
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
-    "numpy>=1.21.0",
-    "rich>=10.0.0",
-    "typing-extensions>=4.0.0",
-    "pyyaml>=6.0",
-    "scipy>=1.7.0",
+    "torch>=2.0.0,<3.0.0",
+    "torchvision>=0.15.0,<1.0.0",
+    "numpy>=1.24.0,<2.0.0",
+    "rich>=13.0.0",
+    "typing-extensions>=4.8.0",
+    "pyyaml>=6.0,<7.0",
+    "scipy>=1.10.0,<2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -50,21 +51,28 @@ multimodal = [
     "transformers>=4.20.0",
     "tokenizers>=0.13.0",
 ]
+nlp = [
+    "pandas>=1.5.0",
+    "scikit-learn>=1.2.0",
+    "tqdm>=4.64.0",
+    "kagglehub>=0.2.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "ruff>=0.1.0", 
     "mypy>=1.0.0",
-    "black>=22.0.0",
+    "black>=23.0.0",
+    "pre-commit>=3.0.0",
 ]
 docs = [
-    "sphinx>=5.0.0",
-    "sphinx-rtd-theme>=1.0.0",
-    "myst-parser>=0.18.0",
+    "sphinx>=6.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    "myst-parser>=0.19.0",
 ]
 pos = [
     "seqeval>=1.2.2",
-    "scikit-learn>=1.0.0",
+    "scikit-learn>=1.2.0",
 ]
 
 [project.urls]

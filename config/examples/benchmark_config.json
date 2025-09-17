@@ -1,0 +1,46 @@
+{
+  "trend_analysis": {
+    "window": 10,
+    "enable_prediction": true,
+    "prediction_steps": 5
+  },
+  "rolling_history": {
+    "max_len": 50
+  },
+  "proactive_interventions": {
+    "anxiety_enabled": true,
+    "calm_enabled": true,
+    "energy_enabled": true,
+    "joy_enabled": false,
+    "grief_enabled": false,
+    "hope_enabled": true,
+    "anger_enabled": true,
+    "resilience_enabled": true,
+    "anxiety_threshold": 6.0,
+    "max_help_signals_per_period": 5,
+    "help_signal_cooldown": 5,
+    "anxiety_unload_capacity": 3.0
+  },
+  "attack_resilience": {
+    "energy_drain_resistance": 0.9,
+    "max_drain_per_attacker_ratio": 0.05,
+    "signal_redundancy_level": 3,
+    "frequency_hopping_enabled": true,
+    "jamming_detection_sensitivity": 0.2,
+    "trust_growth_rate_limit": 0.3,
+    "rapid_trust_threshold": 1.5,
+    "attack_detection_threshold": 2,
+    "suspicious_events_max_len": 20
+  },
+  "environment_adaptation": {
+    "stress_threshold_low": 2.0,
+    "stress_threshold_high": 8.0,
+    "adaptation_rate": 0.05,
+    "learning_rate_adaptation": true
+  },
+  "enable_structured_logging": true,
+  "log_level": "DEBUG",
+  "log_config_events": true,
+  "log_intervention_events": true,
+  "log_attack_events": true
+}
