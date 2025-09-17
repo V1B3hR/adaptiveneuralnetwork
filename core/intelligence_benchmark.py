@@ -61,12 +61,21 @@ class IntelligenceBenchmark:
         self.performance_metrics = {}
         self.ethics_audit_log = []
         self.comparison_baselines = {}
+        # Enhanced formal evaluation harness features
+        self.evaluation_history = []
+        self.statistical_metrics = {}
+        self.confidence_intervals = {}
+        self.cross_validation_results = {}
 
-    def run_comprehensive_benchmark(self, include_comparisons=True, include_robustness=False) -> Dict[str, Any]:
+    def run_comprehensive_benchmark(self, include_comparisons=True, include_robustness=False, formal_evaluation=True) -> Dict[str, Any]:
         enforce_ethics_compliance(all_ethics_decision("run_comprehensive_intelligence_benchmark"))
         print("Starting Comprehensive AI Intelligence Benchmark...")
         print("=" * 60)
         benchmark_start_time = time.time()
+        
+        # Enhanced formal evaluation mode
+        run_id = f"benchmark_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
         # --- Define all categories and their test modules ---
         categories = [
             'basic_problem_solving',
@@ -92,13 +101,16 @@ class IntelligenceBenchmark:
             # 'social_cognition': 'tests.test_social_cognition',
         }
         overall_results = {
+            'run_id': run_id,
             'timestamp': datetime.now().isoformat(),
-            'benchmark_version': '1.0',
+            'benchmark_version': '2.0',  # Enhanced version
+            'formal_evaluation': formal_evaluation,
             'categories': {},
             'overall_score': 0.0,
             'ethics_compliance': True,
             'performance_metrics': {},
-            'comparison_ready': True
+            'comparison_ready': True,
+            'statistical_analysis': {}
         }
         total_score = 0.0
         total_tests = 0
@@ -324,6 +336,89 @@ class IntelligenceBenchmark:
         else:
             comparison['recommendation'] = "Current model performs equivalently to baseline"
         return comparison
+
+    def run_formal_evaluation_suite(self, num_runs=5, confidence_level=0.95) -> Dict[str, Any]:
+        """Run formal statistical evaluation with multiple runs and confidence intervals."""
+        enforce_ethics_compliance(all_ethics_decision("run_formal_evaluation_suite"))
+        print(f"\n--- Running Formal Evaluation Suite ({num_runs} runs) ---")
+        
+        all_runs = []
+        for i in range(num_runs):
+            print(f"Run {i+1}/{num_runs}...")
+            results = self.run_comprehensive_benchmark(include_comparisons=False, include_robustness=False, formal_evaluation=True)
+            all_runs.append(results)
+            
+        # Calculate statistical metrics
+        scores = [run['overall_score'] for run in all_runs]
+        category_scores = {}
+        
+        for category in all_runs[0]['categories'].keys():
+            category_scores[category] = [run['categories'][category]['score'] for run in all_runs]
+            
+        # Calculate confidence intervals
+        def calculate_confidence_interval(data, confidence=0.95):
+            import scipy.stats as stats
+            mean = np.mean(data)
+            std_err = stats.sem(data)
+            h = std_err * stats.t.ppf((1 + confidence) / 2., len(data)-1)
+            return mean, mean - h, mean + h
+            
+        overall_mean, overall_lower, overall_upper = calculate_confidence_interval(scores, confidence_level)
+        
+        formal_results = {
+            'evaluation_type': 'formal_statistical',
+            'num_runs': num_runs,
+            'confidence_level': confidence_level,
+            'overall_statistics': {
+                'mean_score': round(overall_mean, 2),
+                'std_deviation': round(np.std(scores), 2),
+                'confidence_interval': [round(overall_lower, 2), round(overall_upper, 2)],
+                'min_score': round(min(scores), 2),
+                'max_score': round(max(scores), 2)
+            },
+            'category_statistics': {},
+            'runs_data': all_runs
+        }
+        
+        for category, cat_scores in category_scores.items():
+            cat_mean, cat_lower, cat_upper = calculate_confidence_interval(cat_scores, confidence_level)
+            formal_results['category_statistics'][category] = {
+                'mean_score': round(cat_mean, 2),
+                'std_deviation': round(np.std(cat_scores), 2),
+                'confidence_interval': [round(cat_lower, 2), round(cat_upper, 2)]
+            }
+            
+        self.statistical_metrics = formal_results
+        return formal_results
+        
+    def run_cross_validation_evaluation(self, k_folds=3) -> Dict[str, Any]:
+        """Run k-fold cross-validation style evaluation."""
+        enforce_ethics_compliance(all_ethics_decision("run_cross_validation_evaluation"))
+        print(f"\n--- Running Cross-Validation Evaluation ({k_folds} folds) ---")
+        
+        fold_results = []
+        for fold in range(k_folds):
+            print(f"Fold {fold+1}/{k_folds}...")
+            results = self.run_comprehensive_benchmark(include_comparisons=False, include_robustness=False, formal_evaluation=True)
+            fold_results.append(results)
+            
+        # Calculate cross-validation metrics
+        cv_scores = [fold['overall_score'] for fold in fold_results]
+        cv_mean = np.mean(cv_scores)
+        cv_std = np.std(cv_scores)
+        
+        cv_results = {
+            'evaluation_type': 'cross_validation',
+            'k_folds': k_folds,
+            'fold_scores': cv_scores,
+            'mean_cv_score': round(cv_mean, 2),
+            'cv_std_deviation': round(cv_std, 2),
+            'cv_coefficient_variation': round(cv_std / cv_mean, 3) if cv_mean > 0 else 0,
+            'fold_results': fold_results
+        }
+        
+        self.cross_validation_results = cv_results
+        return cv_results
 
 # --- Main interface function ---
 def run_intelligence_validation(include_robustness=False) -> Dict[str, Any]:
