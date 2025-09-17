@@ -137,6 +137,9 @@ test_results/
 *.log
 extreme_scale_test_results.json
 
+# Training results (uploaded as artifacts in CI)
+results/
+
 # IDE
 .vscode/
 .idea/

@@ -169,6 +169,11 @@ def create_synthetic_bitext_dataset(num_samples: int = 1000, seed: int = 42) -> 
             "Good morning",
             "Hey, what's up?",
             "Greetings",
+            "Good afternoon",
+            "Good evening", 
+            "How do you do?",
+            "Nice to meet you",
+            "Welcome"
         ],
         "book_hotel": [
             "I want to book a hotel room",
@@ -176,6 +181,11 @@ def create_synthetic_bitext_dataset(num_samples: int = 1000, seed: int = 42) -> 
             "I need accommodation for tonight",
             "Book me a room please",
             "Looking for hotel reservations",
+            "I need a place to stay",
+            "Find me a hotel near downtown",
+            "Reserve a room for two people",
+            "I want to make a hotel reservation",
+            "Book a suite for the weekend"
         ],
         "cancel_booking": [
             "I want to cancel my booking",
@@ -183,6 +193,11 @@ def create_synthetic_bitext_dataset(num_samples: int = 1000, seed: int = 42) -> 
             "Can I cancel my order?",
             "I need to cancel this",
             "Cancel my booking please",
+            "I want to cancel my hotel reservation",
+            "Can you cancel my flight?",
+            "I need to cancel my appointment",
+            "Please cancel my subscription",
+            "I want to cancel this transaction"
         ],
         "check_weather": [
             "What's the weather like?",
@@ -190,6 +205,11 @@ def create_synthetic_bitext_dataset(num_samples: int = 1000, seed: int = 42) -> 
             "Is it going to rain?",
             "Check weather forecast",
             "Tell me about today's weather",
+            "Will it be sunny tomorrow?",
+            "What's the temperature outside?",
+            "Is it cloudy today?",
+            "Do I need an umbrella?",
+            "What's the weather forecast for this week?"
         ],
         "order_food": [
             "I want to order food",
@@ -197,6 +217,11 @@ def create_synthetic_bitext_dataset(num_samples: int = 1000, seed: int = 42) -> 
             "I'm hungry, what can I order?",
             "Place a food order",
             "I'd like to order something to eat",
+            "Can you recommend a restaurant?",
+            "I want to order Chinese food",
+            "Get me some burgers",
+            "I need food delivery",
+            "Order me some sushi"
         ],
         "technical_support": [
             "I need help with my account",
@@ -204,7 +229,12 @@ def create_synthetic_bitext_dataset(num_samples: int = 1000, seed: int = 42) -> 
             "Can you fix this issue?",
             "I have a technical problem",
             "Need support please",
-        ],
+            "My device is not responding",
+            "The app keeps crashing",
+            "I can't log into my account",
+            "There's a bug in the system",
+            "I need customer service"
+        ]
     }
     
     # Additional words for variation

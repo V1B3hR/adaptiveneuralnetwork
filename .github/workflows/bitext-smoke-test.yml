@@ -1,0 +1,52 @@
+name: Bitext Smoke Test
+
+on:
+  push:
+    branches: [ main, "copilot/*" ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[nlp]"
+    
+    - name: Run Bitext smoke test
+      run: |
+        python -m adaptiveneuralnetwork.training.run_bitext_training --mode smoke --verbose
+    
+    - name: Check metrics output
+      run: |
+        ls -la results/
+        cat results/metrics.json
+        # Verify metrics.json has required fields
+        python -c "
+        import json
+        with open('results/metrics.json') as f:
+            metrics = json.load(f)
+        required_fields = ['train_accuracy', 'test_accuracy', 'training_time_seconds', 'num_samples', 'num_classes', 'model_type']
+        for field in required_fields:
+            assert field in metrics, f'Missing field: {field}'
+        assert metrics['model_type'] == 'TF-IDF + LogisticRegression'
+        assert metrics['num_classes'] == 6
+        print('✓ All required metrics fields present')
+        "
+    
+    - name: Upload metrics artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: bitext-smoke-metrics
+        path: results/metrics.json
+        retention-days: 30
