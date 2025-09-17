@@ -36,6 +36,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+nlp = [
+    "pandas>=1.3.0",
+    "scikit-learn>=1.0.0",
+    "kagglehub>=0.1.0", 
+    "tqdm>=4.60.0",
+]
 jax = [
     "jax>=0.4.0",
     "jaxlib>=0.4.0", 
