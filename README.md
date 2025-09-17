@@ -44,6 +44,7 @@ pip install -e .
 | jax | JAX backend acceleration | jax, jaxlib, flax, optax |
 | neuromorphic | Visualization + spike abstractions | scipy, matplotlib |
 | multimodal | Text + image fusion | transformers, tokenizers |
+| nlp | Bitext training & text classification | pandas, scikit-learn, kagglehub |
 | pos | Part-of-Speech tagging support | seqeval, scikit-learn |
 | dev | Dev tooling | pytest, coverage, ruff, mypy, black |
 | docs | Documentation build | sphinx, myst-parser |
@@ -51,7 +52,133 @@ pip install -e .
 Install with multiple extras:
 ```bash
 pip install -e ".[jax,neuromorphic,multimodal]"
+pip install -e ".[nlp,dev]"  # NLP + development tools
 ```
+
+---
+
+## ⚙️ Configuration System
+
+The v0.1.0 release introduces a centralized configuration system for reproducible experiments and runtime parameter control.
+
+### Quick Configuration
+
+```python
+from adaptiveneuralnetwork.config import AdaptiveNeuralNetworkConfig
+from core.alive_node import AliveLoopNode
+
+# Create configuration
+config = AdaptiveNeuralNetworkConfig()
+config.proactive_interventions.anxiety_threshold = 6.0
+config.attack_resilience.energy_drain_resistance = 0.9
+config.rolling_history.max_len = 50
+
+# Use with nodes
+node = AliveLoopNode(position=[0, 0], velocity=[0, 0], config=config)
+```
+
+### Configuration Sources
+
+**File-based (YAML/JSON):**
+```python
+# From JSON
+config = AdaptiveNeuralNetworkConfig.from_json('config/examples/benchmark_config.json')
+
+# From YAML  
+config = AdaptiveNeuralNetworkConfig.from_yaml('config/my_config.yaml')
+```
+
+**Environment Variables:**
+```bash
+export ANN_TREND_WINDOW=10
+export ANN_ANXIETY_ENABLED=false
+export ANN_ENERGY_DRAIN_RESISTANCE=0.8
+
+python your_script.py  # Automatically loads env vars
+```
+
+**Runtime Overrides:**
+```python
+from adaptiveneuralnetwork.config import load_config
+
+config = load_config(
+    'config/base.json',
+    **{'trend_analysis.window': 15, 'log_level': 'DEBUG'}
+)
+```
+
+### Key Configuration Areas
+
+- **Proactive Interventions**: Enable/disable anxiety, calm, energy interventions
+- **Attack Resilience**: Energy drain resistance, signal redundancy, jamming detection
+- **Trend Analysis**: Window sizes, prediction steps
+- **Rolling History**: Memory lengths for trend analysis
+- **Environment Adaptation**: Stress thresholds, adaptation rates
+
+See `config/examples/` for complete configuration examples.
+
+---
+
+## 📝 Bitext Training & Text Classification
+
+New lightweight text classification pipeline for demonstrating state-modulated behavior:
+
+### Quick Start
+
+```bash
+# Check dependencies
+python -m adaptiveneuralnetwork.training.run_bitext_training --check-deps
+
+# Smoke test (quick validation)
+python -m adaptiveneuralnetwork.training.run_bitext_training --mode smoke
+
+# Benchmark with Kaggle dataset
+export KAGGLE_USERNAME=your_username
+export KAGGLE_KEY=your_api_key
+python -m adaptiveneuralnetwork.training.run_bitext_training \
+  --mode benchmark \
+  --dataset-name username/sentiment-dataset \
+  --subset-size 5000
+```
+
+### Programmatic Usage
+
+```python
+from adaptiveneuralnetwork.training.bitext_dataset import BitextDatasetLoader
+from adaptiveneuralnetwork.training.text_baseline import TextClassificationBaseline
+
+# Load dataset
+loader = BitextDatasetLoader(
+    dataset_name="kaggle-user/dataset",
+    sampling_fraction=0.1,
+    normalize_text=True
+)
+train_df, val_df = loader.load_dataset()
+
+# Train baseline model
+baseline = TextClassificationBaseline(max_features=10000, random_state=42)
+metrics = baseline.fit(
+    texts=train_df['text'].tolist(),
+    labels=train_df['label'].tolist(),
+    validation_texts=val_df['text'].tolist(),
+    validation_labels=val_df['label'].tolist()
+)
+
+# Make predictions
+predictions = baseline.predict(["Sample text to classify"])
+```
+
+**Features:**
+- Kaggle dataset integration via kagglehub
+- Local CSV fallback support
+- Smoke testing for CI/CD
+- TF-IDF + LogisticRegression baseline
+- Deterministic results with configurable seeds
+- GitHub Actions workflow integration
+
+See [docs/bitext_training.md](docs/bitext_training.md) for complete documentation.
+
+---
 
 ### Minimal Runtime Example
 
