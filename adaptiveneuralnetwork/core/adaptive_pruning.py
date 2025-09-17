@@ -109,17 +109,36 @@ class NodeLifecycleManager:
     def update_node_metrics(self, contribution_scores: Optional[torch.Tensor] = None) -> None:
         """Update node performance metrics."""
         
-        # Update activity history - flatten to 1D if needed
+        # Update activity history - flatten to 1D if needed and match expected size
         activity = self.node_state.activity.flatten()
+        if activity.shape[0] != self.num_nodes:
+            # Pad or truncate to match expected size
+            if activity.shape[0] < self.num_nodes:
+                activity = torch.cat([activity, torch.zeros(self.num_nodes - activity.shape[0], device=activity.device)])
+            else:
+                activity = activity[:self.num_nodes]
+        
         self.activity_history[:, self.history_index] = activity
         
-        # Update energy history - flatten to 1D if needed  
+        # Update energy history - flatten to 1D if needed and match expected size
         energy = self.node_state.energy.flatten()
+        if energy.shape[0] != self.num_nodes:
+            # Pad or truncate to match expected size
+            if energy.shape[0] < self.num_nodes:
+                energy = torch.cat([energy, torch.zeros(self.num_nodes - energy.shape[0], device=energy.device)])
+            else:
+                energy = energy[:self.num_nodes]
+        
         self.energy_history[:, self.history_index] = energy
         
         # Update contribution history
         if contribution_scores is not None:
             contrib = contribution_scores.flatten()
+            if contrib.shape[0] != self.num_nodes:
+                if contrib.shape[0] < self.num_nodes:
+                    contrib = torch.cat([contrib, torch.zeros(self.num_nodes - contrib.shape[0], device=contrib.device)])
+                else:
+                    contrib = contrib[:self.num_nodes]
             self.contribution_history[:, self.history_index] = contrib
         else:
             # Use energy * activity as proxy for contribution
@@ -396,11 +415,28 @@ class NodeLifecycleManager:
         }
         
         results["node_health"] = health_counts
+        # Get flattened activity and energy with size matching
+        activity_flat = self.node_state.activity.flatten()
+        energy_flat = self.node_state.energy.flatten()
+        
+        # Ensure they match the number of nodes
+        if activity_flat.shape[0] != self.num_nodes:
+            if activity_flat.shape[0] < self.num_nodes:
+                activity_flat = torch.cat([activity_flat, torch.zeros(self.num_nodes - activity_flat.shape[0], device=activity_flat.device)])
+            else:
+                activity_flat = activity_flat[:self.num_nodes]
+        
+        if energy_flat.shape[0] != self.num_nodes:
+            if energy_flat.shape[0] < self.num_nodes:
+                energy_flat = torch.cat([energy_flat, torch.zeros(self.num_nodes - energy_flat.shape[0], device=energy_flat.device)])
+            else:
+                energy_flat = energy_flat[:self.num_nodes]
+        
         results["metrics"] = {
             "active_nodes": self.active_nodes.sum().item(),
             "pruned_nodes": self.pruned_nodes.sum().item(),
-            "mean_activity": self.node_state.activity.flatten()[self.active_nodes].mean().item() if self.active_nodes.any() else 0,
-            "mean_energy": self.node_state.energy.flatten()[self.active_nodes].mean().item() if self.active_nodes.any() else 0,
+            "mean_activity": activity_flat[self.active_nodes].mean().item() if self.active_nodes.any() else 0,
+            "mean_energy": energy_flat[self.active_nodes].mean().item() if self.active_nodes.any() else 0,
             "performance_baseline": self.performance_baseline,
         }
         
