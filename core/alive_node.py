@@ -10,6 +10,14 @@ from core.ai_ethics import audit_decision
 from core.time_manager import get_time_manager, get_timestamp
 from core.trust_network import TrustNetwork
 
+# Import configuration system (with fallback for backward compatibility)
+try:
+    from adaptiveneuralnetwork.config import AdaptiveNeuralNetworkConfig, get_global_config
+except ImportError:
+    # Fallback for backward compatibility
+    AdaptiveNeuralNetworkConfig = None
+    get_global_config = lambda: None
+
 # Setup logger for alive_node module
 logger = logging.getLogger('alive_node')
 logger.setLevel(logging.WARNING)  # Only show warnings and errors
@@ -90,7 +98,7 @@ class SocialSignal:
 class AliveLoopNode:
     sleep_stages = ["light", "REM", "deep"]
 
-    def __init__(self, position, velocity, initial_energy=10.0, field_strength=1.0, node_id=0, spatial_dims=None):
+    def __init__(self, position, velocity, initial_energy=10.0, field_strength=1.0, node_id=0, spatial_dims=None, config=None):
         # Import spatial utilities
         from core.spatial_utils import validate_spatial_dimensions, zero_vector
         
@@ -111,9 +119,19 @@ class AliveLoopNode:
         except ValueError as e:
             raise ValueError(f"Node {node_id} dimension validation failed: {e}")
         
+        # Initialize configuration (with fallback for backward compatibility)
+        if config is None and AdaptiveNeuralNetworkConfig is not None:
+            config = get_global_config()
+        self.config = config
+        
         self.energy = float(initial_energy)
         self.field_strength = float(field_strength)
         self.node_id = int(node_id)
+        
+        # Phase and time management
+        self.phase = "active"  # active, sleep, interactive, inspired
+        self._time = 0
+        self.circadian_cycle = 0
         
         # Phase and time management
         self.phase = "active"  # active, sleep, interactive, inspired
@@ -171,29 +189,7 @@ class AliveLoopNode:
         self.communications_this_step = 0
         self.last_step_time = 0
         
-        # Enhanced attack resilience features
-        # These attributes support robustness against adversarial or resource-exhaustion behaviors.
-        self.energy_sharing_enabled = True              # Allow distributed energy sharing
-        self.energy_sharing_history = deque(maxlen=20)  # Track energy transactions (tuples or dicts)
-        self.attack_detection_threshold = 3             # Suspicious event count to trigger detection
-        self.suspicious_events = deque(maxlen=10)       # Recent suspicious activity records
-        self.energy_drain_resistance = 0.7              # Resistance factor (0.0 - 1.0)
-        self.signal_redundancy_level = 2                # Number of redundant communication channels
-        self.jamming_detection_sensitivity = 0.3        # Lower = less sensitive, higher = more false positives
-
-        # Anxiety overwhelm safety protocol attributes
-        # Supports internal emotional / load regulation and cooperative help signaling.
-        self.anxiety_threshold = 8.0           # Threshold for activating help protocol
-        self.calm = 1.0                        # Calm level (0.0 to 5.0); higher = more regulated
-        self.help_signals_sent = 0             # Count of help signals sent in current period
-        self.max_help_signals_per_period = 3   # Cap to prevent spam
-        self.help_signal_cooldown = 10         # Seconds between allowed help requests
-        self.last_help_signal_time = 0         # Timestamp of last help signal
-        self.anxiety_unload_capacity = 2.0     # How much anxiety can be reduced per assistance interaction
-        self.received_help_this_period = False # Flag to avoid redundant requests
-        self.anxiety_history = deque(maxlen=20)# Rolling history for trend analysis
-        
-        # Extended emotional states and their histories
+        # Extended emotional states (will be overridden by config if available)
         self.joy = 0.0                         # Joy level (0.0 to 5.0)
         self.grief = 0.0                       # Grief level (0.0 to 5.0) 
         self.sadness = 0.0                     # Sadness level (0.0 to 5.0)
@@ -202,18 +198,6 @@ class AliveLoopNode:
         self.curiosity = 1.0                   # Curiosity level (0.0 to 5.0), start with some curiosity
         self.frustration = 0.0                 # Frustration level (0.0 to 5.0)
         self.resilience = 2.0                  # Resilience level (0.0 to 5.0), start with moderate resilience
-        
-        # Emotional state histories for trend analysis
-        self.joy_history = deque(maxlen=20)    # Rolling history for joy trend analysis
-        self.grief_history = deque(maxlen=20)  # Rolling history for grief trend analysis
-        self.sadness_history = deque(maxlen=20)# Rolling history for sadness trend analysis
-        self.anger_history = deque(maxlen=20)  # Rolling history for anger trend analysis
-        self.hope_history = deque(maxlen=20)   # Rolling history for hope trend analysis
-        self.curiosity_history = deque(maxlen=20) # Rolling history for curiosity trend analysis
-        self.frustration_history = deque(maxlen=20) # Rolling history for frustration trend analysis
-        self.resilience_history = deque(maxlen=20) # Rolling history for resilience trend analysis
-        self.calm_history = deque(maxlen=20)   # Rolling history for calm trend analysis
-        self.energy_history = deque(maxlen=20) # Rolling history for energy trend analysis
 
         # Configurable emotion schema - defines which emotions are tracked
         self.emotion_schema = {
@@ -233,10 +217,8 @@ class AliveLoopNode:
             'resilience': {'type': 'positive', 'range': (0, 5.0), 'default': 2.0, 'core': False}
         }
         
-        # Initialize emotion histories dynamically based on schema
-        self.emotion_histories = {}
-        for emotion_name in self.emotion_schema.keys():
-            self.emotion_histories[emotion_name] = deque(maxlen=20)
+        # Initialize configuration-driven attributes
+        self._initialize_config_driven_attributes()
 
         # Initialize period boundaries if needed
         self._help_period_start = get_timestamp()
@@ -262,6 +244,78 @@ class AliveLoopNode:
         }
         self.persisted_signals = deque(maxlen=1000)  # For replay capabilities
         self.partition_queues = {}  # partition_key -> deque for ordering guarantees
+
+    def _get_config_value(self, *path, default=None):
+        """
+        Helper method to get configuration values with fallbacks.
+        
+        Args:
+            *path: Dot-separated path to config value (e.g., 'attack_resilience', 'energy_drain_resistance')
+            default: Default value if config not available or path not found
+            
+        Returns:
+            Configuration value or default
+        """
+        if self.config is None:
+            return default
+        
+        current = self.config
+        for part in path:
+            if hasattr(current, part):
+                current = getattr(current, part)
+            else:
+                return default
+        
+        return current
+
+    def _initialize_config_driven_attributes(self):
+        """Initialize attributes using configuration values with backward-compatible defaults."""
+        # Enhanced attack resilience features - use config values with fallbacks
+        self.energy_sharing_enabled = True
+        self.energy_sharing_history = deque(maxlen=self._get_config_value('rolling_history', 'max_len', default=20))
+        self.attack_detection_threshold = self._get_config_value('attack_resilience', 'attack_detection_threshold', default=3)
+        self.suspicious_events = deque(maxlen=self._get_config_value('attack_resilience', 'suspicious_events_max_len', default=10))
+        self.energy_drain_resistance = self._get_config_value('attack_resilience', 'energy_drain_resistance', default=0.7)
+        self.signal_redundancy_level = self._get_config_value('attack_resilience', 'signal_redundancy_level', default=2)
+        self.jamming_detection_sensitivity = self._get_config_value('attack_resilience', 'jamming_detection_sensitivity', default=0.3)
+
+        # Anxiety overwhelm safety protocol attributes - use config values
+        self.anxiety_threshold = self._get_config_value('proactive_interventions', 'anxiety_threshold', default=8.0)
+        self.calm = 1.0  # Initial calm level
+        self.help_signals_sent = 0
+        self.max_help_signals_per_period = self._get_config_value('proactive_interventions', 'max_help_signals_per_period', default=3)
+        self.help_signal_cooldown = self._get_config_value('proactive_interventions', 'help_signal_cooldown', default=10)
+        self.last_help_signal_time = 0
+        self.anxiety_unload_capacity = self._get_config_value('proactive_interventions', 'anxiety_unload_capacity', default=2.0)
+        self.received_help_this_period = False
+        
+        # Initialize histories with configurable max length
+        history_maxlen = self._get_config_value('rolling_history', 'max_len', default=20)
+        self.anxiety_history = deque(maxlen=history_maxlen)
+        self.joy_history = deque(maxlen=history_maxlen)
+        self.grief_history = deque(maxlen=history_maxlen)
+        self.sadness_history = deque(maxlen=history_maxlen)
+        self.anger_history = deque(maxlen=history_maxlen)
+        self.hope_history = deque(maxlen=history_maxlen)
+        self.curiosity_history = deque(maxlen=history_maxlen)
+        self.frustration_history = deque(maxlen=history_maxlen)
+        self.resilience_history = deque(maxlen=history_maxlen)
+        self.calm_history = deque(maxlen=history_maxlen)
+        self.energy_history = deque(maxlen=history_maxlen)
+        
+        # Initialize emotion histories dynamically based on schema with configurable max length
+        self.emotion_histories = {}
+        for emotion_name in self.emotion_schema.keys():
+            self.emotion_histories[emotion_name] = deque(maxlen=history_maxlen)
+        
+        # Log configuration application
+        if self.config and self._get_config_value('log_config_events', default=False):
+            self.config.log_event('config', f'Node {self.node_id} initialized with configuration', 
+                                node_id=self.node_id,
+                                trend_window=self._get_config_value('trend_analysis', 'window', default=5),
+                                history_max_len=history_maxlen,
+                                anxiety_threshold=self.anxiety_threshold,
+                                energy_drain_resistance=self.energy_drain_resistance)
 
     def send_signal(self, target_nodes: List['AliveLoopNode'], signal_type: str, 
                    content: Any, urgency: float = 0.5, requires_response: bool = False,
