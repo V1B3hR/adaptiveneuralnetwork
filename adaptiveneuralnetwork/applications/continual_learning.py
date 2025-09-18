@@ -518,13 +518,38 @@ class ContinualLearningSystem(nn.Module):
         train_loader: torch.utils.data.DataLoader,
         task_id: int,
         num_epochs: int = 10,
-        learning_rate: float = 0.001
+        learning_rate: float = 0.001,
+        val_loader: Optional[torch.utils.data.DataLoader] = None
     ) -> Dict[str, float]:
-        """Learn a new task while preventing catastrophic forgetting."""
+        """
+        Learn a new task while preventing catastrophic forgetting.
+        
+        Args:
+            train_loader: DataLoader for training data
+            task_id: Unique identifier for the task
+            num_epochs: Number of training epochs
+            learning_rate: Initial learning rate
+            val_loader: Optional DataLoader for validation data. If provided,
+                       performance metrics will use validation data for more
+                       accurate generalization estimates.
+        
+        Returns:
+            Dictionary containing training statistics including initial and
+            final performance on validation set (if provided) or training set.
+        """
         logger.info(f"Learning task {task_id}")
         
         self.current_task = task_id
         self.current_learning_rate = learning_rate
+        
+        # Record initial performance on validation set if available
+        initial_performance = 0.0
+        if val_loader is not None:
+            logger.info(f"Recording initial performance on validation set")
+            initial_performance = self.evaluate_task(val_loader)
+            logger.info(f"Initial validation performance: {initial_performance:.3f}")
+        else:
+            logger.debug("No validation loader provided - initial performance will be 0.0")
         
         # Optimizer with adaptive learning rate
         optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
@@ -532,7 +557,7 @@ class ContinualLearningSystem(nn.Module):
         
         # Learning statistics
         task_stats = {
-            'initial_performance': 0.0,
+            'initial_performance': initial_performance,
             'final_performance': 0.0,
             'consolidation_loss': 0.0,
             'memory_replay_ratio': 0.0,
@@ -650,28 +675,59 @@ class ContinualLearningSystem(nn.Module):
                 epoch_loss += task_loss.item()
                 total_samples += batch_size
             
-            # Log epoch statistics
+            # Log epoch statistics with more comprehensive information
             avg_loss = epoch_loss / len(train_loader)
             avg_consolidation = epoch_consolidation_loss / len(train_loader)
             memory_ratio = memory_samples / total_samples if total_samples > 0 else 0.0
             
-            if epoch % 5 == 0:
-                logger.debug(f"Epoch {epoch}: Loss {avg_loss:.4f}, "
-                           f"Consolidation {avg_consolidation:.4f}, "
-                           f"Memory replay {memory_ratio:.2%}")
+            # Store accumulated metrics for task stats
+            task_stats['consolidation_loss'] += avg_consolidation
+            task_stats['memory_replay_ratio'] += memory_ratio
+            task_stats['distribution_shifts_detected'] += distribution_shifts
+            task_stats['adaptation_events'] += adaptation_events
+            task_stats['average_learning_rate'] = self.current_learning_rate
+            
+            # Enhanced epoch logging (every 2 epochs to reduce verbosity)
+            if epoch % 2 == 0 or epoch == num_epochs - 1:
+                logger.debug(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.4f}, "
+                           f"Consolidation={avg_consolidation:.4f}, "
+                           f"Memory_replay={memory_ratio:.2%}, "
+                           f"Shifts={distribution_shifts}, "
+                           f"Adaptations={adaptation_events}, "
+                           f"LR={self.current_learning_rate:.5f}")
+        
+        # Average out accumulated statistics
+        task_stats['consolidation_loss'] /= num_epochs
+        task_stats['memory_replay_ratio'] /= num_epochs
         
         # Update synaptic consolidation for this task
         if self.synaptic_consolidation is not None:
             self.synaptic_consolidation.estimate_fisher_information(train_loader)
             self.synaptic_consolidation.update_optimal_params()
         
-        # Evaluate performance on current task
-        final_performance = self.evaluate_task(train_loader)
-        task_stats['final_performance'] = final_performance
+        # Evaluate performance on validation set if available, otherwise use training set
+        if val_loader is not None:
+            logger.info("Evaluating final performance on validation set")
+            final_performance = self.evaluate_task(val_loader)
+            evaluation_set = "validation"
+        else:
+            logger.warning("No validation loader provided - evaluating on training set. "
+                         "This may lead to inflated accuracy estimates and mask overfitting!")
+            final_performance = self.evaluate_task(train_loader)
+            evaluation_set = "training"
         
+        task_stats['final_performance'] = final_performance
         self.task_performance[task_id] = final_performance
         
-        logger.info(f"Task {task_id} learning completed. Performance: {final_performance:.3f}")
+        # Enhanced logging with initial -> final performance summary
+        if val_loader is not None and initial_performance > 0:
+            improvement = final_performance - initial_performance
+            logger.info(f"Task {task_id} learning completed on {evaluation_set} set. "
+                       f"Performance: {initial_performance:.3f} -> {final_performance:.3f} "
+                       f"(Δ{improvement:+.3f})")
+        else:
+            logger.info(f"Task {task_id} learning completed on {evaluation_set} set. "
+                       f"Performance: {final_performance:.3f}")
         
         return task_stats
     
