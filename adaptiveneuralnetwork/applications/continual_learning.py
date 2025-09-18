@@ -39,6 +39,13 @@ class ContinualLearningConfig:
     memory_replay_ratio: float = 0.2  # Fraction of memory replay
     catastrophic_threshold: float = 0.05  # Performance drop threshold
     
+    # Non-stationary data handling
+    distribution_shift_detection: bool = True
+    adaptation_window_size: int = 1000  # Samples to consider for shift detection
+    shift_threshold: float = 0.1  # Threshold for detecting distribution shift
+    rapid_adaptation_rate: float = 0.01  # Learning rate for rapid adaptation
+    concept_drift_buffer_size: int = 5000  # Buffer for concept drift
+    
     # Neuromorphic parameters
     enable_metaplasticity: bool = True
     enable_homeostatic_scaling: bool = True
@@ -53,6 +60,149 @@ class ContinualLearningConfig:
     def __post_init__(self):
         if self.hidden_layers is None:
             self.hidden_layers = [512, 256, 128]
+
+
+class NonStationaryDataHandler:
+    """Handles non-stationary data streams with distribution shift detection."""
+    
+    def __init__(self, config: ContinualLearningConfig):
+        self.config = config
+        self.data_buffer = []
+        self.statistics_buffer = []
+        self.current_statistics = None
+        self.shift_detected = False
+        self.adaptation_mode = False
+        
+        # Distribution tracking
+        self.running_mean = None
+        self.running_var = None
+        self.sample_count = 0
+        
+        # Concept drift detection
+        self.concept_drift_buffer = []
+        self.performance_history = []
+        
+    def update_statistics(self, data: torch.Tensor) -> None:
+        """Update running statistics for distribution shift detection."""
+        batch_mean = data.mean(dim=0)
+        batch_var = data.var(dim=0)
+        batch_size = data.size(0)
+        
+        if self.running_mean is None:
+            self.running_mean = batch_mean.clone()
+            self.running_var = batch_var.clone()
+            self.sample_count = batch_size
+        else:
+            # Online mean and variance update
+            total_count = self.sample_count + batch_size
+            delta = batch_mean - self.running_mean
+            
+            self.running_mean += delta * batch_size / total_count
+            self.running_var = (
+                (self.running_var * self.sample_count + batch_var * batch_size + delta**2 * self.sample_count * batch_size / total_count) 
+                / total_count
+            )
+            self.sample_count = total_count
+            
+        # Store statistics in buffer
+        current_stats = {
+            'mean': batch_mean.clone(),
+            'var': batch_var.clone(),
+            'sample_count': batch_size
+        }
+        
+        self.statistics_buffer.append(current_stats)
+        if len(self.statistics_buffer) > self.config.adaptation_window_size:
+            self.statistics_buffer.pop(0)
+            
+    def detect_distribution_shift(self) -> bool:
+        """Detect if there's a significant distribution shift."""
+        if not self.config.distribution_shift_detection or len(self.statistics_buffer) < 2:
+            return False
+            
+        # Compare recent statistics with historical statistics
+        recent_window = min(100, len(self.statistics_buffer) // 4)
+        if len(self.statistics_buffer) < recent_window * 2:
+            return False
+            
+        # Get recent and historical statistics
+        recent_stats = self.statistics_buffer[-recent_window:]
+        historical_stats = self.statistics_buffer[:-recent_window]
+        
+        # Calculate average statistics
+        recent_mean = torch.stack([s['mean'] for s in recent_stats]).mean(dim=0)
+        historical_mean = torch.stack([s['mean'] for s in historical_stats]).mean(dim=0)
+        
+        recent_var = torch.stack([s['var'] for s in recent_stats]).mean(dim=0)
+        historical_var = torch.stack([s['var'] for s in historical_stats]).mean(dim=0)
+        
+        # Detect shift using KL divergence approximation
+        mean_shift = torch.norm(recent_mean - historical_mean).item()
+        var_shift = torch.norm(recent_var - historical_var).item()
+        
+        # Normalize by historical variance
+        mean_shift_normalized = mean_shift / (torch.norm(historical_var).item() + 1e-8)
+        var_shift_normalized = var_shift / (torch.norm(historical_var).item() + 1e-8)
+        
+        total_shift = mean_shift_normalized + var_shift_normalized
+        
+        self.shift_detected = total_shift > self.config.shift_threshold
+        return self.shift_detected
+        
+    def handle_concept_drift(self, data: torch.Tensor, labels: torch.Tensor, performance: float) -> Dict[str, Any]:
+        """Handle concept drift by updating the drift buffer and adaptation strategy."""
+        # Store data in concept drift buffer
+        sample = {'data': data.clone(), 'labels': labels.clone(), 'performance': performance}
+        self.concept_drift_buffer.append(sample)
+        
+        if len(self.concept_drift_buffer) > self.config.concept_drift_buffer_size:
+            self.concept_drift_buffer.pop(0)
+            
+        # Track performance history
+        self.performance_history.append(performance)
+        if len(self.performance_history) > 1000:
+            self.performance_history.pop(0)
+            
+        # Determine adaptation strategy
+        if len(self.performance_history) >= 10:
+            recent_performance = np.mean(self.performance_history[-10:])
+            historical_performance = np.mean(self.performance_history[:-10]) if len(self.performance_history) > 10 else recent_performance
+            
+            performance_drop = historical_performance - recent_performance
+            
+            if performance_drop > 0.1:  # Significant performance drop
+                self.adaptation_mode = True
+                adaptation_strategy = 'rapid_adaptation'
+            elif self.shift_detected:
+                self.adaptation_mode = True
+                adaptation_strategy = 'gradual_adaptation'
+            else:
+                self.adaptation_mode = False
+                adaptation_strategy = 'normal_learning'
+        else:
+            adaptation_strategy = 'normal_learning'
+            
+        return {
+            'adaptation_strategy': adaptation_strategy,
+            'shift_detected': self.shift_detected,
+            'adaptation_mode': self.adaptation_mode,
+            'buffer_size': len(self.concept_drift_buffer),
+            'performance_trend': np.mean(self.performance_history[-5:]) if len(self.performance_history) >= 5 else performance
+        }
+        
+    def get_adaptation_samples(self, num_samples: int) -> Optional[Tuple[torch.Tensor, torch.Tensor]]:
+        """Get samples from concept drift buffer for adaptation."""
+        if len(self.concept_drift_buffer) < num_samples:
+            return None
+            
+        # Sample recent high-performance examples
+        sorted_buffer = sorted(self.concept_drift_buffer, key=lambda x: x['performance'], reverse=True)
+        selected_samples = sorted_buffer[:num_samples]
+        
+        data_batch = torch.stack([s['data'] for s in selected_samples])
+        label_batch = torch.stack([s['labels'] for s in selected_samples])
+        
+        return data_batch, label_batch
 
 
 class EpisodicMemory(nn.Module):
@@ -291,12 +441,19 @@ class ContinualLearningSystem(nn.Module):
             temporal_config=temporal_config
         )
         
+        # Non-stationary data handler
+        self.data_handler = NonStationaryDataHandler(config)
+        
         # Synaptic consolidation
         self.synaptic_consolidation = SynapticConsolidation(self.network) if config.synaptic_consolidation else None
         
         # Task management
         self.current_task = 0
         self.task_performance = {}
+        
+        # Adaptation tracking
+        self.adaptation_history = []
+        self.current_learning_rate = 0.001
         
         logger.info(f"Initialized continual learning system for {config.num_tasks} tasks")
     
@@ -367,6 +524,7 @@ class ContinualLearningSystem(nn.Module):
         logger.info(f"Learning task {task_id}")
         
         self.current_task = task_id
+        self.current_learning_rate = learning_rate
         
         # Optimizer with adaptive learning rate
         optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
@@ -377,7 +535,10 @@ class ContinualLearningSystem(nn.Module):
             'initial_performance': 0.0,
             'final_performance': 0.0,
             'consolidation_loss': 0.0,
-            'memory_replay_ratio': 0.0
+            'memory_replay_ratio': 0.0,
+            'distribution_shifts_detected': 0,
+            'adaptation_events': 0,
+            'average_learning_rate': learning_rate
         }
         
         self.train()
@@ -387,13 +548,47 @@ class ContinualLearningSystem(nn.Module):
             epoch_consolidation_loss = 0.0
             total_samples = 0
             memory_samples = 0
+            distribution_shifts = 0
+            adaptation_events = 0
             
             for batch_idx, (data, target) in enumerate(train_loader):
                 batch_size = data.size(0)
                 
+                # Update data statistics for shift detection
+                self.data_handler.update_statistics(data)
+                
+                # Detect distribution shift
+                shift_detected = self.data_handler.detect_distribution_shift()
+                if shift_detected:
+                    distribution_shifts += 1
+                
                 # Forward pass on current task
                 output = self(data, task_id)
                 task_loss = criterion(output, target)
+                
+                # Calculate current performance for adaptation
+                with torch.no_grad():
+                    predictions = output.argmax(dim=1)
+                    current_performance = (predictions == target).float().mean().item()
+                
+                # Handle concept drift and adaptation
+                adaptation_info = self.data_handler.handle_concept_drift(data, target, current_performance)
+                
+                # Adapt learning rate based on adaptation strategy
+                if adaptation_info['adaptation_strategy'] == 'rapid_adaptation':
+                    adapted_lr = self.config.rapid_adaptation_rate
+                    adaptation_events += 1
+                elif adaptation_info['adaptation_strategy'] == 'gradual_adaptation':
+                    adapted_lr = learning_rate * 0.5
+                    adaptation_events += 1
+                else:
+                    adapted_lr = learning_rate
+                    
+                # Update optimizer learning rate if needed
+                if adapted_lr != self.current_learning_rate:
+                    for param_group in optimizer.param_groups:
+                        param_group['lr'] = adapted_lr
+                    self.current_learning_rate = adapted_lr
                 
                 # Store experiences in episodic memory
                 with torch.no_grad():
@@ -406,6 +601,11 @@ class ContinualLearningSystem(nn.Module):
                     
                     # Compute importance (loss magnitude as proxy)
                     importance = task_loss.item() * torch.ones(batch_size)
+                    
+                    # Increase importance for samples during distribution shifts
+                    if shift_detected:
+                        importance *= 2.0
+                        
                     self.episodic_memory.store(features, target, task_id, importance)
                 
                 total_loss = task_loss
@@ -419,8 +619,13 @@ class ContinualLearningSystem(nn.Module):
                     epoch_consolidation_loss += consolidation_loss.item()
                 
                 # Experience replay from episodic memory
-                if task_id > 0 and np.random.random() < self.config.memory_replay_ratio:
-                    replay_samples = int(batch_size * self.config.memory_replay_ratio)
+                replay_ratio = self.config.memory_replay_ratio
+                # Increase replay during adaptation
+                if adaptation_info['adaptation_mode']:
+                    replay_ratio *= 2.0
+                    
+                if task_id > 0 and np.random.random() < replay_ratio:
+                    replay_samples = int(batch_size * replay_ratio)
                     memory_features, memory_labels, memory_tasks = self.episodic_memory.sample(
                         replay_samples
                     )
