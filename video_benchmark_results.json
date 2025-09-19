@@ -1,0 +1,46 @@
+{
+  "timestamp": 1758277722.940844,
+  "device": "cpu",
+  "pytorch_version": "2.8.0+cu128",
+  "results": [
+    {
+      "model_name": "convlstm",
+      "num_parameters": 2720872,
+      "mean_latency_ms": 471.05345726013184,
+      "std_latency_ms": 1.9534072844278922,
+      "min_latency_ms": 468.8448905944824,
+      "max_latency_ms": 474.2088317871094,
+      "throughput_per_sec": 2.122901306820822,
+      "output_shape": [
+        2,
+        1000
+      ]
+    },
+    {
+      "model_name": "conv3d",
+      "num_parameters": 2149608,
+      "mean_latency_ms": 197.23968505859375,
+      "std_latency_ms": 1.5149242771620364,
+      "min_latency_ms": 196.01154327392578,
+      "max_latency_ms": 200.01959800720215,
+      "throughput_per_sec": 5.069973619674617,
+      "output_shape": [
+        2,
+        1000
+      ]
+    },
+    {
+      "model_name": "transformer",
+      "num_parameters": 937832,
+      "mean_latency_ms": 96.69556617736816,
+      "std_latency_ms": 0.13656025146501616,
+      "min_latency_ms": 96.44532203674316,
+      "max_latency_ms": 96.83465957641602,
+      "throughput_per_sec": 10.3417358161563,
+      "output_shape": [
+        2,
+        1000
+      ]
+    }
+  ]
+}
