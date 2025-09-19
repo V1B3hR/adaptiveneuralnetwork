@@ -166,47 +166,54 @@ jobs:
       run: |
         echo "=== QUICK INTEGRATION TEST ==="
         python - <<'EOF'
-import sys
-sys.path.append('.')
-try:
-    from adaptiveneuralnetwork.benchmarks.vision.mnist import quick_mnist_test
-    result = quick_mnist_test(num_epochs=1, subset_size=500)
-    print("Quick test completed successfully!")
-    print(f"Final metrics: {result.get('final_metrics', {})}")
-except Exception as e:
-    print("Quick integration test failed:", e)
-    raise
-EOF
+        import sys
+        sys.path.append('.')
+        try:
+            from adaptiveneuralnetwork.benchmarks.vision.mnist import quick_mnist_test
+            result = quick_mnist_test(num_epochs=1, subset_size=500)
+            print("Quick test completed successfully!")
+            print(f"Final metrics: {result.get('final_metrics', {})}")
+        except Exception as e:
+            print("Quick integration test failed:", e)
+            raise
+        EOF
       timeout-minutes: 10
 
-    - name: Bitext Training Smoke Test
+    - name: Multi-Dataset Training Integration Test
       if: matrix.python-version == '3.11'
       run: |
-        echo "=== BITEXT TRAINING SMOKE TEST ==="
-        python -m adaptiveneuralnetwork.training.run_bitext_training \
-          --mode smoke \
-          --subset-size 50 \
-          --output-dir test-outputs \
-          --verbose
+        echo "=== MULTI-DATASET TRAINING INTEGRATION TEST ==="
+        # Test a few key datasets with minimal epochs
+        echo "Testing VR Driving dataset..."
+        python train_new_datasets.py --dataset vr_driving --epochs 1 --num-samples 50 --output-dir test-outputs/vr_driving
         
-        # Validate output
-        if [ -f "test-outputs/smoke_test_results.json" ]; then
-          echo "✓ Bitext training smoke test completed successfully"
-          python -c "
-import json
-with open('test-outputs/smoke_test_results.json') as f:
-    result = json.load(f)
-print(f'Success: {result.get(\"success\")}')
-print(f'Runtime: {result.get(\"runtime_seconds\", 0):.2f}s')
-if result.get('success'):
-    info = result.get('dataset_info', {})
-    print(f'Data: {info.get(\"train_samples\", 0)} train, {info.get(\"val_samples\", 0)} val')
-          "
-        else
-          echo "✗ Bitext training smoke test failed - no output file"
-          exit 1
-        fi
-      timeout-minutes: 5
+        echo "Testing AUTVI dataset..."
+        python train_new_datasets.py --dataset autvi --epochs 1 --num-samples 50 --output-dir test-outputs/autvi
+        
+        echo "Testing integrated training script..."
+        python train_kaggle_datasets.py --dataset vr_driving --epochs 1 --samples 50
+        
+        # Validate outputs
+        echo "Validating training outputs..."
+        for dataset in vr_driving autvi; do
+          result_file="test-outputs/$dataset/${dataset}_training_results.json"
+          if [ -f "$result_file" ]; then
+            echo "✓ Found results for $dataset"
+            python -c "
+            import json
+            with open('$result_file') as f:
+                result = json.load(f)
+            assert result.get('success'), f'Training failed for $dataset'
+            print(f'✓ $dataset training successful: {result.get(\"final_metrics\", {}).get(\"train_accuracy\", 0):.4f} accuracy')
+            "
+          else
+            echo "✗ Missing results for $dataset"
+            exit 1
+          fi
+        done
+        
+        echo "✅ Multi-dataset training integration test completed"
+      timeout-minutes: 10
 
     - name: Generate Coverage Badge (Python 3.12)
       if: matrix.python-version == '3.12'
@@ -215,24 +222,28 @@ if result.get('success'):
         if [ -f coverage.xml ]; then
           # Extract line-rate from coverage.xml
           TOTAL=$(grep -o 'line-rate="[^"]*"' coverage.xml | head -1 | cut -d'"' -f2)
-          PCT=$(python - <<PY
-try:
-  print(round(float("${TOTAL}") * 100, 2))
-except:
-  print("0.0")
-PY
-)
+          PCT=$(python3 -c "
+        try:
+          import sys
+          print(round(float('${TOTAL}') * 100, 2))
+        except:
+          print('0.0')
+          ")
           echo "Total coverage: ${PCT}%"
           COLOR="red"
-          awk -v p=${PCT} 'BEGIN{if(p>=80)print "green"; else if(p>=60)print "yellow"; else print "red";}' | read COLOR
-          cat > coverage-badge.json << EOF
-{
-  "schemaVersion": 1,
-  "label": "coverage",
-  "message": "${PCT}%",
-  "color": "${COLOR}"
-}
-EOF
+          if (( $(echo "${PCT} >= 80" | bc -l) )); then
+            COLOR="green"
+          elif (( $(echo "${PCT} >= 60" | bc -l) )); then
+            COLOR="yellow"
+          fi
+          cat > coverage-badge.json << 'EOF'
+        {
+          "schemaVersion": 1,
+          "label": "coverage",
+          "message": "'${PCT}'%",
+          "color": "'${COLOR}'"
+        }
+        EOF
           printf "## Coverage Summary\n\nTotal Coverage: %s%%\n" "${PCT}" > coverage-summary.md
         else
           echo "coverage.xml not found; skipping badge."

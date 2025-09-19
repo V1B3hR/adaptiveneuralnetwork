@@ -1,0 +1,428 @@
+name: Multi-Dataset Training & Evaluation
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      dataset:
+        description: 'Select dataset to train on'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - annomi
+          - mental_health_faqs
+          - social_media_sentiment
+          - pos_tagging
+          - vr_driving
+          - autvi
+          - digakust
+      epochs:
+        description: 'Number of training epochs'
+        required: false
+        default: '10'
+        type: string
+      use_real_data:
+        description: 'Use real Kaggle datasets (requires API key)'
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # Run full training suite weekly on Sundays at 3 AM UTC
+    - cron: '0 3 * * 0'
+
+env:
+  PYTHONPATH: /home/runner/work/adaptiveneuralnetwork/adaptiveneuralnetwork
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      datasets: ${{ steps.set-matrix.outputs.datasets }}
+    steps:
+    - name: Set dataset matrix
+      id: set-matrix
+      run: |
+        if [ "${{ github.event.inputs.dataset }}" = "all" ] || [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "push" ]; then
+          echo 'datasets=["annomi", "mental_health_faqs", "social_media_sentiment", "pos_tagging", "vr_driving", "autvi", "digakust"]' >> $GITHUB_OUTPUT
+        else
+          echo 'datasets=["${{ github.event.inputs.dataset }}"]' >> $GITHUB_OUTPUT
+        fi
+
+  multi-dataset-training:
+    needs: prepare-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    strategy:
+      matrix:
+        dataset: ${{ fromJson(needs.prepare-matrix.outputs.datasets) }}
+      fail-fast: false
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-multi-dataset-${{ hashFiles('**/pyproject.toml', '**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-multi-dataset-
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pandas scikit-learn matplotlib kagglehub pytest
+
+    - name: Cache Kaggle datasets
+      uses: actions/cache@v3
+      with:
+        path: ~/.kaggle
+        key: kaggle-datasets-${{ matrix.dataset }}-${{ hashFiles('**/kaggle_datasets.py') }}
+        restore-keys: |
+          kaggle-datasets-${{ matrix.dataset }}-
+          kaggle-datasets-
+
+    - name: Set training parameters
+      id: params
+      run: |
+        # Set defaults for different trigger types
+        if [ "${{ github.event_name }}" = "schedule" ]; then
+          echo "epochs=20" >> $GITHUB_OUTPUT
+          echo "use_real_data=false" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "epochs=${{ github.event.inputs.epochs }}" >> $GITHUB_OUTPUT
+          echo "use_real_data=${{ github.event.inputs.use_real_data }}" >> $GITHUB_OUTPUT
+        else
+          echo "epochs=5" >> $GITHUB_OUTPUT
+          echo "use_real_data=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Setup Kaggle credentials (if available)
+      if: ${{ secrets.KAGGLE_USERNAME && secrets.KAGGLE_KEY && steps.params.outputs.use_real_data == 'true' }}
+      run: |
+        mkdir -p ~/.kaggle
+        echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
+        chmod 600 ~/.kaggle/kaggle.json
+        echo "KAGGLE_CONFIGURED=true" >> $GITHUB_ENV
+
+    - name: Download Kaggle dataset (if configured)
+      if: env.KAGGLE_CONFIGURED == 'true'
+      run: |
+        case "${{ matrix.dataset }}" in
+          "pos_tagging")
+            kaggle datasets download -d ruchi798/part-of-speech-tagging -p data/pos_tagging --unzip
+            echo "DATASET_PATH=data/pos_tagging" >> $GITHUB_ENV
+            ;;
+          "vr_driving")
+            kaggle datasets download -d sasanj/virtual-reality-driving-simulator-dataset -p data/vr_driving --unzip
+            echo "DATASET_PATH=data/vr_driving" >> $GITHUB_ENV
+            ;;
+          "autvi")
+            kaggle datasets download -d hassanmojab/autvi -p data/autvi --unzip
+            echo "DATASET_PATH=data/autvi" >> $GITHUB_ENV
+            ;;
+          "digakust")
+            kaggle datasets download -d resc28/digakust-dataset-mensa-saarland-university -p data/digakust --unzip
+            echo "DATASET_PATH=data/digakust" >> $GITHUB_ENV
+            ;;
+          *)
+            echo "No Kaggle download configured for ${{ matrix.dataset }}"
+            ;;
+        esac
+
+    - name: Train on legacy datasets (ANNOMI, Mental Health, Social Media)
+      if: matrix.dataset == 'annomi' || matrix.dataset == 'mental_health_faqs' || matrix.dataset == 'social_media_sentiment'
+      run: |
+        echo "Training on legacy dataset: ${{ matrix.dataset }}"
+        python train_kaggle_datasets.py \
+          --dataset ${{ matrix.dataset }} \
+          --epochs ${{ steps.params.outputs.epochs }} \
+          ${DATASET_PATH:+--data-path $DATASET_PATH}
+        
+        # Move results to standardized location
+        mkdir -p outputs/${{ matrix.dataset }}
+        if [ -f outputs/* ]; then
+          mv outputs/* outputs/${{ matrix.dataset }}/ 2>/dev/null || true
+        fi
+
+    - name: Train on POS Tagging dataset
+      if: matrix.dataset == 'pos_tagging'
+      run: |
+        echo "Training on POS Tagging dataset"
+        python train_pos_tagging.py \
+          --epochs ${{ steps.params.outputs.epochs }} \
+          --auto \
+          ${DATASET_PATH:+--data-path $DATASET_PATH}
+        
+        # Move results to standardized location
+        mkdir -p outputs/${{ matrix.dataset }}
+        if [ -f *.json ]; then
+          mv *.json outputs/${{ matrix.dataset }}/ 2>/dev/null || true
+        fi
+
+    - name: Train on new datasets (VR Driving, AUTVI, Digakust)
+      if: matrix.dataset == 'vr_driving' || matrix.dataset == 'autvi' || matrix.dataset == 'digakust'
+      run: |
+        echo "Training on new dataset: ${{ matrix.dataset }}"
+        python train_new_datasets.py \
+          --dataset ${{ matrix.dataset }} \
+          --epochs ${{ steps.params.outputs.epochs }} \
+          --output-dir outputs/${{ matrix.dataset }} \
+          ${DATASET_PATH:+--data-path $DATASET_PATH} \
+          --verbose
+
+    - name: Validate training results
+      run: |
+        output_dir="outputs/${{ matrix.dataset }}"
+        echo "Validating results in: $output_dir"
+        
+        # Check if output directory exists
+        if [ ! -d "$output_dir" ]; then
+          echo "❌ Output directory not found: $output_dir"
+          exit 1
+        fi
+        
+        # Look for result files
+        result_files=$(find "$output_dir" -name "*.json" | head -5)
+        if [ -z "$result_files" ]; then
+          echo "❌ No JSON result files found in $output_dir"
+          exit 1
+        fi
+        
+        echo "✅ Found result files:"
+        echo "$result_files"
+        
+        # Validate at least one result file
+        first_file=$(echo "$result_files" | head -1)
+        echo "Validating: $first_file"
+        
+        python -c "
+        import json
+        import sys
+        
+        try:
+            with open('$first_file') as f:
+                results = json.load(f)
+            
+            # Basic validation
+            if 'success' not in results:
+                print('❌ Missing success field')
+                sys.exit(1)
+            
+            if not results.get('success', False):
+                print(f'❌ Training failed: {results.get(\"error\", \"Unknown error\")}')
+                sys.exit(1)
+            
+            print('✅ Results validation passed')
+            print(f'Dataset: ${{ matrix.dataset }}')
+            
+            if 'final_metrics' in results:
+                metrics = results['final_metrics']
+                if 'train_accuracy' in metrics:
+                    print(f'Train Accuracy: {metrics[\"train_accuracy\"]:.4f}')
+                if 'val_accuracy' in metrics:
+                    print(f'Val Accuracy: {metrics[\"val_accuracy\"]:.4f}')
+            
+            if 'training_time' in results:
+                print(f'Training Time: {results[\"training_time\"]:.2f}s')
+                
+        except Exception as e:
+            print(f'❌ Validation failed: {e}')
+            sys.exit(1)
+        "
+
+    - name: Generate training report
+      run: |
+        output_dir="outputs/${{ matrix.dataset }}"
+        report_file="$output_dir/training_report.md"
+        
+        echo "# Training Report: ${{ matrix.dataset }}" > "$report_file"
+        echo "" >> "$report_file"
+        echo "**Dataset**: ${{ matrix.dataset }}" >> "$report_file"
+        echo "**Epochs**: ${{ steps.params.outputs.epochs }}" >> "$report_file"
+        echo "**Data Source**: $([ '${{ steps.params.outputs.use_real_data }}' = 'true' ] && echo 'Real Kaggle Data' || echo 'Synthetic Data')" >> "$report_file"
+        echo "**Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> "$report_file"
+        echo "" >> "$report_file"
+        
+        # Try to extract metrics from results
+        result_files=$(find "$output_dir" -name "*.json" | head -1)
+        if [ -n "$result_files" ]; then
+          echo "## Results" >> "$report_file"
+          python -c "
+        import json
+        import os
+        
+        try:
+            with open('$result_files') as f:
+                results = json.load(f)
+            
+            with open('$report_file', 'a') as f:
+                if results.get('success'):
+                    f.write('- **Status**: ✅ Success\n')
+                    
+                    if 'training_time' in results:
+                        f.write(f'- **Training Time**: {results[\"training_time\"]:.2f} seconds\n')
+                    
+                    if 'final_metrics' in results:
+                        metrics = results['final_metrics']
+                        if 'train_accuracy' in metrics:
+                            f.write(f'- **Training Accuracy**: {metrics[\"train_accuracy\"]:.4f}\n')
+                        if 'val_accuracy' in metrics:
+                            f.write(f'- **Validation Accuracy**: {metrics[\"val_accuracy\"]:.4f}\n')
+                    
+                    if 'dataset_info' in results and 'num_samples' in results['dataset_info']:
+                        f.write(f'- **Dataset Size**: {results[\"dataset_info\"][\"num_samples\"]} samples\n')
+                        
+                else:
+                    f.write('- **Status**: ❌ Failed\n')
+                    if 'error' in results:
+                        f.write(f'- **Error**: {results[\"error\"]}\n')
+        except:
+            pass
+          "
+        fi
+        
+        echo "Training report generated: $report_file"
+        cat "$report_file"
+
+    - name: Upload training artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: training-results-${{ matrix.dataset }}
+        path: |
+          outputs/${{ matrix.dataset }}/*.json
+          outputs/${{ matrix.dataset }}/*.md
+          outputs/${{ matrix.dataset }}/*.pkl
+          outputs/${{ matrix.dataset }}/*.png
+        retention-days: 30
+        if-no-files-found: warn
+
+  consolidate-results:
+    needs: [prepare-matrix, multi-dataset-training]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all training artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: all-results
+
+    - name: Create consolidated training summary
+      run: |
+        echo "# Multi-Dataset Training Summary" > training_summary.md
+        echo "" >> training_summary.md
+        echo "**Workflow**: ${{ github.event_name }}" >> training_summary.md
+        echo "**Trigger**: $([ '${{ github.event_name }}' = 'schedule' ] && echo 'Scheduled' || echo 'Manual/Push')" >> training_summary.md
+        echo "**Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> training_summary.md
+        echo "**Datasets Requested**: ${{ github.event.inputs.dataset || 'all' }}" >> training_summary.md
+        echo "" >> training_summary.md
+        
+        echo "## Training Results by Dataset" >> training_summary.md
+        echo "" >> training_summary.md
+        
+        # Process each dataset's results
+        for artifact_dir in all-results/training-results-*; do
+          if [ -d "$artifact_dir" ]; then
+            dataset_name=$(basename "$artifact_dir" | sed 's/training-results-//')
+            echo "### $dataset_name" >> training_summary.md
+            
+            # Look for results file
+            result_file=$(find "$artifact_dir" -name "*.json" | head -1)
+            if [ -f "$result_file" ]; then
+              python3 -c "
+        import json
+        import sys
+        
+        try:
+            with open('$result_file') as f:
+                results = json.load(f)
+            
+            success = results.get('success', False)
+            print(f'- **Status**: {\"✅ Success\" if success else \"❌ Failed\"}')
+            
+            if success:
+                if 'training_time' in results:
+                    print(f'- **Training Time**: {results[\"training_time\"]:.2f}s')
+                
+                if 'final_metrics' in results:
+                    metrics = results['final_metrics']
+                    if 'train_accuracy' in metrics:
+                        print(f'- **Train Accuracy**: {metrics[\"train_accuracy\"]:.4f}')
+                    if 'val_accuracy' in metrics:
+                        print(f'- **Val Accuracy**: {metrics[\"val_accuracy\"]:.4f}')
+                
+                if 'dataset_info' in results and 'num_samples' in results['dataset_info']:
+                    print(f'- **Samples**: {results[\"dataset_info\"][\"num_samples\"]}')
+            else:
+                if 'error' in results:
+                    print(f'- **Error**: {results[\"error\"]}')
+                    
+        except Exception as e:
+            print(f'- **Error**: Failed to parse results - {e}')
+              " >> training_summary.md
+            else
+              echo "- **Status**: ❌ No results file found" >> training_summary.md
+            fi
+            echo "" >> training_summary.md
+          fi
+        done
+        
+        # Add dataset information
+        echo "## Supported Datasets" >> training_summary.md
+        echo "" >> training_summary.md
+        echo "| Dataset | Type | URL |" >> training_summary.md
+        echo "|---------|------|-----|" >> training_summary.md
+        echo "| ANNOMI | Text Classification | https://www.kaggle.com/datasets/rahulmenon1758/annomi-motivational-interviewing |" >> training_summary.md
+        echo "| Mental Health FAQs | Text Classification | https://www.kaggle.com/datasets/ragishehab/mental-healthfaqs |" >> training_summary.md
+        echo "| Social Media Sentiment | Sentiment Analysis | https://www.kaggle.com/datasets/kashishparmar02/social-media-sentiments-analysis-dataset |" >> training_summary.md
+        echo "| POS Tagging | Sequence Labeling | https://www.kaggle.com/datasets/ruchi798/part-of-speech-tagging |" >> training_summary.md
+        echo "| VR Driving | Regression | https://www.kaggle.com/datasets/sasanj/virtual-reality-driving-simulator-dataset |" >> training_summary.md
+        echo "| AUTVI | Classification | https://www.kaggle.com/datasets/hassanmojab/autvi |" >> training_summary.md
+        echo "| Digakust | Audio Classification | https://www.kaggle.com/datasets/resc28/digakust-dataset-mensa-saarland-university |" >> training_summary.md
+        
+        echo ""
+        echo "=== CONSOLIDATED TRAINING SUMMARY ==="
+        cat training_summary.md
+
+    - name: Upload consolidated summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: multi-dataset-training-summary
+        path: training_summary.md
+        retention-days: 90
+
+    - name: Comment on PR (if applicable)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          if (fs.existsSync('training_summary.md')) {
+            const summary = fs.readFileSync('training_summary.md', 'utf8');
+            const body = `## 🤖 Multi-Dataset Training Results\n\n${summary}`;
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body.substring(0, 65536) // GitHub comment limit
+            });
+          }
