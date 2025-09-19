@@ -60,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4
@@ -89,20 +89,36 @@ jobs:
         else
           pip install -e .
         fi
-        pip install pytest pytest-cov pytest-html coverage
+        pip install pytest pytest-cov pytest-html coverage pandas scikit-learn kagglehub matplotlib
 
     - name: Cache dataset
       uses: actions/cache@v3
       with:
         path: ./data
-        key: mnist-dataset-${{ hashFiles('**/datasets.py') }}
+        key: hr-analytics-dataset-${{ hashFiles('**/datasets.py') }}
         restore-keys: |
-          mnist-dataset-
+          hr-analytics-dataset-
+
+    - name: Download HR Analytics Dataset (Optional)
+      run: |
+        echo "=== HR ANALYTICS DATASET DOWNLOAD ==="
+        mkdir -p data
+        # Try to download from a public source or use synthetic data
+        if [ ! -f "data/WA_Fn-UseC_-HR-Employee-Attrition.csv" ]; then
+          echo "HR Analytics dataset not cached, will use synthetic data in training."
+          echo "To use real dataset, add it to data/WA_Fn-UseC_-HR-Employee-Attrition.csv"
+        else
+          echo "HR Analytics dataset found in cache."
+        fi
 
     - name: (Optional) Training Phase - Adaptive Neural Network Simulation
       if: matrix.python-version == '3.12'
+      env:
+        EPOCHS: ${{ vars.EPOCHS || '20' }}
+        BATCH_SIZE: ${{ vars.BATCH_SIZE || '64' }}
       run: |
         echo "=== TRAINING PHASE (Python ${{ matrix.python-version }}) ==="
+        echo "Training parameters: EPOCHS=${EPOCHS}, BATCH_SIZE=${BATCH_SIZE}"
         if [ -f "runsimulation.py" ]; then
           python runsimulation.py
           echo "Training / simulation completed."
@@ -251,10 +267,10 @@ EOF
       with:
         name: training-artifacts-python${{ matrix.python-version }}
         path: |
+          outputs/
           *.json
           *.db
           *.png
-          test-outputs/
         if-no-files-found: warn
         retention-days: 30
 
@@ -298,9 +314,9 @@ EOF
       uses: actions/cache@v3
       with:
         path: ./data
-        key: mnist-dataset-${{ hashFiles('**/datasets.py') }}
+        key: hr-analytics-dataset-${{ hashFiles('**/datasets.py') }}
         restore-keys: |
-          mnist-dataset-
+          hr-analytics-dataset-
 
     - name: Run benchmark
       run: |
