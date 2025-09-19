@@ -9,6 +9,7 @@ A production‑ready, biologically‑inspired adaptive neural network framework 
 - Energy & sparsity–aware node regulation.
 - Multi‑backend support (PyTorch, JAX, neuromorphic abstraction layer).
 - Robustness, adversarial & multimodal benchmarks.
+- **HR Analytics integration for employee attrition prediction.**
 - Structured validation guides (intelligence, robustness, spatial reasoning, production signal processing).
 
 > Why Adaptive vs Conventional Architectures?  
@@ -54,6 +55,53 @@ Install with multiple extras:
 pip install -e ".[jax,neuromorphic,multimodal]"
 pip install -e ".[nlp,dev]"  # NLP + development tools
 ```
+
+---
+
+## 📊 HR Analytics Integration
+
+The framework now includes integrated support for IBM HR Analytics Employee Attrition dataset analysis and prediction using adaptive neural networks.
+
+### Dataset Setup
+
+1. **Download the dataset** from [Kaggle](https://www.kaggle.com/datasets/pavansubhasht/ibm-hr-analytics-attrition-dataset)
+2. **Place the CSV file** at `data/WA_Fn-UseC_-HR-Employee-Attrition.csv`
+3. **Or use synthetic data** - the system will automatically generate synthetic HR data if the real dataset is not available
+
+### Running HR Analytics Training
+
+```bash
+# Run with default parameters
+python runsimulation.py
+
+# Run with custom training parameters
+EPOCHS=50 BATCH_SIZE=128 python runsimulation.py
+
+# With reproducible seed
+python runsimulation.py 42
+```
+
+### Training Outputs
+
+The training process creates several artifacts in the `outputs/` directory:
+- `hr_training_results.json` - Training metrics and progress
+- `dataset_info.json` - Dataset characteristics and metadata
+- `hr_model_weights.json` - Model weights and architecture info
+
+### CI/CD Integration
+
+The HR Analytics training is integrated into the CI pipeline:
+- **Automated dataset caching** for efficient builds
+- **Configurable training parameters** via environment variables
+- **Artifact uploading** for training results and coverage reports
+- **Python 3.11 and 3.12 testing matrix** for compatibility validation
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `EPOCHS` | Number of training epochs | 10 |
+| `BATCH_SIZE` | Training batch size | 32 |
 
 ---
 

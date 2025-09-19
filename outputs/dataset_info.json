@@ -1,0 +1,12 @@
+{
+  "dataset_type": "synthetic",
+  "samples": 1000,
+  "features": [
+    "Age",
+    "Attrition",
+    "MonthlyIncome",
+    "JobSatisfaction",
+    "WorkLifeBalance",
+    "YearsAtCompany"
+  ]
+}
