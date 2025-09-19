@@ -711,8 +711,7 @@ class ContinualLearningSystem(nn.Module):
             final_performance = self.evaluate_task(val_loader)
             evaluation_set = "validation"
         else:
-            logger.warning("No validation loader provided - evaluating on training set. "
-                         "This may lead to inflated accuracy estimates and mask overfitting!")
+            logger.warning("⚠️ No validation loader - evaluating on training set!")
             final_performance = self.evaluate_task(train_loader)
             evaluation_set = "training"
         
