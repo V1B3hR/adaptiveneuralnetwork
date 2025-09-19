@@ -83,6 +83,10 @@ Issues = "https://github.com/V1B3hR/adaptiveneuralnetwork/issues"
 [project.scripts]
 adaptive-benchmark = "adaptiveneuralnetwork.scripts.run_benchmark:main"
 adaptive-profile = "adaptiveneuralnetwork.scripts.run_profiler:main"
+adaptive-report = "adaptiveneuralnetwork.scripts.adaptive_report:main"
+adaptive-performance-guard = "adaptiveneuralnetwork.scripts.performance_guard:main"  
+adaptive-robustness-guard = "adaptiveneuralnetwork.scripts.robustness_guard:main"
+adaptive-sparsity-guard = "adaptiveneuralnetwork.scripts.sparsity_guard:main"
 
 [tool.setuptools.packages.find]
 include = ["adaptiveneuralnetwork*"]

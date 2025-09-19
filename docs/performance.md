@@ -76,10 +76,9 @@ Set coverage gate in CI (example):
 
 | Automation | Benefit |
 |------------|---------|
-| JSON → README table generation | Always current benchmarks |
-| JAX vs PyTorch delta alert | Detect regression |
-| Robustness threshold guard | Fails CI if robustness < last-release - tolerance |
-| Adaptive sparsity drift detector | Alerts if network collapses to too sparse or dense |
+| ✅ JAX vs PyTorch delta alert | Detect regression |
+| ✅ Robustness threshold guard | Fails CI if robustness < last-release - tolerance |
+| ✅ Adaptive sparsity drift detector | Alerts if network collapses to too sparse or dense |
 
 ## 7. Scaling Guidelines
 
@@ -90,9 +89,12 @@ Set coverage gate in CI (example):
 | backend | JAX JIT wins after warmup; PyTorch faster cold start |
 | modalities | Ensure encoder freezing for text early epochs to stabilize dynamics |
 
-## 8. Suggested Future Tools
+## 8. Implemented Tools
 
-- `adaptive-report` CLI to consolidate metrics into markdown.
+- ✅ `adaptive-report` CLI to consolidate metrics into markdown.
+- ✅ `adaptive-performance-guard` CLI for JAX vs PyTorch performance regression detection.
+- ✅ `adaptive-robustness-guard` CLI for robustness threshold monitoring. 
+- ✅ `adaptive-sparsity-guard` CLI for sparsity pattern health checks.
 - In-memory flamegraph integration (py-spy or torch.profiler export).
 
 ## 9. Reproducing Results
