@@ -2049,6 +2049,89 @@ class AliveLoopNode:
                 
         return trends
     
+    def _check_anxiety_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if anxiety intervention is needed."""
+        if (trends['anxiety'] == 'increasing' and predictions['anxiety'] > self.anxiety_threshold) or \
+           (self.anxiety > self.anxiety_threshold * 0.8):
+            return True, 'anxiety_help', 0.8, ['anxiety_escalation_predicted']
+        return False, None, 0.0, []
+
+    def _check_grief_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if grief support intervention is needed."""
+        if (trends['grief'] == 'increasing' and predictions['grief'] > 4.0) or self.grief > 3.5:
+            return True, 'grief_support', 0.7, ['grief_overwhelming']
+        return False, None, 0.0, []
+
+    def _check_sadness_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if sadness/comfort intervention is needed."""
+        if (trends['sadness'] == 'increasing' and predictions['sadness'] > 4.0) or \
+           (self.sadness > 3.0 and trends.get('joy', 'stable') == 'decreasing'):
+            return True, 'comfort_request', 0.6, ['sadness_trend_concerning']
+        return False, None, 0.0, []
+
+    def _check_anger_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if anger management intervention is needed."""
+        if (trends.get('anger', 'stable') == 'increasing' and predictions.get('anger', 0) > 3.5) or self.anger > 3.0:
+            return True, 'anger_management', 0.7, ['anger_escalation']
+        return False, None, 0.0, []
+
+    def _check_hope_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if hope restoration intervention is needed."""
+        if (trends.get('hope', 'stable') == 'decreasing' and predictions.get('hope', 2.0) < 1.0) or self.hope < 0.5:
+            return True, 'hope_restoration', 0.6, ['hope_depletion']
+        return False, None, 0.0, []
+
+    def _check_curiosity_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if curiosity/engagement intervention is needed."""
+        if (trends.get('curiosity', 'stable') == 'decreasing' and predictions.get('curiosity', 1.0) < 0.3) or \
+           (self.curiosity < 0.2 and trends.get('energy', 'stable') == 'decreasing'):
+            return True, 'engagement_boost', 0.4, ['curiosity_disengagement']
+        return False, None, 0.0, []
+
+    def _check_frustration_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if frustration relief intervention is needed."""
+        if (trends.get('frustration', 'stable') == 'increasing' and predictions.get('frustration', 0) > 3.5) or \
+           (self.frustration > 3.0 and self.anger > 2.0):
+            return True, 'frustration_relief', 0.6, ['frustration_buildup']
+        return False, None, 0.0, []
+
+    def _check_resilience_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if resilience building intervention is needed."""
+        if (trends.get('resilience', 'stable') == 'decreasing' and predictions.get('resilience', 2.0) < 1.0) or \
+           (self.resilience < 0.8 and (self.grief > 2.0 or self.sadness > 2.0 or self.anxiety > 6.0)):
+            return True, 'resilience_building', 0.7, ['resilience_depletion']
+        return False, None, 0.0, []
+
+    def _check_energy_emotional_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if energy support intervention is needed due to emotional load."""
+        negative_emotion_load = self.grief + self.sadness + (self.anxiety * 0.2) + self.anger + self.frustration
+        if (trends['energy'] == 'decreasing' and predictions['energy'] < 2.0) and negative_emotion_load > 5.0:
+            return True, 'energy_support', 0.5, ['energy_emotional_crisis']
+        return False, None, 0.0, []
+
+    def _check_positive_interventions(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check for positive intervention opportunities."""
+        # Joy sharing opportunity
+        if trends.get('joy', 'stable') == 'increasing' and self.joy > 3.0 and self.calm > 2.5:
+            return True, 'joy_share', 0.3, ['joy_sharing_opportunity']
+        
+        # Hope sharing opportunity
+        if trends.get('hope', 'stable') == 'increasing' and self.hope > 4.0 and self.resilience > 3.0:
+            return True, 'hope_share', 0.3, ['hope_sharing_opportunity']
+        
+        # Curiosity collaboration opportunity
+        if trends.get('curiosity', 'stable') == 'increasing' and self.curiosity > 3.5 and self.energy > 8.0:
+            return True, 'curiosity_collaboration', 0.3, ['curiosity_collaboration_opportunity']
+        
+        return False, None, 0.0, []
+
+    def _get_emotional_summary(self) -> Dict[str, float]:
+        """Get current emotional state summary."""
+        emotional_summary = {}
+        for emotion_name in self.emotion_schema.keys():
+            emotional_summary[emotion_name] = getattr(self, emotion_name, 0.0)
+        return emotional_summary
+
     def assess_intervention_need(self) -> Dict[str, Any]:
         """Assess need for proactive intervention based on all emotional trends and predictions."""
         trends = self.get_emotional_trends()
@@ -2058,105 +2141,34 @@ class AliveLoopNode:
         for emotion_name in self.emotion_schema.keys():
             predictions[emotion_name] = self.predict_emotional_state(emotion_name, 3)
         
+        # Check all intervention types in priority order
+        intervention_checks = [
+            self._check_anxiety_intervention,
+            self._check_grief_intervention,
+            self._check_sadness_intervention,
+            self._check_anger_intervention,
+            self._check_hope_intervention,
+            self._check_curiosity_intervention,
+            self._check_frustration_intervention,
+            self._check_resilience_intervention,
+            self._check_energy_emotional_intervention,
+            self._check_positive_interventions,
+        ]
+        
         intervention_needed = False
         intervention_type = None
         urgency = 0.0
         reasons = []
         
-        # Check for anxiety escalation
-        if (trends['anxiety'] == 'increasing' and predictions['anxiety'] > self.anxiety_threshold) or \
-           (self.anxiety > self.anxiety_threshold * 0.8):
-            intervention_needed = True
-            intervention_type = 'anxiety_help'
-            urgency = max(urgency, 0.8)
-            reasons.append('anxiety_escalation_predicted')
-        
-        # Check for overwhelming grief
-        if (trends['grief'] == 'increasing' and predictions['grief'] > 4.0) or self.grief > 3.5:
-            intervention_needed = True
-            intervention_type = 'grief_support'
-            urgency = max(urgency, 0.7)
-            reasons.append('grief_overwhelming')
-        
-        # Check for deep sadness trends
-        if (trends['sadness'] == 'increasing' and predictions['sadness'] > 4.0) or \
-           (self.sadness > 3.0 and trends.get('joy', 'stable') == 'decreasing'):
-            intervention_needed = True
-            intervention_type = 'comfort_request'
-            urgency = max(urgency, 0.6)
-            reasons.append('sadness_trend_concerning')
-        
-        # NEW: Check for anger escalation
-        if (trends.get('anger', 'stable') == 'increasing' and predictions.get('anger', 0) > 3.5) or self.anger > 3.0:
-            intervention_needed = True
-            intervention_type = 'anger_management'
-            urgency = max(urgency, 0.7)
-            reasons.append('anger_escalation')
-        
-        # NEW: Check for hope depletion
-        if (trends.get('hope', 'stable') == 'decreasing' and predictions.get('hope', 2.0) < 1.0) or self.hope < 0.5:
-            intervention_needed = True
-            intervention_type = 'hope_restoration'
-            urgency = max(urgency, 0.6)
-            reasons.append('hope_depletion')
-        
-        # NEW: Check for curiosity decline (might indicate depression or disengagement)
-        if (trends.get('curiosity', 'stable') == 'decreasing' and predictions.get('curiosity', 1.0) < 0.3) or \
-           (self.curiosity < 0.2 and trends.get('energy', 'stable') == 'decreasing'):
-            intervention_needed = True
-            intervention_type = 'engagement_boost'
-            urgency = max(urgency, 0.4)
-            reasons.append('curiosity_disengagement')
-        
-        # NEW: Check for frustration buildup
-        if (trends.get('frustration', 'stable') == 'increasing' and predictions.get('frustration', 0) > 3.5) or \
-           (self.frustration > 3.0 and self.anger > 2.0):  # Frustration + anger combination
-            intervention_needed = True
-            intervention_type = 'frustration_relief'
-            urgency = max(urgency, 0.6)
-            reasons.append('frustration_buildup')
-        
-        # NEW: Check for resilience depletion
-        if (trends.get('resilience', 'stable') == 'decreasing' and predictions.get('resilience', 2.0) < 1.0) or \
-           (self.resilience < 0.8 and (self.grief > 2.0 or self.sadness > 2.0 or self.anxiety > 6.0)):
-            intervention_needed = True
-            intervention_type = 'resilience_building'
-            urgency = max(urgency, 0.7)
-            reasons.append('resilience_depletion')
-        
-        # Check for energy depletion with negative emotional states (enhanced with new emotions)
-        negative_emotion_load = self.grief + self.sadness + (self.anxiety * 0.2) + self.anger + self.frustration
-        if (trends['energy'] == 'decreasing' and predictions['energy'] < 2.0) and negative_emotion_load > 5.0:
-            intervention_needed = True
-            intervention_type = 'energy_support'
-            urgency = max(urgency, 0.5)
-            reasons.append('energy_emotional_crisis')
-        
-        # Check for positive intervention opportunities (enhanced)
-        if trends.get('joy', 'stable') == 'increasing' and self.joy > 3.0 and self.calm > 2.5:
-            intervention_needed = True
-            intervention_type = 'joy_share'
-            urgency = max(urgency, 0.3)
-            reasons.append('joy_sharing_opportunity')
-        
-        # NEW: Hope sharing opportunity
-        if trends.get('hope', 'stable') == 'increasing' and self.hope > 4.0 and self.resilience > 3.0:
-            intervention_needed = True
-            intervention_type = 'hope_share'
-            urgency = max(urgency, 0.3)
-            reasons.append('hope_sharing_opportunity')
-        
-        # NEW: Curiosity collaboration opportunity
-        if trends.get('curiosity', 'stable') == 'increasing' and self.curiosity > 3.5 and self.energy > 8.0:
-            intervention_needed = True
-            intervention_type = 'curiosity_collaboration'
-            urgency = max(urgency, 0.3)
-            reasons.append('curiosity_collaboration_opportunity')
-        
-        # Get current emotional summary
-        emotional_summary = {}
-        for emotion_name in self.emotion_schema.keys():
-            emotional_summary[emotion_name] = getattr(self, emotion_name, 0.0)
+        # Check each intervention type, accumulating results
+        for check_func in intervention_checks:
+            needed, i_type, i_urgency, i_reasons = check_func(trends, predictions)
+            if needed:
+                intervention_needed = True
+                if urgency < i_urgency:  # Use highest urgency intervention
+                    intervention_type = i_type
+                urgency = max(urgency, i_urgency)
+                reasons.extend(i_reasons)
         
         return {
             'intervention_needed': intervention_needed,
@@ -2165,7 +2177,7 @@ class AliveLoopNode:
             'reasons': reasons,
             'trends': trends,
             'predictions': predictions,
-            'emotional_summary': emotional_summary,
+            'emotional_summary': self._get_emotional_summary(),
             'composite_health_score': self.calculate_composite_emotional_health()
         }
 
