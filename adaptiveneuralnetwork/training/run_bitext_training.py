@@ -534,7 +534,7 @@ Examples:
                 val_acc = results['eval_metrics'].get('accuracy', 0)
                 print(f"Validation Accuracy: {val_acc:.4f}")
         else:
-            print(f"Status: ✗ FAILED")
+            print("Status: ✗ FAILED")
             print(f"Error: {results.get('error', 'Unknown error')}")
             sys.exit(1)
         
