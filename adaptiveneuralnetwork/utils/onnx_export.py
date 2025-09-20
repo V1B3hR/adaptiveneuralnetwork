@@ -202,7 +202,7 @@ class ONNXExporter:
             return True
             
         except Exception as e:
-            warnings.warn(f"ONNX export failed: {e}")
+            warnings.warn("ONNX export failed: {e}")
             return False
     
     def verify_onnx_export(
