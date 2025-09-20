@@ -855,6 +855,30 @@ def get_dataset_info() -> Dict[str, Dict[str, Any]]:
             "loader": "load_pos_tagging_dataset",
             "expected_columns": ["sentence", "word", "pos"],
             "task": "Sequence labeling (token-level POS tag prediction)"
+        },
+        "vr_driving": {
+            "name": "Virtual Reality Driving Simulator Dataset",
+            "url": "https://www.kaggle.com/datasets/sasanj/virtual-reality-driving-simulator-dataset",
+            "description": "Virtual reality driving behavior and performance data",
+            "loader": "load_vr_driving_dataset",
+            "expected_columns": ["time", "speed", "steering", "performance"],
+            "task": "Regression (driving performance prediction)"
+        },
+        "autvi": {
+            "name": "AUTVI Dataset",
+            "url": "https://www.kaggle.com/datasets/hassanmojab/autvi",
+            "description": "Automated vehicle inspection dataset",
+            "loader": "load_autvi_dataset",
+            "expected_columns": ["features", "inspection_result"],
+            "task": "Binary classification (pass/fail inspection)"
+        },
+        "digakust": {
+            "name": "Digakust Dataset (Mensa Saarland University)",
+            "url": "https://www.kaggle.com/datasets/resc28/digakust-dataset-mensa-saarland-university",
+            "description": "Digital acoustic analysis dataset from Saarland University",
+            "loader": "load_digakust_dataset",
+            "expected_columns": ["audio_features", "classification"],
+            "task": "Multi-class classification (acoustic pattern recognition)"
         }
     }
 
@@ -880,3 +904,247 @@ def print_dataset_info():
     print("2. Extract to a local directory")
     print("3. Use the appropriate loader function")
     print("4. Run training with --data-path pointing to the dataset")
+
+
+def load_vr_driving_dataset(
+    data_path: str,
+    feature_columns: Optional[List[str]] = None,
+    target_column: str = "performance",
+    vocab_size: int = 10000,
+    max_length: int = 512
+) -> EssayDataset:
+    """
+    Load the Virtual Reality Driving Simulator Dataset.
+    
+    Expected dataset URL: https://www.kaggle.com/datasets/sasanj/virtual-reality-driving-simulator-dataset
+    
+    Args:
+        data_path: Path to the dataset file (CSV, JSON, or directory)
+        feature_columns: List of columns to use as features (auto-detected if None)
+        target_column: Name of the target column
+        vocab_size: Maximum vocabulary size for text processing
+        max_length: Maximum sequence length
+        
+    Returns:
+        EssayDataset instance
+        
+    Notes:
+        This dataset contains VR driving behavior data including speed, steering,
+        and performance metrics. Can be used for regression or classification tasks.
+    """
+    logger.info(f"Loading VR Driving dataset from {data_path}")
+    
+    # Load the dataset
+    df = _load_dataset_file(data_path)
+    logger.info(f"Loaded dataset with shape: {df.shape}")
+    logger.info(f"Columns: {df.columns.tolist()}")
+    
+    # Auto-detect feature columns if not specified
+    if feature_columns is None:
+        # Common VR driving features
+        possible_features = ['time', 'speed', 'steering', 'acceleration', 'brake', 
+                           'position_x', 'position_y', 'rotation', 'lane_deviation']
+        feature_columns = [col for col in possible_features if col in df.columns]
+        
+        if not feature_columns:
+            # Fall back to all numeric columns except target
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            feature_columns = [col for col in numeric_cols if col != target_column]
+    
+    # Find target column
+    if target_column not in df.columns:
+        target_column = _find_column(df, ['performance', 'score', 'rating', 'quality', 
+                                        'result', 'outcome', 'label', 'target'])
+    
+    logger.info(f"Using feature columns: {feature_columns}")
+    logger.info(f"Using target column: {target_column}")
+    
+    # Extract features and targets
+    if feature_columns:
+        # Combine numeric features into text representation for compatibility
+        feature_texts = []
+        for _, row in df.iterrows():
+            features = [f"{col}:{row[col]}" for col in feature_columns if pd.notna(row[col])]
+            feature_texts.append(" ".join(features))
+    else:
+        # Fall back to using all columns as text
+        feature_texts = df.apply(lambda x: " ".join([f"{col}:{val}" for col, val in x.items() 
+                                                   if col != target_column and pd.notna(val)]), axis=1).tolist()
+    
+    # Extract targets
+    if target_column in df.columns:
+        targets = df[target_column].tolist()
+        # Convert to binary classification if needed
+        if df[target_column].dtype == 'object':
+            targets = _convert_to_binary_labels([str(t) for t in targets])
+        else:
+            # For numeric targets, create binary based on median
+            median_val = df[target_column].median()
+            targets = [1 if val > median_val else 0 for val in targets]
+    else:
+        logger.warning(f"Target column '{target_column}' not found, using dummy targets")
+        targets = [0] * len(feature_texts)
+    
+    logger.info(f"Dataset statistics: {len(feature_texts)} samples")
+    logger.info(f"Target distribution: {_get_label_distribution(targets)}")
+    
+    return create_text_classification_dataset(feature_texts, [str(t) for t in targets], vocab_size, max_length)
+
+
+def load_autvi_dataset(
+    data_path: str,
+    feature_columns: Optional[List[str]] = None,
+    target_column: str = "inspection_result",
+    vocab_size: int = 10000,
+    max_length: int = 512
+) -> EssayDataset:
+    """
+    Load the AUTVI (Automated Vehicle Inspection) Dataset.
+    
+    Expected dataset URL: https://www.kaggle.com/datasets/hassanmojab/autvi
+    
+    Args:
+        data_path: Path to the dataset file (CSV, JSON, or directory)
+        feature_columns: List of columns to use as features (auto-detected if None)
+        target_column: Name of the target column
+        vocab_size: Maximum vocabulary size
+        max_length: Maximum sequence length
+        
+    Returns:
+        EssayDataset instance
+        
+    Notes:
+        This dataset contains automated vehicle inspection data.
+        Typically used for binary classification (pass/fail inspection).
+    """
+    logger.info(f"Loading AUTVI dataset from {data_path}")
+    
+    # Load the dataset
+    df = _load_dataset_file(data_path)
+    logger.info(f"Loaded dataset with shape: {df.shape}")
+    logger.info(f"Columns: {df.columns.tolist()}")
+    
+    # Auto-detect feature columns if not specified
+    if feature_columns is None:
+        # Common vehicle inspection features
+        possible_features = ['engine', 'brakes', 'lights', 'tires', 'emissions', 
+                           'safety', 'electrical', 'body', 'suspension', 'exhaust']
+        feature_columns = [col for col in possible_features if col in df.columns]
+        
+        if not feature_columns:
+            # Use all columns except target
+            feature_columns = [col for col in df.columns if col != target_column]
+    
+    # Find target column
+    if target_column not in df.columns:
+        target_column = _find_column(df, ['inspection_result', 'result', 'pass_fail', 
+                                        'status', 'outcome', 'label', 'target'])
+    
+    logger.info(f"Using feature columns: {feature_columns}")
+    logger.info(f"Using target column: {target_column}")
+    
+    # Extract features and targets
+    if feature_columns:
+        # Combine features into text representation
+        feature_texts = []
+        for _, row in df.iterrows():
+            features = [f"{col}:{row[col]}" for col in feature_columns if pd.notna(row[col])]
+            feature_texts.append(" ".join(features))
+    else:
+        # Fall back to using all columns as text
+        feature_texts = df.apply(lambda x: " ".join([f"{col}:{val}" for col, val in x.items() 
+                                                   if col != target_column and pd.notna(val)]), axis=1).tolist()
+    
+    # Extract targets
+    if target_column in df.columns:
+        targets = df[target_column].tolist()
+        # Convert to binary labels
+        targets = _convert_to_binary_labels([str(t) for t in targets])
+    else:
+        logger.warning(f"Target column '{target_column}' not found, using dummy targets")
+        targets = [0] * len(feature_texts)
+    
+    logger.info(f"Dataset statistics: {len(feature_texts)} samples")
+    logger.info(f"Target distribution: {_get_label_distribution(targets)}")
+    
+    return create_text_classification_dataset(feature_texts, [str(t) for t in targets], vocab_size, max_length)
+
+
+def load_digakust_dataset(
+    data_path: str,
+    feature_columns: Optional[List[str]] = None,
+    target_column: str = "classification",
+    vocab_size: int = 10000,
+    max_length: int = 512
+) -> EssayDataset:
+    """
+    Load the Digakust Dataset (Digital Acoustic Analysis) from Mensa Saarland University.
+    
+    Expected dataset URL: https://www.kaggle.com/datasets/resc28/digakust-dataset-mensa-saarland-university
+    
+    Args:
+        data_path: Path to the dataset file (CSV, JSON, or directory)
+        feature_columns: List of columns to use as features (auto-detected if None)
+        target_column: Name of the target column
+        vocab_size: Maximum vocabulary size
+        max_length: Maximum sequence length
+        
+    Returns:
+        EssayDataset instance
+        
+    Notes:
+        This dataset contains digital acoustic analysis data from Saarland University.
+        Typically used for multi-class classification of acoustic patterns.
+    """
+    logger.info(f"Loading Digakust dataset from {data_path}")
+    
+    # Load the dataset
+    df = _load_dataset_file(data_path)
+    logger.info(f"Loaded dataset with shape: {df.shape}")
+    logger.info(f"Columns: {df.columns.tolist()}")
+    
+    # Auto-detect feature columns if not specified
+    if feature_columns is None:
+        # Common acoustic analysis features
+        possible_features = ['frequency', 'amplitude', 'duration', 'pitch', 'formant',
+                           'spectral', 'mfcc', 'chroma', 'zero_crossing', 'spectral_centroid']
+        feature_columns = [col for col in possible_features if col in df.columns]
+        
+        if not feature_columns:
+            # Use all numeric columns except target
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            feature_columns = [col for col in numeric_cols if col != target_column]
+    
+    # Find target column
+    if target_column not in df.columns:
+        target_column = _find_column(df, ['classification', 'class', 'category', 
+                                        'type', 'label', 'target'])
+    
+    logger.info(f"Using feature columns: {feature_columns}")
+    logger.info(f"Using target column: {target_column}")
+    
+    # Extract features and targets
+    if feature_columns:
+        # Combine acoustic features into text representation
+        feature_texts = []
+        for _, row in df.iterrows():
+            features = [f"{col}:{row[col]}" for col in feature_columns if pd.notna(row[col])]
+            feature_texts.append(" ".join(features))
+    else:
+        # Fall back to using all columns as text
+        feature_texts = df.apply(lambda x: " ".join([f"{col}:{val}" for col, val in x.items() 
+                                                   if col != target_column and pd.notna(val)]), axis=1).tolist()
+    
+    # Extract targets
+    if target_column in df.columns:
+        targets = df[target_column].tolist()
+        # For multi-class, convert to binary for compatibility (can be extended later)
+        targets = _convert_to_binary_labels([str(t) for t in targets])
+    else:
+        logger.warning(f"Target column '{target_column}' not found, using dummy targets")
+        targets = [0] * len(feature_texts)
+    
+    logger.info(f"Dataset statistics: {len(feature_texts)} samples")
+    logger.info(f"Target distribution: {_get_label_distribution(targets)}")
+    
+    return create_text_classification_dataset(feature_texts, [str(t) for t in targets], vocab_size, max_length)

@@ -144,35 +144,35 @@ jobs:
         if [ -f "$results_file" ]; then
           echo "Validating results JSON..."
           python -c "
-import json
-import sys
-
-try:
-    with open('$results_file') as f:
-        results = json.load(f)
-    
-    # Check required fields
-    assert 'success' in results, 'Missing success field'
-    assert 'mode' in results, 'Missing mode field'
-    assert 'runtime_seconds' in results, 'Missing runtime_seconds field'
-    
-    if results['success']:
-        assert 'dataset_info' in results, 'Missing dataset_info field'
-        assert 'model_info' in results, 'Missing model_info field'
-        print('✓ Results JSON validation passed')
-        print(f'  Mode: {results[\"mode\"]}')
-        print(f'  Success: {results[\"success\"]}')
-        print(f'  Runtime: {results[\"runtime_seconds\"]:.2f}s')
-        if 'dataset_info' in results:
-            info = results['dataset_info']
-            print(f'  Data: {info.get(\"train_samples\", 0)} train, {info.get(\"val_samples\", 0)} val samples')
-    else:
-        print(f'✗ Training failed: {results.get(\"error\", \"Unknown error\")}')
-        sys.exit(1)
+        import json
+        import sys
         
-except Exception as e:
-    print(f'✗ Results JSON validation failed: {e}')
-    sys.exit(1)
+        try:
+            with open('$results_file') as f:
+                results = json.load(f)
+            
+            # Check required fields
+            assert 'success' in results, 'Missing success field'
+            assert 'mode' in results, 'Missing mode field'
+            assert 'runtime_seconds' in results, 'Missing runtime_seconds field'
+            
+            if results['success']:
+                assert 'dataset_info' in results, 'Missing dataset_info field'
+                assert 'model_info' in results, 'Missing model_info field'
+                print('✓ Results JSON validation passed')
+                print(f'  Mode: {results[\"mode\"]}')
+                print(f'  Success: {results[\"success\"]}')
+                print(f'  Runtime: {results[\"runtime_seconds\"]:.2f}s')
+                if 'dataset_info' in results:
+                    info = results['dataset_info']
+                    print(f'  Data: {info.get(\"train_samples\", 0)} train, {info.get(\"val_samples\", 0)} val samples')
+            else:
+                print(f'✗ Training failed: {results.get(\"error\", \"Unknown error\")}')
+                sys.exit(1)
+                
+        except Exception as e:
+            print(f'✗ Results JSON validation failed: {e}')
+            sys.exit(1)
           "
         fi
 
@@ -211,34 +211,34 @@ except Exception as e:
         
         if [ -f "$results_file" ]; then
           python -c "
-import json
-import os
-
-try:
-    with open('$results_file') as f:
-        results = json.load(f)
-    
-    with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
-        f.write('**Results:**\n')
-        f.write(f'- Status: {\"✅ Success\" if results.get(\"success\") else \"❌ Failed\"}\n')
-        f.write(f'- Runtime: {results.get(\"runtime_seconds\", 0):.2f} seconds\n')
+        import json
+        import os
         
-        if 'dataset_info' in results:
-            info = results['dataset_info']
-            f.write(f'- Training Samples: {info.get(\"train_samples\", 0)}\n')
-            f.write(f'- Validation Samples: {info.get(\"val_samples\", 0)}\n')
-        
-        if 'train_metrics' in results:
-            train_acc = results['train_metrics'].get('train_accuracy', 0)
-            f.write(f'- Training Accuracy: {train_acc:.4f}\n')
-        
-        if 'eval_metrics' in results:
-            val_acc = results['eval_metrics'].get('accuracy', 0)
-            f.write(f'- Validation Accuracy: {val_acc:.4f}\n')
-        
-        f.write('\n')
-except:
-    pass
+        try:
+            with open('$results_file') as f:
+                results = json.load(f)
+            
+            with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+                f.write('**Results:**\n')
+                f.write(f'- Status: {\"✅ Success\" if results.get(\"success\") else \"❌ Failed\"}\n')
+                f.write(f'- Runtime: {results.get(\"runtime_seconds\", 0):.2f} seconds\n')
+                
+                if 'dataset_info' in results:
+                    info = results['dataset_info']
+                    f.write(f'- Training Samples: {info.get(\"train_samples\", 0)}\n')
+                    f.write(f'- Validation Samples: {info.get(\"val_samples\", 0)}\n')
+                
+                if 'train_metrics' in results:
+                    train_acc = results['train_metrics'].get('train_accuracy', 0)
+                    f.write(f'- Training Accuracy: {train_acc:.4f}\n')
+                
+                if 'eval_metrics' in results:
+                    val_acc = results['eval_metrics'].get('accuracy', 0)
+                    f.write(f'- Validation Accuracy: {val_acc:.4f}\n')
+                
+                f.write('\n')
+        except:
+            pass
           "
         fi
 
@@ -278,33 +278,33 @@ except:
             
             # Extract key results
             python3 -c "
-import json
-import sys
-
-try:
-    with open('$file') as f:
-        results = json.load(f)
-    
-    success = results.get('success', False)
-    runtime = results.get('runtime_seconds', 0)
-    
-    print(f'- Status: {\"✅ Success\" if success else \"❌ Failed\"}')
-    print(f'- Runtime: {runtime:.2f}s')
-    
-    if success and 'dataset_info' in results:
-        info = results['dataset_info']
-        print(f'- Data: {info.get(\"train_samples\", 0)} train, {info.get(\"val_samples\", 0)} val')
-    
-    if success and 'train_metrics' in results:
-        acc = results['train_metrics'].get('train_accuracy', 0)
-        print(f'- Train Accuracy: {acc:.4f}')
+        import json
+        import sys
         
-    if success and 'eval_metrics' in results:
-        acc = results['eval_metrics'].get('accuracy', 0) 
-        print(f'- Val Accuracy: {acc:.4f}')
-        
-except Exception as e:
-    print(f'- Error: {e}')
+        try:
+            with open('$file') as f:
+                results = json.load(f)
+            
+            success = results.get('success', False)
+            runtime = results.get('runtime_seconds', 0)
+            
+            print(f'- Status: {\"✅ Success\" if success else \"❌ Failed\"}')
+            print(f'- Runtime: {runtime:.2f}s')
+            
+            if success and 'dataset_info' in results:
+                info = results['dataset_info']
+                print(f'- Data: {info.get(\"train_samples\", 0)} train, {info.get(\"val_samples\", 0)} val')
+            
+            if success and 'train_metrics' in results:
+                acc = results['train_metrics'].get('train_accuracy', 0)
+                print(f'- Train Accuracy: {acc:.4f}')
+                
+            if success and 'eval_metrics' in results:
+                acc = results['eval_metrics'].get('accuracy', 0) 
+                print(f'- Val Accuracy: {acc:.4f}')
+                
+        except Exception as e:
+            print(f'- Error: {e}')
             " >> summary.md
             echo "" >> summary.md
           fi
