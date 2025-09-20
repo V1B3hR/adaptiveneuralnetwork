@@ -165,6 +165,155 @@ class PhaseScheduler:
         alpha = 0.3
         self.node_anxiety = alpha * anxiety_levels + (1 - alpha) * self.node_anxiety
         
+    def _handle_exploration_phase(self) -> int:
+        """Handle stochastic exploration when enabled."""
+        if not (self.stochastic_policy and np.random.random() < self.exploration_rate):
+            return None  # No exploration
+            
+        phase_probs = torch.tensor([
+            self.phase_weights[Phase.ACTIVE],
+            self.phase_weights[Phase.SLEEP], 
+            self.phase_weights[Phase.INTERACTIVE],
+            self.phase_weights[Phase.INSPIRED]
+        ], device=self.device)
+        
+        # Apply temperature scaling for exploration
+        phase_probs = torch.softmax(phase_probs / self.policy_temperature, dim=0)
+        return torch.multinomial(phase_probs, 1).item()
+
+    def _handle_high_anxiety_phase(self, anxiety: float) -> int:
+        """Handle phase transitions for high anxiety states."""
+        if anxiety <= self.anxiety_threshold:
+            return None  # No anxiety override needed
+            
+        anxiety_severity = min(1.0, anxiety / (self.anxiety_threshold * 2))
+        
+        if self.stochastic_policy:
+            anxiety_probs = torch.zeros(4, device=self.device)
+            anxiety_probs[Phase.SLEEP.value] = anxiety_severity * 0.6
+            anxiety_probs[Phase.INTERACTIVE.value] = anxiety_severity * 0.3
+            anxiety_probs[Phase.ACTIVE.value] = (1 - anxiety_severity) * 0.1
+            anxiety_probs = torch.softmax(anxiety_probs / self.policy_temperature, dim=0)
+            return torch.multinomial(anxiety_probs, 1).item()
+        else:
+            # Deterministic anxiety response
+            if anxiety_severity > 0.7:
+                return Phase.SLEEP.value  # Deep restoration needed
+            elif anxiety_severity > 0.4:
+                return Phase.INTERACTIVE.value  # Social support seeking
+            else:
+                # Reduce to lower activity phase
+                return Phase.INTERACTIVE.value  # Default for moderate anxiety
+        
+        return None
+
+    def _handle_restorative_need_phase(self, restorative_need: float, node_idx: int) -> int:
+        """Handle phase transitions for high restorative needs."""
+        if restorative_need <= 0.6:
+            return None
+            
+        # Check if we haven't had enough sleep recently
+        recent_sleep = (self.node_phases[node_idx] == Phase.SLEEP.value).float()
+        if recent_sleep >= 0.1:  # Had enough sleep recently
+            return None
+            
+        if self.stochastic_policy:
+            rest_probs = torch.zeros(4, device=self.device)
+            rest_probs[Phase.SLEEP.value] = 0.8
+            rest_probs[Phase.INTERACTIVE.value] = 0.2
+            rest_probs = torch.softmax(rest_probs / self.policy_temperature, dim=0)
+            return torch.multinomial(rest_probs, 1).item()
+        else:
+            return Phase.SLEEP.value
+
+    def _handle_low_energy_phase(self, energy: float, anxiety: float) -> int:
+        """Handle phase transitions for low energy states."""
+        if energy >= 2.0:
+            return None
+            
+        if self.stochastic_policy:
+            low_energy_probs = torch.zeros(4, device=self.device)
+            base_sleep_prob = 0.7
+            if anxiety > self.anxiety_threshold * 0.5:
+                base_sleep_prob = 0.9  # Higher probability when anxious
+            low_energy_probs[Phase.SLEEP.value] = base_sleep_prob
+            low_energy_probs[Phase.INTERACTIVE.value] = 1 - base_sleep_prob
+            low_energy_probs = torch.softmax(low_energy_probs / self.policy_temperature, dim=0)
+            return torch.multinomial(low_energy_probs, 1).item()
+        else:
+            return Phase.SLEEP.value
+
+    def _handle_high_energy_low_activity_phase(self, energy: float, activity: float, anxiety: float, circadian_factor: float) -> int:
+        """Handle phase transitions for high energy with low activity."""
+        if not (energy > 20.0 and activity < 0.3):
+            return None
+            
+        if self.stochastic_policy:
+            high_energy_probs = torch.zeros(4, device=self.device)
+            if anxiety < self.anxiety_threshold * 0.3 and circadian_factor > 0.5:
+                # Low anxiety + good circadian timing = inspiration possible
+                high_energy_probs[Phase.INSPIRED.value] = 0.6
+                high_energy_probs[Phase.INTERACTIVE.value] = 0.3
+                high_energy_probs[Phase.ACTIVE.value] = 0.1
+            else:
+                # High energy but anxious = social interaction preferred
+                high_energy_probs[Phase.INTERACTIVE.value] = 0.7
+                high_energy_probs[Phase.ACTIVE.value] = 0.3
+            high_energy_probs = torch.softmax(high_energy_probs / self.policy_temperature, dim=0)
+            return torch.multinomial(high_energy_probs, 1).item()
+        else:
+            if anxiety < self.anxiety_threshold * 0.3 and circadian_factor > 0.5:
+                return Phase.INSPIRED.value
+            else:
+                return Phase.INTERACTIVE.value
+
+    def _handle_high_activity_phase(self, activity: float, anxiety: float) -> int:
+        """Handle phase transitions for high activity states."""
+        if activity <= 0.7:
+            return None
+            
+        if self.stochastic_policy:
+            high_activity_probs = torch.zeros(4, device=self.device)
+            if anxiety > self.anxiety_threshold * 0.4:
+                # Anxious nodes seek interaction over pure activity
+                high_activity_probs[Phase.INTERACTIVE.value] = 0.8
+                high_activity_probs[Phase.ACTIVE.value] = 0.2
+            else:
+                # Normal high activity distribution
+                high_activity_probs[Phase.ACTIVE.value] = 0.7
+                high_activity_probs[Phase.INTERACTIVE.value] = 0.3
+            high_activity_probs = torch.softmax(high_activity_probs / self.policy_temperature, dim=0)
+            return torch.multinomial(high_activity_probs, 1).item()
+        else:
+            if anxiety > self.anxiety_threshold * 0.4:
+                return Phase.INTERACTIVE.value
+            else:
+                # Normal high activity transition
+                return Phase.ACTIVE.value if np.random.random() > 0.3 else Phase.INTERACTIVE.value
+
+    def _handle_default_transition(self, current_phase: int, anxiety: float, restorative_need: float) -> int:
+        """Handle default phase transitions using transition probabilities."""
+        probs = self.transition_matrix[current_phase].clone()
+        
+        # Modify probabilities based on anxiety and restorative needs
+        if anxiety > self.anxiety_threshold * 0.5:
+            probs[Phase.SLEEP.value] *= 1.5  # Increase sleep probability
+            probs[Phase.INTERACTIVE.value] *= 1.3  # Increase social interaction
+            probs[Phase.ACTIVE.value] *= 0.7  # Decrease pure activity
+        
+        if restorative_need > 0.4:
+            probs[Phase.SLEEP.value] *= 1.4
+            probs[Phase.INSPIRED.value] *= 0.6  # Less likely to be inspired when tired
+        
+        # Apply stochastic policy temperature scaling
+        if self.stochastic_policy:
+            probs = torch.softmax(probs / self.policy_temperature, dim=0)
+        else:
+            # Normalize probabilities
+            probs = probs / probs.sum()
+        
+        return torch.multinomial(probs, 1).item()
+
     def _determine_phase_transition(
         self, current_phase: int, energy: float, activity: float, 
         anxiety: float, restorative_need: float, sleep_quality: float,
@@ -172,144 +321,24 @@ class PhaseScheduler:
     ) -> int:
         """Determine phase transition with enhanced anxiety/restorative mechanics and stochastic policy."""
         
-        # Apply stochastic policy if enabled
-        if self.stochastic_policy and np.random.random() < self.exploration_rate:
-            # Exploration: random phase with temperature-scaled probabilities
-            phase_probs = torch.tensor([
-                self.phase_weights[Phase.ACTIVE],
-                self.phase_weights[Phase.SLEEP], 
-                self.phase_weights[Phase.INTERACTIVE],
-                self.phase_weights[Phase.INSPIRED]
-            ], device=self.device)
-            
-            # Apply temperature scaling for exploration
-            phase_probs = torch.softmax(phase_probs / self.policy_temperature, dim=0)
-            return torch.multinomial(phase_probs, 1).item()
+        # Check transition handlers in priority order
+        transition_handlers = [
+            lambda: self._handle_exploration_phase(),
+            lambda: self._handle_high_anxiety_phase(anxiety),
+            lambda: self._handle_restorative_need_phase(restorative_need, node_idx),
+            lambda: self._handle_low_energy_phase(energy, anxiety),
+            lambda: self._handle_high_energy_low_activity_phase(energy, activity, anxiety, circadian_factor),
+            lambda: self._handle_high_activity_phase(activity, anxiety),
+        ]
         
-        # High anxiety override - force restorative phases
-        if anxiety > self.anxiety_threshold:
-            anxiety_severity = min(1.0, anxiety / (self.anxiety_threshold * 2))
-            
-            # Stochastic selection based on anxiety severity
-            if self.stochastic_policy:
-                anxiety_probs = torch.zeros(4, device=self.device)
-                anxiety_probs[Phase.SLEEP.value] = anxiety_severity * 0.6
-                anxiety_probs[Phase.INTERACTIVE.value] = anxiety_severity * 0.3
-                anxiety_probs[Phase.ACTIVE.value] = (1 - anxiety_severity) * 0.1
-                anxiety_probs = torch.softmax(anxiety_probs / self.policy_temperature, dim=0)
-                return torch.multinomial(anxiety_probs, 1).item()
-            else:
-                # Original deterministic logic
-                if anxiety_severity > 0.7:
-                    return Phase.SLEEP.value  # Deep restoration needed
-                elif anxiety_severity > 0.4:
-                    return Phase.INTERACTIVE.value  # Social support seeking
-                else:
-                    # Reduce to lower activity phase
-                    if current_phase == Phase.ACTIVE.value:
-                        return Phase.INTERACTIVE.value
+        # Execute handlers until one returns a phase
+        for handler in transition_handlers:
+            result = handler()
+            if result is not None:
+                return result
         
-        # Restorative need override with stochastic policy
-        if restorative_need > 0.6:
-            # Check if we've been in restorative phases recently
-            recent_sleep = (self.node_phases[node_idx] == Phase.SLEEP.value).float()
-            if recent_sleep < 0.1:  # Haven't had enough sleep
-                if self.stochastic_policy:
-                    # Stochastic restorative choice
-                    rest_probs = torch.zeros(4, device=self.device)
-                    rest_probs[Phase.SLEEP.value] = 0.8
-                    rest_probs[Phase.INTERACTIVE.value] = 0.2
-                    rest_probs = torch.softmax(rest_probs / self.policy_temperature, dim=0)
-                    return torch.multinomial(rest_probs, 1).item()
-                else:
-                    return Phase.SLEEP.value
-        
-        # Low energy with anxiety consideration and stochastic policy
-        if energy < 2.0:
-            if self.stochastic_policy:
-                low_energy_probs = torch.zeros(4, device=self.device)
-                base_sleep_prob = 0.7
-                if anxiety > self.anxiety_threshold * 0.5:
-                    base_sleep_prob = 0.9  # Higher probability when anxious
-                low_energy_probs[Phase.SLEEP.value] = base_sleep_prob
-                low_energy_probs[Phase.INTERACTIVE.value] = 1 - base_sleep_prob
-                low_energy_probs = torch.softmax(low_energy_probs / self.policy_temperature, dim=0)
-                return torch.multinomial(low_energy_probs, 1).item()
-            else:
-                # Anxiety affects sleep quality needs
-                if anxiety > self.anxiety_threshold * 0.5:
-                    return Phase.SLEEP.value  # Need deeper restoration
-                else:
-                    return Phase.SLEEP.value
-                
-        # High energy transitions with anxiety modulation and stochastic policy
-        elif energy > 20.0 and activity < 0.3:
-            if self.stochastic_policy:
-                high_energy_probs = torch.zeros(4, device=self.device)
-                if anxiety < self.anxiety_threshold * 0.3 and circadian_factor > 0.5:
-                    # Low anxiety + good circadian timing = inspiration possible
-                    high_energy_probs[Phase.INSPIRED.value] = 0.6
-                    high_energy_probs[Phase.INTERACTIVE.value] = 0.3
-                    high_energy_probs[Phase.ACTIVE.value] = 0.1
-                else:
-                    # High energy but anxious = social interaction preferred
-                    high_energy_probs[Phase.INTERACTIVE.value] = 0.7
-                    high_energy_probs[Phase.ACTIVE.value] = 0.3
-                high_energy_probs = torch.softmax(high_energy_probs / self.policy_temperature, dim=0)
-                return torch.multinomial(high_energy_probs, 1).item()
-            else:
-                if anxiety < self.anxiety_threshold * 0.3 and circadian_factor > 0.5:
-                    # Low anxiety + good circadian timing = inspiration possible
-                    return Phase.INSPIRED.value
-                else:
-                    # High energy but anxious = social interaction
-                    return Phase.INTERACTIVE.value
-                
-        elif activity > 0.7:
-            # High activity - anxiety affects choice between active/interactive
-            if self.stochastic_policy:
-                high_activity_probs = torch.zeros(4, device=self.device)
-                if anxiety > self.anxiety_threshold * 0.4:
-                    # Anxious nodes seek interaction over pure activity
-                    high_activity_probs[Phase.INTERACTIVE.value] = 0.8
-                    high_activity_probs[Phase.ACTIVE.value] = 0.2
-                else:
-                    # Normal high activity distribution
-                    high_activity_probs[Phase.ACTIVE.value] = 0.7
-                    high_activity_probs[Phase.INTERACTIVE.value] = 0.3
-                high_activity_probs = torch.softmax(high_activity_probs / self.policy_temperature, dim=0)
-                return torch.multinomial(high_activity_probs, 1).item()
-            else:
-                if anxiety > self.anxiety_threshold * 0.4:
-                    # Anxious nodes seek interaction over pure activity
-                    return Phase.INTERACTIVE.value
-                else:
-                    # Normal high activity transition
-                    return (
-                        Phase.ACTIVE.value if np.random.random() > 0.3 else Phase.INTERACTIVE.value
-                    )
-        else:
-            # Use transition probabilities with anxiety modulation and stochastic policy
-            probs = self.transition_matrix[current_phase].clone()
-            
-            # Modify probabilities based on anxiety and restorative needs
-            if anxiety > self.anxiety_threshold * 0.5:
-                probs[Phase.SLEEP.value] *= 1.5  # Increase sleep probability
-                probs[Phase.INTERACTIVE.value] *= 1.3  # Increase social interaction
-                probs[Phase.ACTIVE.value] *= 0.7  # Decrease pure activity
-            
-            if restorative_need > 0.4:
-                probs[Phase.SLEEP.value] *= 1.4
-                probs[Phase.INSPIRED.value] *= 0.6  # Less likely to be inspired when tired
-            
-            # Apply stochastic policy temperature scaling
-            if self.stochastic_policy:
-                probs = torch.softmax(probs / self.policy_temperature, dim=0)
-            else:
-                # Normalize probabilities
-                probs = probs / probs.sum()
-            
-            return torch.multinomial(probs, 1).item()
+        # Default transition if no specific handler applies
+        return self._handle_default_transition(current_phase, anxiety, restorative_need)
     
     def _update_restorative_state(self) -> None:
         """Update restorative needs and sleep quality based on current phases."""

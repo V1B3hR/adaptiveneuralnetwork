@@ -5,7 +5,6 @@ This module implements the basic dynamics update functions that drive
 the adaptive behavior of the neural network nodes.
 """
 
-from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
