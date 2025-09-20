@@ -478,100 +478,145 @@ class AliveLoopNode:
             'circuit_breaker_state': self.circuit_breaker['state']
         }
 
+    def _can_process_signal(self, signal: SocialSignal) -> bool:
+        """
+        Check if signal can be processed (circuit breaker, schema, deduplication, energy).
+        
+        Args:
+            signal: Signal to validate
+            
+        Returns:
+            True if signal can be processed, False otherwise
+        """
+        # Circuit breaker check
+        if self._should_circuit_break():
+            logger.warning(f"Node {self.node_id}: Circuit breaker open, rejecting signal {signal.id}")
+            return False
+        
+        # Schema validation
+        if not self._validate_signal_schema(signal):
+            error_msg = f"Unsupported schema version: {signal.schema_version}"
+            self._record_processing_error(signal, error_msg)
+            return False
+        
+        # Deduplication check
+        if self._is_duplicate_signal(signal):
+            self.signal_metrics['duplicate_count'] += 1
+            logger.debug(f"Node {self.node_id}: Duplicate signal {signal.id} ignored")
+            return False
+        
+        # Energy check
+        if self.energy < 0.5:
+            return False
+            
+        return True
+    
+    def _consume_processing_energy(self, signal: SocialSignal) -> None:
+        """
+        Apply energy cost for signal processing.
+        
+        Args:
+            signal: Signal being processed
+        """
+        processing_cost = 0.05 + (0.1 * signal.urgency)
+        self.energy = max(0, self.energy - processing_cost)
+    
+    def _record_signal_attempt(self, signal: SocialSignal, processing_start_time: int) -> None:
+        """
+        Record signal processing attempt and persist for replay.
+        
+        Args:
+            signal: Signal being processed
+            processing_start_time: Timestamp when processing started
+        """
+        signal.processing_attempts.append({
+            'node_id': self.node_id,
+            'timestamp': processing_start_time,
+            'correlation_id': signal.correlation_id
+        })
+        
+        self._add_to_partition_queue(signal)
+        self.communication_queue.append(signal)
+        
+        self.persisted_signals.append({
+            'signal': signal,
+            'timestamp': processing_start_time,
+            'node_id': self.node_id
+        })
+    
+    def _dispatch_signal_by_type(self, signal: SocialSignal) -> Optional[SocialSignal]:
+        """
+        Route signal to appropriate handler based on signal type.
+        
+        Args:
+            signal: Signal to process
+            
+        Returns:
+            Response signal if applicable, None otherwise
+        """
+        signal_handlers = {
+            "memory": lambda s: self._process_memory_signal(s),
+            "query": lambda s: self._process_query_signal(s),
+            "warning": lambda s: self._process_warning_signal(s),
+            "resource": lambda s: self._process_resource_signal(s),
+            "anxiety_help": lambda s: self._process_anxiety_help_signal(s),
+            "anxiety_help_response": lambda s: self._process_anxiety_help_response(s),
+            "joy_share": lambda s: self._process_joy_share_signal(s),
+            "grief_support_request": lambda s: self._process_grief_support_request_signal(s),
+            "grief_support_response": lambda s: self._process_grief_support_response_signal(s),
+            "celebration_invite": lambda s: self._process_celebration_invite_signal(s),
+            "comfort_request": lambda s: self._process_comfort_request_signal(s),
+            "comfort_response": lambda s: self._process_comfort_response_signal(s),
+        }
+        
+        handler = signal_handlers.get(signal.signal_type)
+        if handler:
+            return handler(signal)
+        else:
+            error_msg = f"Unknown signal type: {signal.signal_type}"
+            self._record_processing_error(signal, error_msg)
+            return None
+    
+    def _finalize_signal_processing(self, signal: SocialSignal, processing_start_time: int) -> None:
+        """
+        Complete signal processing: apply emotional contagion, record metrics, reset circuit breaker.
+        
+        Args:
+            signal: Processed signal
+            processing_start_time: When processing started
+        """
+        # Emotional contagion
+        if hasattr(signal.content, 'emotional_valence'):
+            self._apply_emotional_contagion(signal.content.emotional_valence, signal.source_id)
+        
+        # Record successful processing
+        self._record_signal_processed(signal)
+        self.signal_metrics['processed_count'] += 1
+        self.signal_metrics['processing_times'].append(processing_start_time)
+        
+        # Reset circuit breaker on success
+        if self.circuit_breaker['state'] == 'half-open':
+            self.circuit_breaker['state'] = 'closed'
+            self.circuit_breaker['failure_count'] = 0
+
     def receive_signal(self, signal: SocialSignal) -> Optional[SocialSignal]:
         """Process an incoming signal from another node with production features"""
         processing_start_time = get_timestamp()
         
         try:
-            # Circuit breaker check
-            if self._should_circuit_break():
-                logger.warning(f"Node {self.node_id}: Circuit breaker open, rejecting signal {signal.id}")
+            # Validate signal can be processed
+            if not self._can_process_signal(signal):
                 return None
             
-            # Schema validation
-            if not self._validate_signal_schema(signal):
-                error_msg = f"Unsupported schema version: {signal.schema_version}"
-                self._record_processing_error(signal, error_msg)
-                return None
+            # Apply energy cost and record processing attempt
+            self._consume_processing_energy(signal)
+            self._record_signal_attempt(signal, processing_start_time)
             
-            # Deduplication check
-            if self._is_duplicate_signal(signal):
-                self.signal_metrics['duplicate_count'] += 1
-                logger.debug(f"Node {self.node_id}: Duplicate signal {signal.id} ignored")
-                return None
+            # Route to appropriate handler
+            response = self._dispatch_signal_by_type(signal)
             
-            # Energy check
-            if self.energy < 0.5:
-                return None  # Not enough energy to process
-                
-            # Energy cost to process signal
-            processing_cost = 0.05 + (0.1 * signal.urgency)
-            self.energy = max(0, self.energy - processing_cost)
-            
-            # Add signal processing attempt
-            signal.processing_attempts.append({
-                'node_id': self.node_id,
-                'timestamp': processing_start_time,
-                'correlation_id': signal.correlation_id
-            })
-            
-            # Add to partition queue for ordering guarantees
-            self._add_to_partition_queue(signal)
-            
-            # Add to communication queue (existing behavior)
-            self.communication_queue.append(signal)
-            
-            # Persist signal for replay capabilities
-            self.persisted_signals.append({
-                'signal': signal,
-                'timestamp': processing_start_time,
-                'node_id': self.node_id
-            })
-            
-            # Process based on signal type
-            response = None
-            if signal.signal_type == "memory":
-                self._process_memory_signal(signal)
-            elif signal.signal_type == "query":
-                response = self._process_query_signal(signal)
-            elif signal.signal_type == "warning":
-                self._process_warning_signal(signal)
-            elif signal.signal_type == "resource":
-                self._process_resource_signal(signal)
-            elif signal.signal_type == "anxiety_help":
-                response = self._process_anxiety_help_signal(signal)
-            elif signal.signal_type == "anxiety_help_response":
-                self._process_anxiety_help_response(signal)
-            elif signal.signal_type == "joy_share":
-                self._process_joy_share_signal(signal)
-            elif signal.signal_type == "grief_support_request":
-                response = self._process_grief_support_request_signal(signal)
-            elif signal.signal_type == "grief_support_response":
-                self._process_grief_support_response_signal(signal)
-            elif signal.signal_type == "celebration_invite":
-                response = self._process_celebration_invite_signal(signal)
-            elif signal.signal_type == "comfort_request":
-                response = self._process_comfort_request_signal(signal)
-            elif signal.signal_type == "comfort_response":
-                self._process_comfort_response_signal(signal)
-            else:
-                error_msg = f"Unknown signal type: {signal.signal_type}"
-                self._record_processing_error(signal, error_msg)
-                return None
-                
-            # Emotional contagion
-            if hasattr(signal.content, 'emotional_valence'):
-                self._apply_emotional_contagion(signal.content.emotional_valence, signal.source_id)
-            
-            # Record successful processing
-            self._record_signal_processed(signal)
-            self.signal_metrics['processed_count'] += 1
-            self.signal_metrics['processing_times'].append(processing_start_time)
-            
-            # Reset circuit breaker on success
-            if self.circuit_breaker['state'] == 'half-open':
-                self.circuit_breaker['state'] = 'closed'
-                self.circuit_breaker['failure_count'] = 0
+            # Complete processing
+            self._finalize_signal_processing(signal, processing_start_time)
             
             return response
             
@@ -905,20 +950,25 @@ class AliveLoopNode:
             # Potential extension: move toward most trusted nodes
             pass
 
-    def step_phase(self, current_time: Optional[int] = None):
-        """Enhanced phase management with circadian rhythms using centralized time management"""
-        # Use centralized time manager for simulation time, but allow override for backward compatibility
+    def _sync_time_management(self, current_time: Optional[int] = None) -> None:
+        """
+        Synchronize with centralized time manager.
+        
+        Args:
+            current_time: Optional override time for backward compatibility
+        """
         time_manager = get_time_manager()
         if current_time is not None:
             # Backward compatibility: set time manager to match provided time
-            # Reset and advance to the desired time
             if current_time != time_manager.simulation_step:
                 time_manager.reset()
                 time_manager.advance_simulation(current_time)
         
         self._time = time_manager.simulation_step
         self.circadian_cycle = time_manager.circadian_time
-        
+
+    def _perform_periodic_maintenance(self) -> None:
+        """Perform periodic cleanup and maintenance tasks."""
         # Reset communication rate limits for new time step
         self._reset_rate_limits(self._time)
         
@@ -926,28 +976,60 @@ class AliveLoopNode:
         if self._time % 10 == 0:  # Every 10 steps
             self._cleanup_memory()
         
-        # Phase transitions based on energy, anxiety, and time
+        # Reset help signal limits periodically
+        if self._time % 50 == 0:  # Every 50 time steps
+            self.reset_help_signal_limits()
+
+    def _determine_phase_transition(self) -> None:
+        """Determine and set phase based on energy, anxiety, and circadian cycle."""
         if self.energy < 3.0 or self.circadian_cycle > 20:
             self.phase = "sleep"
-            # Sleep stage based on anxiety level
-            if self.anxiety > 10:
-                self.sleep_stage = "deep"  # Stress-induced deep sleep
-            elif self.anxiety > 5:
-                self.sleep_stage = "REM"
-            else:
-                self.sleep_stage = "light"
+            self._set_sleep_stage()
         elif self.energy > 20.0 and self.anxiety < 5.0:
             self.phase = "inspired"  # High energy, low anxiety
         elif self.energy > 8.0 and 6 <= self.circadian_cycle <= 18:
             self.phase = "active"
         else:
             self.phase = "interactive"
-            
-        # Social phases might affect communication style
+
+    def _set_sleep_stage(self) -> None:
+        """Set appropriate sleep stage based on anxiety level."""
+        if self.anxiety > 10:
+            self.sleep_stage = "deep"  # Stress-induced deep sleep
+        elif self.anxiety > 5:
+            self.sleep_stage = "REM"
+        else:
+            self.sleep_stage = "light"
+
+    def _update_communication_style(self) -> None:
+        """Update communication style based on current phase."""
         if self.phase == "interactive":
             self.communication_style["directness"] = min(1.0, self.communication_style["directness"] + 0.1)
         elif self.phase == "sleep":
             self.communication_style["directness"] = max(0.0, self.communication_style["directness"] - 0.1)
+
+    def _handle_proactive_interventions(self) -> None:
+        """Assess and handle proactive interventions if needed."""
+        if self._time % 10 == 0:  # Check every 10 steps to avoid overload
+            intervention_assessment = self.assess_intervention_need()
+            if intervention_assessment['intervention_needed']:
+                # Store assessment for network to act upon
+                # This allows the network layer to coordinate interventions
+                self._last_intervention_assessment = intervention_assessment
+
+    def step_phase(self, current_time: Optional[int] = None):
+        """Enhanced phase management with circadian rhythms using centralized time management"""
+        # Synchronize time management
+        self._sync_time_management(current_time)
+        
+        # Perform periodic maintenance
+        self._perform_periodic_maintenance()
+        
+        # Determine phase transitions
+        self._determine_phase_transition()
+        
+        # Update communication style
+        self._update_communication_style()
             
         # Emotional state management and safety protocol
         self.update_emotional_states()  # Record all emotional states in history
@@ -955,20 +1037,8 @@ class AliveLoopNode:
         # Apply natural calm effect
         self.apply_calm_effect()
         
-        # Reset help signal limits periodically
-        if self._time % 50 == 0:  # Every 50 time steps
-            self.reset_help_signal_limits()
-            
-        # Proactive intervention assessment using all emotional states
-        if self._time % 10 == 0:  # Check every 10 steps to avoid overload
-            intervention_assessment = self.assess_intervention_need()
-            if intervention_assessment['intervention_needed']:
-                # Store assessment for network to act upon
-                # This allows the network layer to coordinate interventions
-                self._last_intervention_assessment = intervention_assessment
-            
-        # Automatic anxiety help signal for overwhelm  
-        # Note: This will be called by the network when it has access to nearby nodes
+        # Handle proactive interventions
+        self._handle_proactive_interventions()
 
     def move(self):
         """Energy-efficient movement with basic navigation"""
