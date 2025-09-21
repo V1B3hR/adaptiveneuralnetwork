@@ -478,100 +478,145 @@ class AliveLoopNode:
             'circuit_breaker_state': self.circuit_breaker['state']
         }
 
+    def _can_process_signal(self, signal: SocialSignal) -> bool:
+        """
+        Check if signal can be processed (circuit breaker, schema, deduplication, energy).
+        
+        Args:
+            signal: Signal to validate
+            
+        Returns:
+            True if signal can be processed, False otherwise
+        """
+        # Circuit breaker check
+        if self._should_circuit_break():
+            logger.warning(f"Node {self.node_id}: Circuit breaker open, rejecting signal {signal.id}")
+            return False
+        
+        # Schema validation
+        if not self._validate_signal_schema(signal):
+            error_msg = f"Unsupported schema version: {signal.schema_version}"
+            self._record_processing_error(signal, error_msg)
+            return False
+        
+        # Deduplication check
+        if self._is_duplicate_signal(signal):
+            self.signal_metrics['duplicate_count'] += 1
+            logger.debug(f"Node {self.node_id}: Duplicate signal {signal.id} ignored")
+            return False
+        
+        # Energy check
+        if self.energy < 0.5:
+            return False
+            
+        return True
+    
+    def _consume_processing_energy(self, signal: SocialSignal) -> None:
+        """
+        Apply energy cost for signal processing.
+        
+        Args:
+            signal: Signal being processed
+        """
+        processing_cost = 0.05 + (0.1 * signal.urgency)
+        self.energy = max(0, self.energy - processing_cost)
+    
+    def _record_signal_attempt(self, signal: SocialSignal, processing_start_time: int) -> None:
+        """
+        Record signal processing attempt and persist for replay.
+        
+        Args:
+            signal: Signal being processed
+            processing_start_time: Timestamp when processing started
+        """
+        signal.processing_attempts.append({
+            'node_id': self.node_id,
+            'timestamp': processing_start_time,
+            'correlation_id': signal.correlation_id
+        })
+        
+        self._add_to_partition_queue(signal)
+        self.communication_queue.append(signal)
+        
+        self.persisted_signals.append({
+            'signal': signal,
+            'timestamp': processing_start_time,
+            'node_id': self.node_id
+        })
+    
+    def _dispatch_signal_by_type(self, signal: SocialSignal) -> Optional[SocialSignal]:
+        """
+        Route signal to appropriate handler based on signal type.
+        
+        Args:
+            signal: Signal to process
+            
+        Returns:
+            Response signal if applicable, None otherwise
+        """
+        signal_handlers = {
+            "memory": lambda s: self._process_memory_signal(s),
+            "query": lambda s: self._process_query_signal(s),
+            "warning": lambda s: self._process_warning_signal(s),
+            "resource": lambda s: self._process_resource_signal(s),
+            "anxiety_help": lambda s: self._process_anxiety_help_signal(s),
+            "anxiety_help_response": lambda s: self._process_anxiety_help_response(s),
+            "joy_share": lambda s: self._process_joy_share_signal(s),
+            "grief_support_request": lambda s: self._process_grief_support_request_signal(s),
+            "grief_support_response": lambda s: self._process_grief_support_response_signal(s),
+            "celebration_invite": lambda s: self._process_celebration_invite_signal(s),
+            "comfort_request": lambda s: self._process_comfort_request_signal(s),
+            "comfort_response": lambda s: self._process_comfort_response_signal(s),
+        }
+        
+        handler = signal_handlers.get(signal.signal_type)
+        if handler:
+            return handler(signal)
+        else:
+            error_msg = f"Unknown signal type: {signal.signal_type}"
+            self._record_processing_error(signal, error_msg)
+            return None
+    
+    def _finalize_signal_processing(self, signal: SocialSignal, processing_start_time: int) -> None:
+        """
+        Complete signal processing: apply emotional contagion, record metrics, reset circuit breaker.
+        
+        Args:
+            signal: Processed signal
+            processing_start_time: When processing started
+        """
+        # Emotional contagion
+        if hasattr(signal.content, 'emotional_valence'):
+            self._apply_emotional_contagion(signal.content.emotional_valence, signal.source_id)
+        
+        # Record successful processing
+        self._record_signal_processed(signal)
+        self.signal_metrics['processed_count'] += 1
+        self.signal_metrics['processing_times'].append(processing_start_time)
+        
+        # Reset circuit breaker on success
+        if self.circuit_breaker['state'] == 'half-open':
+            self.circuit_breaker['state'] = 'closed'
+            self.circuit_breaker['failure_count'] = 0
+
     def receive_signal(self, signal: SocialSignal) -> Optional[SocialSignal]:
         """Process an incoming signal from another node with production features"""
         processing_start_time = get_timestamp()
         
         try:
-            # Circuit breaker check
-            if self._should_circuit_break():
-                logger.warning(f"Node {self.node_id}: Circuit breaker open, rejecting signal {signal.id}")
+            # Validate signal can be processed
+            if not self._can_process_signal(signal):
                 return None
             
-            # Schema validation
-            if not self._validate_signal_schema(signal):
-                error_msg = f"Unsupported schema version: {signal.schema_version}"
-                self._record_processing_error(signal, error_msg)
-                return None
+            # Apply energy cost and record processing attempt
+            self._consume_processing_energy(signal)
+            self._record_signal_attempt(signal, processing_start_time)
             
-            # Deduplication check
-            if self._is_duplicate_signal(signal):
-                self.signal_metrics['duplicate_count'] += 1
-                logger.debug(f"Node {self.node_id}: Duplicate signal {signal.id} ignored")
-                return None
+            # Route to appropriate handler
+            response = self._dispatch_signal_by_type(signal)
             
-            # Energy check
-            if self.energy < 0.5:
-                return None  # Not enough energy to process
-                
-            # Energy cost to process signal
-            processing_cost = 0.05 + (0.1 * signal.urgency)
-            self.energy = max(0, self.energy - processing_cost)
-            
-            # Add signal processing attempt
-            signal.processing_attempts.append({
-                'node_id': self.node_id,
-                'timestamp': processing_start_time,
-                'correlation_id': signal.correlation_id
-            })
-            
-            # Add to partition queue for ordering guarantees
-            self._add_to_partition_queue(signal)
-            
-            # Add to communication queue (existing behavior)
-            self.communication_queue.append(signal)
-            
-            # Persist signal for replay capabilities
-            self.persisted_signals.append({
-                'signal': signal,
-                'timestamp': processing_start_time,
-                'node_id': self.node_id
-            })
-            
-            # Process based on signal type
-            response = None
-            if signal.signal_type == "memory":
-                self._process_memory_signal(signal)
-            elif signal.signal_type == "query":
-                response = self._process_query_signal(signal)
-            elif signal.signal_type == "warning":
-                self._process_warning_signal(signal)
-            elif signal.signal_type == "resource":
-                self._process_resource_signal(signal)
-            elif signal.signal_type == "anxiety_help":
-                response = self._process_anxiety_help_signal(signal)
-            elif signal.signal_type == "anxiety_help_response":
-                self._process_anxiety_help_response(signal)
-            elif signal.signal_type == "joy_share":
-                self._process_joy_share_signal(signal)
-            elif signal.signal_type == "grief_support_request":
-                response = self._process_grief_support_request_signal(signal)
-            elif signal.signal_type == "grief_support_response":
-                self._process_grief_support_response_signal(signal)
-            elif signal.signal_type == "celebration_invite":
-                response = self._process_celebration_invite_signal(signal)
-            elif signal.signal_type == "comfort_request":
-                response = self._process_comfort_request_signal(signal)
-            elif signal.signal_type == "comfort_response":
-                self._process_comfort_response_signal(signal)
-            else:
-                error_msg = f"Unknown signal type: {signal.signal_type}"
-                self._record_processing_error(signal, error_msg)
-                return None
-                
-            # Emotional contagion
-            if hasattr(signal.content, 'emotional_valence'):
-                self._apply_emotional_contagion(signal.content.emotional_valence, signal.source_id)
-            
-            # Record successful processing
-            self._record_signal_processed(signal)
-            self.signal_metrics['processed_count'] += 1
-            self.signal_metrics['processing_times'].append(processing_start_time)
-            
-            # Reset circuit breaker on success
-            if self.circuit_breaker['state'] == 'half-open':
-                self.circuit_breaker['state'] = 'closed'
-                self.circuit_breaker['failure_count'] = 0
+            # Complete processing
+            self._finalize_signal_processing(signal, processing_start_time)
             
             return response
             
@@ -905,20 +950,25 @@ class AliveLoopNode:
             # Potential extension: move toward most trusted nodes
             pass
 
-    def step_phase(self, current_time: Optional[int] = None):
-        """Enhanced phase management with circadian rhythms using centralized time management"""
-        # Use centralized time manager for simulation time, but allow override for backward compatibility
+    def _sync_time_management(self, current_time: Optional[int] = None) -> None:
+        """
+        Synchronize with centralized time manager.
+        
+        Args:
+            current_time: Optional override time for backward compatibility
+        """
         time_manager = get_time_manager()
         if current_time is not None:
             # Backward compatibility: set time manager to match provided time
-            # Reset and advance to the desired time
             if current_time != time_manager.simulation_step:
                 time_manager.reset()
                 time_manager.advance_simulation(current_time)
         
         self._time = time_manager.simulation_step
         self.circadian_cycle = time_manager.circadian_time
-        
+
+    def _perform_periodic_maintenance(self) -> None:
+        """Perform periodic cleanup and maintenance tasks."""
         # Reset communication rate limits for new time step
         self._reset_rate_limits(self._time)
         
@@ -926,28 +976,60 @@ class AliveLoopNode:
         if self._time % 10 == 0:  # Every 10 steps
             self._cleanup_memory()
         
-        # Phase transitions based on energy, anxiety, and time
+        # Reset help signal limits periodically
+        if self._time % 50 == 0:  # Every 50 time steps
+            self.reset_help_signal_limits()
+
+    def _determine_phase_transition(self) -> None:
+        """Determine and set phase based on energy, anxiety, and circadian cycle."""
         if self.energy < 3.0 or self.circadian_cycle > 20:
             self.phase = "sleep"
-            # Sleep stage based on anxiety level
-            if self.anxiety > 10:
-                self.sleep_stage = "deep"  # Stress-induced deep sleep
-            elif self.anxiety > 5:
-                self.sleep_stage = "REM"
-            else:
-                self.sleep_stage = "light"
+            self._set_sleep_stage()
         elif self.energy > 20.0 and self.anxiety < 5.0:
             self.phase = "inspired"  # High energy, low anxiety
         elif self.energy > 8.0 and 6 <= self.circadian_cycle <= 18:
             self.phase = "active"
         else:
             self.phase = "interactive"
-            
-        # Social phases might affect communication style
+
+    def _set_sleep_stage(self) -> None:
+        """Set appropriate sleep stage based on anxiety level."""
+        if self.anxiety > 10:
+            self.sleep_stage = "deep"  # Stress-induced deep sleep
+        elif self.anxiety > 5:
+            self.sleep_stage = "REM"
+        else:
+            self.sleep_stage = "light"
+
+    def _update_communication_style(self) -> None:
+        """Update communication style based on current phase."""
         if self.phase == "interactive":
             self.communication_style["directness"] = min(1.0, self.communication_style["directness"] + 0.1)
         elif self.phase == "sleep":
             self.communication_style["directness"] = max(0.0, self.communication_style["directness"] - 0.1)
+
+    def _handle_proactive_interventions(self) -> None:
+        """Assess and handle proactive interventions if needed."""
+        if self._time % 10 == 0:  # Check every 10 steps to avoid overload
+            intervention_assessment = self.assess_intervention_need()
+            if intervention_assessment['intervention_needed']:
+                # Store assessment for network to act upon
+                # This allows the network layer to coordinate interventions
+                self._last_intervention_assessment = intervention_assessment
+
+    def step_phase(self, current_time: Optional[int] = None):
+        """Enhanced phase management with circadian rhythms using centralized time management"""
+        # Synchronize time management
+        self._sync_time_management(current_time)
+        
+        # Perform periodic maintenance
+        self._perform_periodic_maintenance()
+        
+        # Determine phase transitions
+        self._determine_phase_transition()
+        
+        # Update communication style
+        self._update_communication_style()
             
         # Emotional state management and safety protocol
         self.update_emotional_states()  # Record all emotional states in history
@@ -955,20 +1037,8 @@ class AliveLoopNode:
         # Apply natural calm effect
         self.apply_calm_effect()
         
-        # Reset help signal limits periodically
-        if self._time % 50 == 0:  # Every 50 time steps
-            self.reset_help_signal_limits()
-            
-        # Proactive intervention assessment using all emotional states
-        if self._time % 10 == 0:  # Check every 10 steps to avoid overload
-            intervention_assessment = self.assess_intervention_need()
-            if intervention_assessment['intervention_needed']:
-                # Store assessment for network to act upon
-                # This allows the network layer to coordinate interventions
-                self._last_intervention_assessment = intervention_assessment
-            
-        # Automatic anxiety help signal for overwhelm  
-        # Note: This will be called by the network when it has access to nearby nodes
+        # Handle proactive interventions
+        self._handle_proactive_interventions()
 
     def move(self):
         """Energy-efficient movement with basic navigation"""
@@ -1979,6 +2049,89 @@ class AliveLoopNode:
                 
         return trends
     
+    def _check_anxiety_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if anxiety intervention is needed."""
+        if (trends['anxiety'] == 'increasing' and predictions['anxiety'] > self.anxiety_threshold) or \
+           (self.anxiety > self.anxiety_threshold * 0.8):
+            return True, 'anxiety_help', 0.8, ['anxiety_escalation_predicted']
+        return False, None, 0.0, []
+
+    def _check_grief_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if grief support intervention is needed."""
+        if (trends['grief'] == 'increasing' and predictions['grief'] > 4.0) or self.grief > 3.5:
+            return True, 'grief_support', 0.7, ['grief_overwhelming']
+        return False, None, 0.0, []
+
+    def _check_sadness_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if sadness/comfort intervention is needed."""
+        if (trends['sadness'] == 'increasing' and predictions['sadness'] > 4.0) or \
+           (self.sadness > 3.0 and trends.get('joy', 'stable') == 'decreasing'):
+            return True, 'comfort_request', 0.6, ['sadness_trend_concerning']
+        return False, None, 0.0, []
+
+    def _check_anger_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if anger management intervention is needed."""
+        if (trends.get('anger', 'stable') == 'increasing' and predictions.get('anger', 0) > 3.5) or self.anger > 3.0:
+            return True, 'anger_management', 0.7, ['anger_escalation']
+        return False, None, 0.0, []
+
+    def _check_hope_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if hope restoration intervention is needed."""
+        if (trends.get('hope', 'stable') == 'decreasing' and predictions.get('hope', 2.0) < 1.0) or self.hope < 0.5:
+            return True, 'hope_restoration', 0.6, ['hope_depletion']
+        return False, None, 0.0, []
+
+    def _check_curiosity_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if curiosity/engagement intervention is needed."""
+        if (trends.get('curiosity', 'stable') == 'decreasing' and predictions.get('curiosity', 1.0) < 0.3) or \
+           (self.curiosity < 0.2 and trends.get('energy', 'stable') == 'decreasing'):
+            return True, 'engagement_boost', 0.4, ['curiosity_disengagement']
+        return False, None, 0.0, []
+
+    def _check_frustration_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if frustration relief intervention is needed."""
+        if (trends.get('frustration', 'stable') == 'increasing' and predictions.get('frustration', 0) > 3.5) or \
+           (self.frustration > 3.0 and self.anger > 2.0):
+            return True, 'frustration_relief', 0.6, ['frustration_buildup']
+        return False, None, 0.0, []
+
+    def _check_resilience_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if resilience building intervention is needed."""
+        if (trends.get('resilience', 'stable') == 'decreasing' and predictions.get('resilience', 2.0) < 1.0) or \
+           (self.resilience < 0.8 and (self.grief > 2.0 or self.sadness > 2.0 or self.anxiety > 6.0)):
+            return True, 'resilience_building', 0.7, ['resilience_depletion']
+        return False, None, 0.0, []
+
+    def _check_energy_emotional_intervention(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check if energy support intervention is needed due to emotional load."""
+        negative_emotion_load = self.grief + self.sadness + (self.anxiety * 0.2) + self.anger + self.frustration
+        if (trends['energy'] == 'decreasing' and predictions['energy'] < 2.0) and negative_emotion_load > 5.0:
+            return True, 'energy_support', 0.5, ['energy_emotional_crisis']
+        return False, None, 0.0, []
+
+    def _check_positive_interventions(self, trends: Dict, predictions: Dict) -> Tuple[bool, str, float, List[str]]:
+        """Check for positive intervention opportunities."""
+        # Joy sharing opportunity
+        if trends.get('joy', 'stable') == 'increasing' and self.joy > 3.0 and self.calm > 2.5:
+            return True, 'joy_share', 0.3, ['joy_sharing_opportunity']
+        
+        # Hope sharing opportunity
+        if trends.get('hope', 'stable') == 'increasing' and self.hope > 4.0 and self.resilience > 3.0:
+            return True, 'hope_share', 0.3, ['hope_sharing_opportunity']
+        
+        # Curiosity collaboration opportunity
+        if trends.get('curiosity', 'stable') == 'increasing' and self.curiosity > 3.5 and self.energy > 8.0:
+            return True, 'curiosity_collaboration', 0.3, ['curiosity_collaboration_opportunity']
+        
+        return False, None, 0.0, []
+
+    def _get_emotional_summary(self) -> Dict[str, float]:
+        """Get current emotional state summary."""
+        emotional_summary = {}
+        for emotion_name in self.emotion_schema.keys():
+            emotional_summary[emotion_name] = getattr(self, emotion_name, 0.0)
+        return emotional_summary
+
     def assess_intervention_need(self) -> Dict[str, Any]:
         """Assess need for proactive intervention based on all emotional trends and predictions."""
         trends = self.get_emotional_trends()
@@ -1988,105 +2141,34 @@ class AliveLoopNode:
         for emotion_name in self.emotion_schema.keys():
             predictions[emotion_name] = self.predict_emotional_state(emotion_name, 3)
         
+        # Check all intervention types in priority order
+        intervention_checks = [
+            self._check_anxiety_intervention,
+            self._check_grief_intervention,
+            self._check_sadness_intervention,
+            self._check_anger_intervention,
+            self._check_hope_intervention,
+            self._check_curiosity_intervention,
+            self._check_frustration_intervention,
+            self._check_resilience_intervention,
+            self._check_energy_emotional_intervention,
+            self._check_positive_interventions,
+        ]
+        
         intervention_needed = False
         intervention_type = None
         urgency = 0.0
         reasons = []
         
-        # Check for anxiety escalation
-        if (trends['anxiety'] == 'increasing' and predictions['anxiety'] > self.anxiety_threshold) or \
-           (self.anxiety > self.anxiety_threshold * 0.8):
-            intervention_needed = True
-            intervention_type = 'anxiety_help'
-            urgency = max(urgency, 0.8)
-            reasons.append('anxiety_escalation_predicted')
-        
-        # Check for overwhelming grief
-        if (trends['grief'] == 'increasing' and predictions['grief'] > 4.0) or self.grief > 3.5:
-            intervention_needed = True
-            intervention_type = 'grief_support'
-            urgency = max(urgency, 0.7)
-            reasons.append('grief_overwhelming')
-        
-        # Check for deep sadness trends
-        if (trends['sadness'] == 'increasing' and predictions['sadness'] > 4.0) or \
-           (self.sadness > 3.0 and trends.get('joy', 'stable') == 'decreasing'):
-            intervention_needed = True
-            intervention_type = 'comfort_request'
-            urgency = max(urgency, 0.6)
-            reasons.append('sadness_trend_concerning')
-        
-        # NEW: Check for anger escalation
-        if (trends.get('anger', 'stable') == 'increasing' and predictions.get('anger', 0) > 3.5) or self.anger > 3.0:
-            intervention_needed = True
-            intervention_type = 'anger_management'
-            urgency = max(urgency, 0.7)
-            reasons.append('anger_escalation')
-        
-        # NEW: Check for hope depletion
-        if (trends.get('hope', 'stable') == 'decreasing' and predictions.get('hope', 2.0) < 1.0) or self.hope < 0.5:
-            intervention_needed = True
-            intervention_type = 'hope_restoration'
-            urgency = max(urgency, 0.6)
-            reasons.append('hope_depletion')
-        
-        # NEW: Check for curiosity decline (might indicate depression or disengagement)
-        if (trends.get('curiosity', 'stable') == 'decreasing' and predictions.get('curiosity', 1.0) < 0.3) or \
-           (self.curiosity < 0.2 and trends.get('energy', 'stable') == 'decreasing'):
-            intervention_needed = True
-            intervention_type = 'engagement_boost'
-            urgency = max(urgency, 0.4)
-            reasons.append('curiosity_disengagement')
-        
-        # NEW: Check for frustration buildup
-        if (trends.get('frustration', 'stable') == 'increasing' and predictions.get('frustration', 0) > 3.5) or \
-           (self.frustration > 3.0 and self.anger > 2.0):  # Frustration + anger combination
-            intervention_needed = True
-            intervention_type = 'frustration_relief'
-            urgency = max(urgency, 0.6)
-            reasons.append('frustration_buildup')
-        
-        # NEW: Check for resilience depletion
-        if (trends.get('resilience', 'stable') == 'decreasing' and predictions.get('resilience', 2.0) < 1.0) or \
-           (self.resilience < 0.8 and (self.grief > 2.0 or self.sadness > 2.0 or self.anxiety > 6.0)):
-            intervention_needed = True
-            intervention_type = 'resilience_building'
-            urgency = max(urgency, 0.7)
-            reasons.append('resilience_depletion')
-        
-        # Check for energy depletion with negative emotional states (enhanced with new emotions)
-        negative_emotion_load = self.grief + self.sadness + (self.anxiety * 0.2) + self.anger + self.frustration
-        if (trends['energy'] == 'decreasing' and predictions['energy'] < 2.0) and negative_emotion_load > 5.0:
-            intervention_needed = True
-            intervention_type = 'energy_support'
-            urgency = max(urgency, 0.5)
-            reasons.append('energy_emotional_crisis')
-        
-        # Check for positive intervention opportunities (enhanced)
-        if trends.get('joy', 'stable') == 'increasing' and self.joy > 3.0 and self.calm > 2.5:
-            intervention_needed = True
-            intervention_type = 'joy_share'
-            urgency = max(urgency, 0.3)
-            reasons.append('joy_sharing_opportunity')
-        
-        # NEW: Hope sharing opportunity
-        if trends.get('hope', 'stable') == 'increasing' and self.hope > 4.0 and self.resilience > 3.0:
-            intervention_needed = True
-            intervention_type = 'hope_share'
-            urgency = max(urgency, 0.3)
-            reasons.append('hope_sharing_opportunity')
-        
-        # NEW: Curiosity collaboration opportunity
-        if trends.get('curiosity', 'stable') == 'increasing' and self.curiosity > 3.5 and self.energy > 8.0:
-            intervention_needed = True
-            intervention_type = 'curiosity_collaboration'
-            urgency = max(urgency, 0.3)
-            reasons.append('curiosity_collaboration_opportunity')
-        
-        # Get current emotional summary
-        emotional_summary = {}
-        for emotion_name in self.emotion_schema.keys():
-            emotional_summary[emotion_name] = getattr(self, emotion_name, 0.0)
+        # Check each intervention type, accumulating results
+        for check_func in intervention_checks:
+            needed, i_type, i_urgency, i_reasons = check_func(trends, predictions)
+            if needed:
+                intervention_needed = True
+                if urgency < i_urgency:  # Use highest urgency intervention
+                    intervention_type = i_type
+                urgency = max(urgency, i_urgency)
+                reasons.extend(i_reasons)
         
         return {
             'intervention_needed': intervention_needed,
@@ -2095,7 +2177,7 @@ class AliveLoopNode:
             'reasons': reasons,
             'trends': trends,
             'predictions': predictions,
-            'emotional_summary': emotional_summary,
+            'emotional_summary': self._get_emotional_summary(),
             'composite_health_score': self.calculate_composite_emotional_health()
         }
 
