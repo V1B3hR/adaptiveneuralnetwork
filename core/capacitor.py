@@ -1,7 +1,9 @@
-import numpy as np
 import logging
 import threading
-from typing import Any, Optional, Tuple, Sequence, Dict
+from collections.abc import Sequence
+from typing import Any, Dict, Optional, Tuple
+
+import numpy as np
 
 # Default module logger (can be overridden per-instance)
 _module_logger = logging.getLogger(__name__)
@@ -69,6 +71,7 @@ class CapacitorInSpace:
             return self._lock
         # Dummy context manager
         from contextlib import nullcontext
+
         return nullcontext()
 
     def _validate_and_create_position(self, position: Sequence[float]) -> np.ndarray:
@@ -77,14 +80,11 @@ class CapacitorInSpace:
             raise ValueError("Position must be a 1D coordinate sequence.")
         if self._expected_dims is not None and arr.shape[0] != self._expected_dims:
             raise ValueError(
-                f"Position dimension mismatch: got {arr.shape[0]}, "
-                f"expected {self._expected_dims}"
+                f"Position dimension mismatch: got {arr.shape[0]}, expected {self._expected_dims}"
             )
         if self._bounds:
             if len(self._bounds) != arr.shape[0]:
-                raise ValueError(
-                    "Bounds dimensionality does not match position length."
-                )
+                raise ValueError("Bounds dimensionality does not match position length.")
             for i, (low, high) in enumerate(self._bounds):
                 if low > high:
                     raise ValueError(f"Invalid bounds for axis {i}: {low} > {high}")
@@ -158,15 +158,13 @@ class CapacitorInSpace:
             old = self.position.copy()
             arr = self._validate_new_position(new_position)
             self.position = arr
-            self._logger.debug(
-                f"[update_position] old={old.tolist()} new={arr.tolist()}"
-            )
+            self._logger.debug(f"[update_position] old={old.tolist()} new={arr.tolist()}")
             return self.position
 
     def print_status(self):
         self._logger.info(
             f"Capacitor: Position {self.position.tolist()}, "
-            f"Energy {round(self.energy,2)}/{self.capacity}"
+            f"Energy {round(self.energy, 2)}/{self.capacity}"
         )
 
     def set_verbosity(self, level: int, override_external: bool = False):

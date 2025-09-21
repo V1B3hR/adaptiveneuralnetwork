@@ -12,14 +12,11 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any, Optional
-
-import warnings
+from typing import Any, Dict, Optional
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -30,27 +27,31 @@ def check_dependencies() -> Dict[str, bool]:
 
     try:
         import pandas
-        deps['pandas'] = True
+
+        deps["pandas"] = True
     except ImportError:
-        deps['pandas'] = False
+        deps["pandas"] = False
 
     try:
         import sklearn
-        deps['sklearn'] = True
+
+        deps["sklearn"] = True
     except ImportError:
-        deps['sklearn'] = False
+        deps["sklearn"] = False
 
     try:
         import kagglehub
-        deps['kagglehub'] = True
+
+        deps["kagglehub"] = True
     except ImportError:
-        deps['kagglehub'] = False
+        deps["kagglehub"] = False
 
     try:
         import matplotlib
-        deps['matplotlib'] = True
+
+        deps["matplotlib"] = True
     except ImportError:
-        deps['matplotlib'] = False
+        deps["matplotlib"] = False
 
     return deps
 
@@ -77,7 +78,7 @@ def run_smoke_test(
     dataset_name: Optional[str] = None,
     local_path: Optional[str] = None,
     subset_size: int = 100,
-    output_dir: str = "outputs"
+    output_dir: str = "outputs",
 ) -> Dict[str, Any]:
     """
     Run a smoke test with minimal data and quick training.
@@ -94,7 +95,7 @@ def run_smoke_test(
     try:
         from adaptiveneuralnetwork.training.bitext_dataset import (
             BitextDatasetLoader,
-            create_synthetic_bitext_data
+            create_synthetic_bitext_data,
         )
         from adaptiveneuralnetwork.training.text_baseline import TextClassificationBaseline
 
@@ -114,7 +115,7 @@ def run_smoke_test(
                 local_path=local_path,
                 sampling_fraction=min(subset_size / 10000, 1.0),  # Rough sampling
                 normalize_text=True,
-                random_seed=42
+                random_seed=42,
             )
 
             try:
@@ -126,7 +127,9 @@ def run_smoke_test(
                     if len(val_df) > subset_size // 4:
                         val_df = val_df.head(subset_size // 4)
 
-                    logger.info(f"Loaded real data: {len(train_df)} train, {len(val_df)} val samples")
+                    logger.info(
+                        f"Loaded real data: {len(train_df)} train, {len(val_df)} val samples"
+                    )
             except Exception as e:
                 logger.warning(f"Failed to load real data: {e}")
                 train_df, val_df = None, None
@@ -135,9 +138,7 @@ def run_smoke_test(
         if train_df is None:
             logger.info("Using synthetic data for smoke test")
             train_df, val_df = create_synthetic_bitext_data(
-                num_samples=subset_size,
-                num_classes=2,
-                random_seed=42
+                num_samples=subset_size, num_classes=2, random_seed=42
             )
 
         if train_df is None:
@@ -148,22 +149,21 @@ def run_smoke_test(
         baseline = TextClassificationBaseline(
             max_features=min(1000, subset_size),  # Adaptive feature count
             random_state=42,
-            verbose=True
+            verbose=True,
         )
 
         # Train the model
         train_metrics = baseline.fit(
-            texts=train_df['text'].tolist(),
-            labels=train_df['label'].tolist(),
-            validation_texts=val_df['text'].tolist() if val_df is not None else None,
-            validation_labels=val_df['label'].tolist() if val_df is not None else None
+            texts=train_df["text"].tolist(),
+            labels=train_df["label"].tolist(),
+            validation_texts=val_df["text"].tolist() if val_df is not None else None,
+            validation_labels=val_df["label"].tolist() if val_df is not None else None,
         )
 
         # Evaluate on validation set
         if val_df is not None:
             eval_metrics = baseline.evaluate(
-                texts=val_df['text'].tolist(),
-                labels=val_df['label'].tolist()
+                texts=val_df["text"].tolist(), labels=val_df["label"].tolist()
             )
         else:
             eval_metrics = {}
@@ -181,19 +181,19 @@ def run_smoke_test(
             "dataset_info": {
                 "train_samples": len(train_df),
                 "val_samples": len(val_df) if val_df is not None else 0,
-                "data_source": "real" if dataset_name or local_path else "synthetic"
+                "data_source": "real" if dataset_name or local_path else "synthetic",
             },
             "model_info": baseline.get_model_info(),
             "train_metrics": train_metrics,
             "eval_metrics": eval_metrics,
             "feature_importance": feature_importance,
             "success": True,
-            "warnings": []
+            "warnings": [],
         }
 
         # Save results
         results_file = output_path / "smoke_test_results.json"
-        with open(results_file, 'w') as f:
+        with open(results_file, "w") as f:
             json.dump(results, f, indent=2, default=str)
 
         # Save model
@@ -213,7 +213,7 @@ def run_smoke_test(
             "mode": "smoke",
             "success": False,
             "error": str(e),
-            "runtime_seconds": time.time() - start_time if 'start_time' in locals() else 0
+            "runtime_seconds": time.time() - start_time if "start_time" in locals() else 0,
         }
 
 
@@ -222,7 +222,7 @@ def run_benchmark(
     local_path: Optional[str] = None,
     subset_size: Optional[int] = None,
     epochs: int = 1,
-    output_dir: str = "outputs"
+    output_dir: str = "outputs",
 ) -> Dict[str, Any]:
     """
     Run a benchmark with full data and detailed evaluation.
@@ -240,7 +240,7 @@ def run_benchmark(
     try:
         from adaptiveneuralnetwork.training.bitext_dataset import (
             BitextDatasetLoader,
-            create_synthetic_bitext_data
+            create_synthetic_bitext_data,
         )
         from adaptiveneuralnetwork.training.text_baseline import TextClassificationBaseline
 
@@ -265,7 +265,7 @@ def run_benchmark(
                 local_path=local_path,
                 sampling_fraction=sampling_fraction,
                 normalize_text=True,
-                random_seed=42
+                random_seed=42,
             )
 
             train_df, val_df = loader.load_dataset(val_split=0.2)
@@ -275,9 +275,7 @@ def run_benchmark(
             logger.info("Using synthetic data for benchmark")
             num_samples = subset_size or 5000
             train_df, val_df = create_synthetic_bitext_data(
-                num_samples=num_samples,
-                num_classes=3,
-                random_seed=42
+                num_samples=num_samples, num_classes=3, random_seed=42
             )
 
         if train_df is None:
@@ -298,22 +296,21 @@ def run_benchmark(
             ngram_range=(1, 2),
             C=1.0,
             random_state=42,
-            verbose=True
+            verbose=True,
         )
 
         # Train the model (epochs parameter for future use)
         train_metrics = baseline.fit(
-            texts=train_df['text'].tolist(),
-            labels=train_df['label'].tolist(),
-            validation_texts=val_df['text'].tolist() if val_df is not None else None,
-            validation_labels=val_df['label'].tolist() if val_df is not None else None
+            texts=train_df["text"].tolist(),
+            labels=train_df["label"].tolist(),
+            validation_texts=val_df["text"].tolist() if val_df is not None else None,
+            validation_labels=val_df["label"].tolist() if val_df is not None else None,
         )
 
         # Detailed evaluation
         if val_df is not None:
             eval_metrics = baseline.evaluate(
-                texts=val_df['text'].tolist(),
-                labels=val_df['label'].tolist()
+                texts=val_df["text"].tolist(), labels=val_df["label"].tolist()
             )
         else:
             eval_metrics = {}
@@ -332,19 +329,19 @@ def run_benchmark(
                 "train_samples": len(train_df),
                 "val_samples": len(val_df) if val_df is not None else 0,
                 "data_source": "real" if dataset_name or local_path else "synthetic",
-                "subset_size": subset_size
+                "subset_size": subset_size,
             },
             "model_info": baseline.get_model_info(),
             "train_metrics": train_metrics,
             "eval_metrics": eval_metrics,
             "feature_importance": feature_importance,
             "epochs": epochs,
-            "success": True
+            "success": True,
         }
 
         # Save results
         results_file = output_path / "benchmark_results.json"
-        with open(results_file, 'w') as f:
+        with open(results_file, "w") as f:
             json.dump(results, f, indent=2, default=str)
 
         # Save model
@@ -355,16 +352,18 @@ def run_benchmark(
         try:
             import matplotlib.pyplot as plt
 
-            if 'confusion_matrix' in eval_metrics:
+            if "confusion_matrix" in eval_metrics:
                 plt.figure(figsize=(8, 6))
-                plt.imshow(eval_metrics['confusion_matrix'], interpolation='nearest', cmap=plt.cm.Blues)
-                plt.title('Confusion Matrix')
+                plt.imshow(
+                    eval_metrics["confusion_matrix"], interpolation="nearest", cmap=plt.cm.Blues
+                )
+                plt.title("Confusion Matrix")
                 plt.colorbar()
-                plt.ylabel('True Label')
-                plt.xlabel('Predicted Label')
+                plt.ylabel("True Label")
+                plt.xlabel("Predicted Label")
 
                 confusion_plot = output_path / "confusion_matrix.png"
-                plt.savefig(confusion_plot, dpi=150, bbox_inches='tight')
+                plt.savefig(confusion_plot, dpi=150, bbox_inches="tight")
                 plt.close()
 
                 logger.info(f"Confusion matrix saved to: {confusion_plot}")
@@ -385,7 +384,7 @@ def run_benchmark(
             "mode": "benchmark",
             "success": False,
             "error": str(e),
-            "runtime_seconds": time.time() - start_time if 'start_time' in locals() else 0
+            "runtime_seconds": time.time() - start_time if "start_time" in locals() else 0,
         }
 
 
@@ -407,59 +406,40 @@ Examples:
 
   # Check dependencies
   python -m adaptiveneuralnetwork.training.run_bitext_training --check-deps
-        """
+        """,
     )
 
     parser.add_argument(
         "--mode",
         choices=["smoke", "benchmark"],
         default="smoke",
-        help="Training mode (default: smoke)"
+        help="Training mode (default: smoke)",
     )
 
     parser.add_argument(
-        "--dataset-name",
-        type=str,
-        help="Kaggle dataset name (e.g., 'username/dataset-name')"
+        "--dataset-name", type=str, help="Kaggle dataset name (e.g., 'username/dataset-name')"
     )
 
-    parser.add_argument(
-        "--local-path",
-        type=str,
-        help="Path to local CSV file"
-    )
+    parser.add_argument("--local-path", type=str, help="Path to local CSV file")
+
+    parser.add_argument("--subset-size", type=int, help="Maximum number of samples to use")
 
     parser.add_argument(
-        "--subset-size",
-        type=int,
-        help="Maximum number of samples to use"
-    )
-
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default=1,
-        help="Number of training epochs (default: 1)"
+        "--epochs", type=int, default=1, help="Number of training epochs (default: 1)"
     )
 
     parser.add_argument(
         "--output-dir",
         type=str,
         default="outputs",
-        help="Output directory for results (default: outputs)"
+        help="Output directory for results (default: outputs)",
     )
 
     parser.add_argument(
-        "--check-deps",
-        action="store_true",
-        help="Check dependency status and exit"
+        "--check-deps", action="store_true", help="Check dependency status and exit"
     )
 
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 
@@ -475,7 +455,7 @@ Examples:
 
     # Print dependency status
     deps = check_dependencies()
-    required_deps = ['pandas', 'sklearn']
+    required_deps = ["pandas", "sklearn"]
     missing_required = [dep for dep in required_deps if not deps.get(dep, False)]
 
     if missing_required:
@@ -486,8 +466,9 @@ Examples:
     # Check Kaggle credentials if using Kaggle dataset
     if args.dataset_name:
         import os
-        if not (os.environ.get('KAGGLE_USERNAME') and os.environ.get('KAGGLE_KEY')):
-            kaggle_json = Path.home() / '.kaggle' / 'kaggle.json'
+
+        if not (os.environ.get("KAGGLE_USERNAME") and os.environ.get("KAGGLE_KEY")):
+            kaggle_json = Path.home() / ".kaggle" / "kaggle.json"
             if not kaggle_json.exists():
                 logger.warning(
                     "Kaggle credentials not found. Set KAGGLE_USERNAME and KAGGLE_KEY "
@@ -502,7 +483,7 @@ Examples:
                 dataset_name=args.dataset_name,
                 local_path=args.local_path,
                 subset_size=args.subset_size or 100,
-                output_dir=args.output_dir
+                output_dir=args.output_dir,
             )
         else:  # benchmark
             results = run_benchmark(
@@ -510,7 +491,7 @@ Examples:
                 local_path=args.local_path,
                 subset_size=args.subset_size,
                 epochs=args.epochs,
-                output_dir=args.output_dir
+                output_dir=args.output_dir,
             )
 
         # Print summary
@@ -518,20 +499,20 @@ Examples:
         print(f"Training Summary ({results['mode']} mode)")
         print("=" * 50)
 
-        if results['success']:
+        if results["success"]:
             print("Status: ✓ SUCCESS")
             print(f"Runtime: {results['runtime_seconds']:.2f} seconds")
 
-            if 'dataset_info' in results:
-                info = results['dataset_info']
+            if "dataset_info" in results:
+                info = results["dataset_info"]
                 print(f"Data: {info['train_samples']} train, {info['val_samples']} val samples")
 
-            if 'train_metrics' in results:
-                train_acc = results['train_metrics'].get('train_accuracy', 0)
+            if "train_metrics" in results:
+                train_acc = results["train_metrics"].get("train_accuracy", 0)
                 print(f"Train Accuracy: {train_acc:.4f}")
 
-            if 'eval_metrics' in results:
-                val_acc = results['eval_metrics'].get('accuracy', 0)
+            if "eval_metrics" in results:
+                val_acc = results["eval_metrics"].get("accuracy", 0)
                 print(f"Validation Accuracy: {val_acc:.4f}")
         else:
             print("Status: ✗ FAILED")

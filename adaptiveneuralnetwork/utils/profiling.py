@@ -169,8 +169,8 @@ class PerformanceProfiler:
 
         # Print summary
         print("\n=== Profiling Results ===")
-        print(f"Forward pass time: {forward_results['avg_forward_time']*1000:.2f} ms")
-        print(f"Training step time: {training_results['avg_training_step_time']*1000:.2f} ms")
+        print(f"Forward pass time: {forward_results['avg_forward_time'] * 1000:.2f} ms")
+        print(f"Training step time: {training_results['avg_training_step_time'] * 1000:.2f} ms")
         print(f"Throughput: {forward_results['throughput_samples_per_sec']:.1f} samples/sec")
         if torch.cuda.is_available():
             print(f"Peak memory: {memory_results['peak_memory_mb']:.1f} MB")
@@ -236,7 +236,6 @@ def run_torch_profiler(
         profile_memory=True,
         with_stack=True,
     ) as prof:
-
         model.train()
         for step, (data, target) in enumerate(train_loader):
             if step >= num_steps:

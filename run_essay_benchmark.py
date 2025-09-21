@@ -8,51 +8,52 @@ on the task of distinguishing between human-written and AI-generated essays.
 
 import argparse
 import logging
-import torch
-from pathlib import Path
 
 # Add the current directory to Python path
 import sys
+from pathlib import Path
+
+import torch
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 from adaptiveneuralnetwork.api import AdaptiveConfig
 from adaptiveneuralnetwork.benchmarks.text_classification import (
-    run_essay_classification_benchmark,
+    EssayDataset,
     SyntheticEssayDataset,
-    EssayDataset
+    run_essay_classification_benchmark,
 )
+
 
 def setup_logging(verbose: bool = False):
     """Setup logging configuration."""
     level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    logging.basicConfig(level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
 
 def load_kaggle_dataset(data_path: str, dataset_type: str = "auto") -> EssayDataset:
     """
     Load Kaggle datasets specified in the problem statement.
-    
+
     Supports:
     1. ANNOMI Motivational Interviewing Dataset
     2. Mental Health FAQs Dataset
     3. Social Media Sentiments Analysis Dataset
-    
+
     Args:
         data_path: Path to the dataset files
         dataset_type: Type of dataset ("annomi", "mental_health", "social_media_sentiment", or "auto")
-        
+
     Returns:
         EssayDataset instance
     """
     from adaptiveneuralnetwork.data import (
-        load_annomi_dataset, 
+        load_annomi_dataset,
         load_mental_health_faqs_dataset,
         load_social_media_sentiment_dataset,
-        print_dataset_info
+        print_dataset_info,
     )
-    
+
     try:
         if dataset_type == "auto":
             # Try to detect dataset type from path
@@ -68,9 +69,9 @@ def load_kaggle_dataset(data_path: str, dataset_type: str = "auto") -> EssayData
                 print("Please specify --dataset-type manually")
                 print_dataset_info()
                 return None
-        
+
         print(f"Loading {dataset_type} dataset from {data_path}")
-        
+
         if dataset_type == "annomi":
             return load_annomi_dataset(data_path)
         elif dataset_type == "mental_health":
@@ -81,136 +82,95 @@ def load_kaggle_dataset(data_path: str, dataset_type: str = "auto") -> EssayData
             print(f"Unknown dataset type: {dataset_type}")
             print("Supported types: annomi, mental_health, social_media_sentiment")
             return None
-            
+
     except Exception as e:
         print(f"Error loading dataset: {e}")
         print("Falling back to synthetic dataset for demonstration.")
         return None
+
 
 def main():
     """Main function to run the essay classification benchmark."""
     parser = argparse.ArgumentParser(
         description="Run Human vs AI Generated Essays Classification Benchmark"
     )
-    
+
     # Dataset arguments
-    parser.add_argument(
-        "--data-path", 
-        type=str, 
-        help="Path to the Kaggle dataset directory"
-    )
+    parser.add_argument("--data-path", type=str, help="Path to the Kaggle dataset directory")
     parser.add_argument(
         "--dataset-type",
         choices=["auto", "annomi", "mental_health", "social_media_sentiment"],
         default="auto",
-        help="Type of Kaggle dataset (auto-detect by default)"
+        help="Type of Kaggle dataset (auto-detect by default)",
     )
     parser.add_argument(
-        "--synthetic", 
-        action="store_true", 
-        help="Use synthetic data instead of real dataset"
+        "--synthetic", action="store_true", help="Use synthetic data instead of real dataset"
     )
     parser.add_argument(
-        "--samples", 
-        type=int, 
-        default=2000, 
-        help="Number of synthetic samples to generate"
+        "--samples", type=int, default=2000, help="Number of synthetic samples to generate"
     )
-    
+
     # Training arguments
     parser.add_argument(
-        "--epochs", 
-        type=int, 
+        "--epochs",
+        type=int,
         default=100,  # Changed default to 100 as per problem statement
-        help="Number of training epochs"
+        help="Number of training epochs",
     )
-    parser.add_argument(
-        "--batch-size", 
-        type=int, 
-        default=32, 
-        help="Batch size for training"
-    )
-    parser.add_argument(
-        "--learning-rate", 
-        type=float, 
-        default=0.001, 
-        help="Learning rate"
-    )
-    
+    parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
+    parser.add_argument("--learning-rate", type=float, default=0.001, help="Learning rate")
+
     # Model arguments
-    parser.add_argument(
-        "--hidden-dim", 
-        type=int, 
-        default=128, 
-        help="Hidden dimension size"
-    )
-    parser.add_argument(
-        "--num-nodes", 
-        type=int, 
-        default=100, 
-        help="Number of adaptive nodes"
-    )
-    
+    parser.add_argument("--hidden-dim", type=int, default=128, help="Hidden dimension size")
+    parser.add_argument("--num-nodes", type=int, default=100, help="Number of adaptive nodes")
+
     # Other arguments
-    parser.add_argument(
-        "--device", 
-        type=str, 
-        default="cpu", 
-        help="Device to use (cpu/cuda)"
-    )
-    parser.add_argument(
-        "--verbose", 
-        action="store_true", 
-        help="Enable verbose logging"
-    )
-    
+    parser.add_argument("--device", type=str, default="cpu", help="Device to use (cpu/cuda)")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
+
     args = parser.parse_args()
-    
+
     # Setup logging
     setup_logging(args.verbose)
     logger = logging.getLogger(__name__)
-    
+
     # Determine device
     device = torch.device(args.device)
     if args.device == "cuda" and not torch.cuda.is_available():
         logger.warning("CUDA requested but not available. Using CPU.")
         device = torch.device("cpu")
-    
+
     logger.info(f"Using device: {device}")
-    
+
     # Load dataset
     dataset = None
     if args.data_path and not args.synthetic:
         dataset = load_kaggle_dataset(args.data_path, args.dataset_type)
-    
+
     if dataset is None:
         logger.info("Creating synthetic dataset...")
-        dataset = SyntheticEssayDataset(
-            num_samples=args.samples,
-            vocab_size=5000,
-            max_length=256
-        )
+        dataset = SyntheticEssayDataset(num_samples=args.samples, vocab_size=5000, max_length=256)
         logger.info(f"Created synthetic dataset with {len(dataset)} samples")
-    
+
     # Create configuration
     config = AdaptiveConfig(
         # Model architecture
         hidden_dim=args.hidden_dim,
         num_nodes=args.num_nodes,
         output_dim=2,  # Binary classification
-        
         # Training parameters
         learning_rate=args.learning_rate,
         batch_size=args.batch_size,
         num_epochs=args.epochs,
-        
         # Device
-        device=str(device)
+        device=str(device),
     )
-    
+
     logger.info("Starting essay classification benchmark...")
-    logger.info(f"Configuration: {args.epochs} epochs, batch size {args.batch_size}, lr {args.learning_rate}")
-    
+    logger.info(
+        f"Configuration: {args.epochs} epochs, batch size {args.batch_size}, lr {args.learning_rate}"
+    )
+
     try:
         # Run benchmark
         results = run_essay_classification_benchmark(
@@ -219,13 +179,13 @@ def main():
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.learning_rate,
-            device=device
+            device=device,
         )
-        
+
         # Print summary results
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("ESSAY CLASSIFICATION BENCHMARK RESULTS")
-        print("="*60)
+        print("=" * 60)
         print(f"Final Test Accuracy: {results['final_test_accuracy']:.4f}")
         print(f"Best Test Accuracy: {results['best_test_accuracy']:.4f}")
         print(f"Final Train Accuracy: {results['final_train_accuracy']:.4f}")
@@ -235,14 +195,15 @@ def main():
         print(f"Vocabulary Size: {results['vocab_size']:,}")
         print(f"Training Samples: {results['train_samples']:,}")
         print(f"Test Samples: {results['test_samples']:,}")
-        print("="*60)
-        
+        print("=" * 60)
+
         # Success message
         logger.info("Benchmark completed successfully!")
-        
+
     except Exception as e:
         logger.error(f"Benchmark failed with error: {e}")
         raise
+
 
 if __name__ == "__main__":
     main()

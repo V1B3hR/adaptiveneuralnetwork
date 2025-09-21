@@ -99,18 +99,18 @@ class NodeState:
         current_batch_size = self.get_batch_size()
         if new_batch_size == current_batch_size:
             return
-        
+
         if new_batch_size > current_batch_size:
             # Expand by repeating the first sample for additional batch entries
             num_repeats = new_batch_size - current_batch_size
-            
+
             # Take the first sample and repeat it
             extra_hidden = self.hidden_state[:1].expand(num_repeats, -1, -1)
             extra_energy = self.energy[:1].expand(num_repeats, -1, -1)
             extra_activity = self.activity[:1].expand(num_repeats, -1, -1)
             extra_position = self.position[:1].expand(num_repeats, -1, -1)
             extra_phase_mask = self.phase_mask[:1].expand(num_repeats, -1, -1)
-            
+
             # Concatenate with existing tensors
             self.hidden_state = torch.cat([self.hidden_state, extra_hidden], dim=0).contiguous()
             self.energy = torch.cat([self.energy, extra_energy], dim=0).contiguous()
