@@ -1,0 +1,137 @@
+{
+  "input_shape": [
+    150,
+    5
+  ],
+  "output_shape": [
+    150,
+    34
+  ],
+  "processing_time": 0.151207,
+  "config_type": "minimal",
+  "pipeline_results": {
+    "preprocessing": {
+      "original_shape": [
+        150,
+        5
+      ],
+      "processed_shape": [
+        150,
+        6
+      ],
+      "missing_values_handled": 0,
+      "outliers_detected": 0,
+      "features_scaled": [
+        "numeric_0",
+        "numeric_1",
+        "numeric_2",
+        "binary_0"
+      ],
+      "categorical_encoded": [
+        "categorical_0"
+      ],
+      "energy_consumption": 0.28
+    },
+    "feature_engineering": {
+      "original_features": 6,
+      "engineered_features": 36,
+      "polynomial_features_added": 0,
+      "interaction_features_added": 45,
+      "phase_features_added": 0,
+      "energy_features_added": 0,
+      "energy_consumption": 0.75
+    },
+    "feature_selection": {
+      "original_features": 36,
+      "selected_features": 34,
+      "selection_ratio": 0.9444444444444444,
+      "selected_feature_names": [
+        "numeric_2",
+        "numeric_2_diff_binary_0",
+        "numeric_2_diff_categorical_0_B",
+        "numeric_2_x_categorical_0_A",
+        "numeric_2_diff_categorical_0_A",
+        "numeric_2_x_binary_0",
+        "numeric_2_x_categorical_0_B",
+        "numeric_1_diff_numeric_2",
+        "numeric_0_diff_numeric_2",
+        "numeric_0_x_numeric_1",
+        "numeric_1_diff_categorical_0_B",
+        "numeric_1_diff_binary_0",
+        "numeric_0_diff_categorical_0_A",
+        "numeric_0_x_numeric_2",
+        "numeric_1_x_numeric_2",
+        "numeric_1_x_categorical_0_A",
+        "numeric_1_x_categorical_0_B",
+        "numeric_0_x_categorical_0_A",
+        "numeric_0",
+        "numeric_1",
+        "binary_0",
+        "categorical_0_A",
+        "numeric_0_diff_numeric_1",
+        "numeric_0_x_binary_0",
+        "numeric_0_diff_binary_0",
+        "numeric_0_x_categorical_0_B",
+        "numeric_0_diff_categorical_0_B",
+        "numeric_1_x_binary_0",
+        "numeric_1_diff_categorical_0_A",
+        "binary_0_x_categorical_0_A",
+        "binary_0_diff_categorical_0_A",
+        "binary_0_x_categorical_0_B",
+        "binary_0_diff_categorical_0_B",
+        "categorical_0_A_x_categorical_0_B"
+      ],
+      "feature_scores": {
+        "numeric_0": "0",
+        "numeric_1": "0",
+        "numeric_2": 0.6926027358686094,
+        "binary_0": "0",
+        "categorical_0_A": "0",
+        "categorical_0_B": "0",
+        "numeric_0_x_numeric_1": 0.10071682276210825,
+        "numeric_0_diff_numeric_1": "0",
+        "numeric_0_x_numeric_2": 0.027370893636767146,
+        "numeric_0_diff_numeric_2": 0.19497374792615396,
+        "numeric_0_x_binary_0": "0",
+        "numeric_0_diff_binary_0": "0",
+        "numeric_0_x_categorical_0_A": 0.0004939557598293565,
+        "numeric_0_diff_categorical_0_A": 0.035311582577456146,
+        "numeric_0_x_categorical_0_B": "0",
+        "numeric_0_diff_categorical_0_B": "0",
+        "numeric_1_x_numeric_2": 0.02673958050545422,
+        "numeric_1_diff_numeric_2": 0.24697134586123748,
+        "numeric_1_x_binary_0": "0",
+        "numeric_1_diff_binary_0": 0.04623382699970069,
+        "numeric_1_x_categorical_0_A": 0.020192032737317955,
+        "numeric_1_diff_categorical_0_A": "0",
+        "numeric_1_x_categorical_0_B": 0.014468774514059701,
+        "numeric_1_diff_categorical_0_B": 0.046453160498445945,
+        "numeric_2_x_binary_0": 0.32742798469385836,
+        "numeric_2_diff_binary_0": 0.4217133659792396,
+        "numeric_2_x_categorical_0_A": 0.35067656944244296,
+        "numeric_2_diff_categorical_0_A": 0.34408522560109933,
+        "numeric_2_x_categorical_0_B": 0.3140710823369559,
+        "numeric_2_diff_categorical_0_B": 0.35527967998286014,
+        "binary_0_x_categorical_0_A": "0",
+        "binary_0_diff_categorical_0_A": "0",
+        "binary_0_x_categorical_0_B": "0",
+        "binary_0_diff_categorical_0_B": "0",
+        "categorical_0_A_x_categorical_0_B": "0",
+        "categorical_0_A_diff_categorical_0_B": "0"
+      },
+      "energy_importance": {},
+      "energy_consumption": 1.0800000000000007
+    },
+    "optimization": {},
+    "total_energy_consumption": 2.1100000000000008
+  },
+  "energy_report": {
+    "preprocessing_energy": 0.28,
+    "feature_engineering_energy": 0.75,
+    "feature_selection_energy": 1.0800000000000007,
+    "optimization_energy": 0,
+    "total_energy": 2.1100000000000008,
+    "energy_efficiency_score": 36.01895734597155
+  },
+  "timestamp": "2025-09-21T08:34:36.939510"
+}
