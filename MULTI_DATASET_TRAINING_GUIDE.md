@@ -72,19 +72,23 @@ python train_kaggle_datasets.py --dataset all --epochs 10
 
 ## CI/CD Workflows
 
-### 1. Main CI Workflow (`ci.yml`)
-- Runs on every push and pull request
-- Includes linting, type checking, testing, and training phases
-- Supports both synthetic and real data training
+**Note: GitHub Actions workflows have been removed from this repository.**
 
-### 2. Bitext Training Workflow (`bitext-train.yml`)
-- Specialized workflow for text-based datasets
-- Runs on manual trigger and schedule
-- Supports matrix testing across Python versions
+The following workflows were previously available but are no longer configured:
 
-### 3. Multi-Dataset Training Workflow (`multi-dataset-training.yml`)
-- **NEW**: Comprehensive workflow for all datasets
-- Supports manual dataset selection via workflow inputs
+### 1. Main CI Workflow (formerly `ci.yml`)
+- Previously ran on every push and pull request
+- Included linting, type checking, testing, and training phases
+- Supported both synthetic and real data training
+
+### 2. Bitext Training Workflow (formerly `bitext-train.yml`)
+- Previously specialized workflow for text-based datasets
+- Ran on manual trigger and schedule
+- Supported matrix testing across Python versions
+
+### 3. Multi-Dataset Training Workflow (formerly `multi-dataset-training.yml`)
+- Previously comprehensive workflow for all datasets
+- Supported manual dataset selection via workflow inputs
 - Automated Kaggle dataset downloading (with API credentials)
 - Matrix-based training across all datasets
 - Consolidated reporting and artifact management
@@ -184,13 +188,16 @@ python train_new_datasets.py --dataset vr_driving --epochs 20 --data-path /path/
 python train_new_datasets.py --dataset vr_driving --epochs 10 --num-samples 1000
 ```
 
-### CI/CD Trigger (GitHub Actions)
+### CI/CD Trigger (Formerly via GitHub Actions)
 ```bash
-# Trigger via GitHub CLI
-gh workflow run multi-dataset-training.yml \
-  -f dataset=vr_driving \
-  -f epochs=15 \
-  -f use_real_data=true
+# Previously available via GitHub CLI (workflows now removed):
+# gh workflow run multi-dataset-training.yml \
+#   -f dataset=vr_driving \
+#   -f epochs=15 \
+#   -f use_real_data=true
+
+# For local training, use the direct Python scripts instead:
+python train_new_datasets.py --dataset vr_driving --epochs 15
 ```
 
 ### Batch Training (All Datasets)
