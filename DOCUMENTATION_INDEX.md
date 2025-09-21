@@ -87,8 +87,6 @@ This document provides a comprehensive index of all documentation available for 
 ### Development Workflow
 - **[.editorconfig](.editorconfig)** - Editor configuration
 - **[pyproject.toml](pyproject.toml)** - Project configuration and dependencies
-- **[.github/workflows/ci.yml](.github/workflows/ci.yml)** - Main CI/CD pipeline
-- **[.github/workflows/bitext-train.yml](.github/workflows/bitext-train.yml)** - Bitext training automation
 
 ### Scripts & Utilities
 - **[scripts/](scripts/)** - Development and utility scripts
@@ -145,7 +143,6 @@ This document provides a comprehensive index of all documentation available for 
 
 **Maintainers:**
 - [SECURITY.md](SECURITY.md) - Security policy
-- [.github/workflows/](. github/workflows/) - CI/CD configuration
 - [CHANGELOG.md](CHANGELOG.md) - Release management
 
 ## 📝 Documentation Standards
