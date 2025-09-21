@@ -24,6 +24,7 @@ import torch
 @dataclass
 class EnvironmentSnapshot:
     """Captures complete environment state for reproducibility."""
+
     python_version: str
     torch_version: str
     numpy_version: str
@@ -45,13 +46,10 @@ class EnvironmentSnapshot:
 
         if torch.cuda.is_available():
             cuda_version = torch.version.cuda
-            if hasattr(torch.backends.cudnn, 'version'):
+            if hasattr(torch.backends.cudnn, "version"):
                 cudnn_version = list(torch.backends.cudnn.version())
 
-            device_names = [
-                torch.cuda.get_device_name(i)
-                for i in range(torch.cuda.device_count())
-            ]
+            device_names = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
 
         return cls(
             python_version=sys.version,
@@ -71,6 +69,7 @@ class EnvironmentSnapshot:
 @dataclass
 class SeedState:
     """Captures complete random state for reproducibility."""
+
     master_seed: int
     python_random_state: Any
     numpy_random_state: dict[str, Any]
@@ -85,7 +84,9 @@ class SeedState:
             python_random_state=random.getstate(),
             numpy_random_state=np.random.get_state(),
             torch_random_state=torch.get_rng_state(),
-            torch_cuda_random_state=torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+            torch_cuda_random_state=(
+                torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+            ),
         )
 
     def restore(self) -> None:
@@ -100,6 +101,7 @@ class SeedState:
 @dataclass
 class DeterminismReport:
     """Report on determinism verification."""
+
     test_name: str
     is_deterministic: bool
     run_count: int
@@ -171,7 +173,7 @@ class ReproducibilityHarness:
             torch.backends.cudnn.benchmark = False
 
         # Set environment variables for additional determinism
-        os.environ['PYTHONHASHSEED'] = str(self.master_seed)
+        os.environ["PYTHONHASHSEED"] = str(self.master_seed)
 
         # Warn about potential non-deterministic operations
         if torch.cuda.is_available():
@@ -179,7 +181,7 @@ class ReproducibilityHarness:
                 "CUDA operations may still be non-deterministic. "
                 "Some PyTorch operations do not have deterministic implementations.",
                 UserWarning,
-                stacklevel=2
+                stacklevel=2,
             )
 
     @contextmanager
@@ -197,12 +199,7 @@ class ReproducibilityHarness:
             current_state.restore()
 
     def verify_determinism(
-        self,
-        test_function,
-        test_name: str,
-        run_count: int = 3,
-        *args,
-        **kwargs
+        self, test_function, test_name: str, run_count: int = 3, *args, **kwargs
     ) -> DeterminismReport:
         """
         Verify that a function produces deterministic outputs.
@@ -286,7 +283,9 @@ class ReproducibilityHarness:
         self.reports.append(report)
         return report
 
-    def generate_reproducibility_report(self, output_path: str | Path | None = None) -> dict[str, Any]:
+    def generate_reproducibility_report(
+        self, output_path: str | Path | None = None
+    ) -> dict[str, Any]:
         """Generate comprehensive reproducibility report."""
         report = {
             "harness_config": {
@@ -300,19 +299,23 @@ class ReproducibilityHarness:
                 "deterministic_tests": sum(1 for r in self.reports if r.is_deterministic),
                 "non_deterministic_tests": sum(1 for r in self.reports if not r.is_deterministic),
                 "tests_with_warnings": sum(1 for r in self.reports if r.warnings),
-            }
+            },
         }
 
         # Add recommendations
         recommendations = []
         if report["summary"]["non_deterministic_tests"] > 0:
-            recommendations.append("Some tests are non-deterministic. Review implementation for random operations.")
+            recommendations.append(
+                "Some tests are non-deterministic. Review implementation for random operations."
+            )
 
         if not self.strict_mode:
             recommendations.append("Consider enabling strict_mode for maximum determinism.")
 
         if not torch.backends.cudnn.deterministic:
-            recommendations.append("Enable torch.backends.cudnn.deterministic = True for CUDA determinism.")
+            recommendations.append(
+                "Enable torch.backends.cudnn.deterministic = True for CUDA determinism."
+            )
 
         report["recommendations"] = recommendations
 
@@ -321,7 +324,7 @@ class ReproducibilityHarness:
             output_path = Path(output_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 json.dump(report, f, indent=2, default=str)
 
         return report
@@ -333,10 +336,7 @@ class ReproducibilityHarness:
 
 
 def create_reproducible_experiment(
-    name: str,
-    seed: int = 42,
-    strict_mode: bool = True,
-    output_dir: str | Path | None = None
+    name: str, seed: int = 42, strict_mode: bool = True, output_dir: str | Path | None = None
 ) -> ReproducibilityHarness:
     """
     Create a reproducible experiment harness.
@@ -359,7 +359,7 @@ def create_reproducible_experiment(
 
         # Save initial environment snapshot
         env_file = output_dir / f"{name}_environment.json"
-        with open(env_file, 'w') as f:
+        with open(env_file, "w") as f:
             json.dump(asdict(harness.environment), f, indent=2, default=str)
 
     return harness

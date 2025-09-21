@@ -1,7 +1,9 @@
 import unittest
+
 import numpy as np
+
 from core.alive_node import AliveLoopNode
-from tests.test_utils import set_seed, run_with_seed, get_test_seed
+from tests.test_utils import get_test_seed, run_with_seed, set_seed
 
 
 class TestAliveLoopNode(unittest.TestCase):
@@ -9,21 +11,18 @@ class TestAliveLoopNode(unittest.TestCase):
         """Initialize an AliveLoopNode instance for testing"""
         # Set deterministic seed for reproducible tests
         set_seed(get_test_seed())
-        
+
         self.node = AliveLoopNode(
-            position=(0, 0),
-            velocity=(1, 1),
-            initial_energy=10.0,
-            field_strength=1.0,
-            node_id=1
+            position=(0, 0), velocity=(1, 1), initial_energy=10.0, field_strength=1.0, node_id=1
         )
 
     def test_step_phase(self):
         """Validate phase transitions under different conditions"""
         # Reset time manager for consistent test behavior
         from core.time_manager import get_time_manager
+
         get_time_manager().reset()
-        
+
         self.node.energy = 1
         self.node.anxiety = 16
         self.node.step_phase(current_time=23)
@@ -45,6 +44,7 @@ class TestAliveLoopNode(unittest.TestCase):
 
     def test_interact_with_capacitor(self):
         """Validate energy transfers with capacitors"""
+
         class MockCapacitor:
             def __init__(self, position, energy, capacity):
                 self.position = np.array(position, dtype=float)
@@ -70,7 +70,7 @@ class TestAliveLoopNode(unittest.TestCase):
         self.node.anxiety = 10
         self.node.clear_anxiety()
         self.assertLess(self.node.anxiety, 10)  # Anxiety reduces after deep sleep
-    
+
     @run_with_seed(123)
     def test_reproducible_behavior(self):
         """Test that behavior is reproducible with same seed"""
@@ -79,22 +79,18 @@ class TestAliveLoopNode(unittest.TestCase):
         for step in range(5):
             self.node.step_phase(step)
             states_run1.append((self.node.phase, self.node.energy, tuple(self.node.position)))
-        
+
         # Reset node to initial state and run again with same seed
         set_seed(123)
         node2 = AliveLoopNode(
-            position=(0, 0),
-            velocity=(1, 1),
-            initial_energy=10.0,
-            field_strength=1.0,
-            node_id=1
+            position=(0, 0), velocity=(1, 1), initial_energy=10.0, field_strength=1.0, node_id=1
         )
-        
+
         states_run2 = []
         for step in range(5):
             node2.step_phase(step)
             states_run2.append((node2.phase, node2.energy, tuple(node2.position)))
-        
+
         # Should be identical
         self.assertEqual(states_run1, states_run2, "Behavior should be reproducible with same seed")
 

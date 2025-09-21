@@ -7,10 +7,9 @@ perform comprehensive model introspection for debugging and optimization.
 
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import torch
-import torch.nn as nn
 
 from ..api.model import AdaptiveModel
 
@@ -68,16 +67,20 @@ class ModelIntrospection:
         }
 
         # Add node state memory info
-        if hasattr(self.model, 'node_state'):
+        if hasattr(self.model, "node_state"):
             memory_info["state_tensors"]["node_energy"] = {
                 "shape": list(self.model.node_state.energy.shape),
                 "dtype": str(self.model.node_state.energy.dtype),
-                "size_kb": self.model.node_state.energy.numel() * self.model.node_state.energy.element_size() / 1024
+                "size_kb": self.model.node_state.energy.numel()
+                * self.model.node_state.energy.element_size()
+                / 1024,
             }
             memory_info["state_tensors"]["node_activity"] = {
                 "shape": list(self.model.node_state.activity.shape),
                 "dtype": str(self.model.node_state.activity.dtype),
-                "size_kb": self.model.node_state.activity.numel() * self.model.node_state.activity.element_size() / 1024
+                "size_kb": self.model.node_state.activity.numel()
+                * self.model.node_state.activity.element_size()
+                / 1024,
             }
 
         return memory_info
@@ -152,7 +155,7 @@ class ONNXExporter:
         input_shape: Optional[Tuple[int, ...]] = None,
         dynamic_axes: Optional[Dict[str, Dict[int, str]]] = None,
         opset_version: int = 11,
-        **kwargs
+        **kwargs,
     ) -> bool:
         """
         Export the model to ONNX format.
@@ -177,10 +180,7 @@ class ONNXExporter:
 
             # Default dynamic axes for batch size flexibility
             if dynamic_axes is None:
-                dynamic_axes = {
-                    'input': {0: 'batch_size'},
-                    'output': {0: 'batch_size'}
-                }
+                dynamic_axes = {"input": {0: "batch_size"}, "output": {0: "batch_size"}}
 
             # Set model to eval mode
             self.model.eval()
@@ -193,10 +193,10 @@ class ONNXExporter:
                 export_params=True,
                 opset_version=opset_version,
                 do_constant_folding=True,
-                input_names=['input'],
-                output_names=['output'],
+                input_names=["input"],
+                output_names=["output"],
                 dynamic_axes=dynamic_axes,
-                **kwargs
+                **kwargs,
             )
 
             return True
@@ -209,7 +209,7 @@ class ONNXExporter:
         self,
         onnx_filepath: Union[str, Path],
         test_input: Optional[torch.Tensor] = None,
-        tolerance: float = 1e-5
+        tolerance: float = 1e-5,
     ) -> Dict[str, Any]:
         """
         Verify ONNX export by comparing outputs.
@@ -228,7 +228,7 @@ class ONNXExporter:
         except ImportError:
             return {
                 "success": False,
-                "error": "ONNX or ONNXRuntime not installed. Install with: pip install onnx onnxruntime"
+                "error": "ONNX or ONNXRuntime not installed. Install with: pip install onnx onnxruntime",
             }
 
         try:
@@ -268,10 +268,7 @@ class ONNXExporter:
             return verification_result
 
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
 
 def export_model_with_introspection(
@@ -309,8 +306,9 @@ def export_model_with_introspection(
 
             # Save summary as JSON
             import json
+
             summary_path = output_dir / "model_summary.json"
-            with open(summary_path, 'w') as f:
+            with open(summary_path, "w") as f:
                 json.dump(summary, f, indent=2)
 
             results["files_created"].append(str(summary_path))
@@ -334,8 +332,9 @@ def export_model_with_introspection(
 
                 # Save verification report
                 import json
+
                 verify_path = output_dir / "onnx_verification.json"
-                with open(verify_path, 'w') as f:
+                with open(verify_path, "w") as f:
                     json.dump(verification, f, indent=2)
                 results["files_created"].append(str(verify_path))
 
