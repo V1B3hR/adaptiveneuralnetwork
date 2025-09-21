@@ -20,7 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11", 
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -39,7 +39,7 @@ dependencies = [
 [project.optional-dependencies]
 jax = [
     "jax>=0.4.0",
-    "jaxlib>=0.4.0", 
+    "jaxlib>=0.4.0",
     "flax>=0.6.0",
     "optax>=0.1.0",
 ]
@@ -60,7 +60,7 @@ nlp = [
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "ruff>=0.1.0", 
+    "ruff>=0.1.0",
     "mypy>=1.0.0",
     "black>=23.0.0",
     "pre-commit>=3.0.0",
@@ -84,7 +84,7 @@ Issues = "https://github.com/V1B3hR/adaptiveneuralnetwork/issues"
 adaptive-benchmark = "adaptiveneuralnetwork.scripts.run_benchmark:main"
 adaptive-profile = "adaptiveneuralnetwork.scripts.run_profiler:main"
 adaptive-report = "adaptiveneuralnetwork.scripts.adaptive_report:main"
-adaptive-performance-guard = "adaptiveneuralnetwork.scripts.performance_guard:main"  
+adaptive-performance-guard = "adaptiveneuralnetwork.scripts.performance_guard:main"
 adaptive-robustness-guard = "adaptiveneuralnetwork.scripts.robustness_guard:main"
 adaptive-sparsity-guard = "adaptiveneuralnetwork.scripts.sparsity_guard:main"
 
@@ -112,7 +112,8 @@ markers = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py39"
+fix = true
 
 [tool.ruff.lint]
 select = [
@@ -130,10 +131,22 @@ ignore = [
     "C901",  # too complex
     "W191",  # indentation contains tabs
 ]
+fixable = ["ALL"]
+unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # unused imports in __init__.py
 "adaptiveneuralnetwork/tests/*" = ["F401", "F811"]  # test files can have unused imports
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-source-first-line = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["adaptiveneuralnetwork"]
+combine-as-imports = true
 
 [tool.mypy]
 python_version = "3.10"
@@ -152,7 +165,7 @@ warn_unreachable = true
 [[tool.mypy.overrides]]
 module = [
     "torch.*",
-    "torchvision.*", 
+    "torchvision.*",
     "numpy.*",
     "matplotlib.*",
     "scipy.*",
@@ -161,7 +174,7 @@ ignore_missing_imports = true
 
 [tool.black]
 line-length = 100
-target-version = ["py310"]
+target-version = ["py39"]
 include = '\.pyi?$'
 extend-exclude = '''
 /(
