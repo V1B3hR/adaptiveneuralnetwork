@@ -308,7 +308,15 @@ class AdversarialSignalTester:
                     # Enhanced emergency recovery protocols
                     if hasattr(victim, '_emergency_recovery_mode') and victim._emergency_recovery_mode:
                         # Ultra-conservative recovery - just enough to survive
-                        victim.energy += 0.005  # Minimal recovery to stay alive
+                        base_recovery = 0.005  # Minimal recovery to stay alive
+                        
+                        # Enhanced recovery in survival mode
+                        if hasattr(victim, 'survival_mode_active') and victim.survival_mode_active:
+                            # Survival mode provides better energy efficiency
+                            base_recovery *= victim.energy_conservation_multiplier
+                            
+                        victim.energy += base_recovery
+                        
                         # Try to request emergency energy from network
                         emergency_energy = victim.request_distributed_energy(0.5)
                         victim.energy += emergency_energy
