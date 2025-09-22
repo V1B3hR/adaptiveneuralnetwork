@@ -19,11 +19,18 @@ class TrustNetwork:
         self.trust_network = {}
         self.interaction_history = {}  # Track patterns over time
         self.suspicion_alerts = {}  # Track suspicious behaviors
+        self.last_decay_time = {}  # Track when trust was last decayed for each node
         
         # Configurable thresholds
         self.SUSPICION_THRESHOLD = 0.3  # When to start community verification
         self.PARANOIA_THRESHOLD = 0.1   # Too low - we're being paranoid
         self.TRUST_VOLATILITY_LIMIT = 0.2  # Max trust change per interaction
+        
+        # Trust decay/recovery parameters
+        self.TRUST_DECAY_RATE = 0.01  # Trust decay per time unit without interaction
+        self.TRUST_RECOVERY_RATE = 0.02  # Trust recovery rate for positive interactions
+        self.MIN_TRUST_THRESHOLD = 0.1  # Minimum trust level to maintain
+        self.DECAY_TIME_THRESHOLD = 10  # Time units before trust starts decaying
         
     def update_trust(self, target, signal_type, context=None):
         """Update trust with suspicion detection and community verification"""
@@ -48,6 +55,14 @@ class TrustNetwork:
         
         # Update trust
         self.trust_network[target.node_id] = new_trust
+        
+        # Record interaction time for decay tracking
+        self.last_decay_time[target.node_id] = self._get_current_time()
+        
+        # Apply trust recovery for positive interactions
+        if trust_delta > 0:
+            recovery_factor = min(trust_delta / self.TRUST_VOLATILITY_LIMIT, 1.0)
+            self.apply_trust_recovery(target.node_id, recovery_factor)
         
         # Update interaction history with final trust value
         if target.node_id in self.interaction_history and self.interaction_history[target.node_id]:
@@ -294,3 +309,51 @@ class TrustNetwork:
     def set_trust(self, node_id, trust_value):
         """Set trust level for a specific node (for initialization)"""
         self.trust_network[node_id] = max(0.0, min(1.0, trust_value))
+        self.last_decay_time[node_id] = self._get_current_time()
+    
+    def apply_trust_decay(self, current_time=None):
+        """Apply trust decay to nodes that haven't interacted recently"""
+        if current_time is None:
+            current_time = self._get_current_time()
+            
+        nodes_to_decay = []
+        for node_id, trust_level in self.trust_network.items():
+            last_interaction = self.last_decay_time.get(node_id, current_time)
+            time_since_interaction = current_time - last_interaction
+            
+            # Only decay if enough time has passed
+            if time_since_interaction >= self.DECAY_TIME_THRESHOLD:
+                decay_amount = self.TRUST_DECAY_RATE * (time_since_interaction - self.DECAY_TIME_THRESHOLD)
+                new_trust = max(self.MIN_TRUST_THRESHOLD, trust_level - decay_amount)
+                
+                if new_trust != trust_level:
+                    nodes_to_decay.append((node_id, new_trust))
+        
+        # Apply decays
+        for node_id, new_trust in nodes_to_decay:
+            self.trust_network[node_id] = new_trust
+        
+        return len(nodes_to_decay)
+    
+    def apply_trust_recovery(self, node_id, recovery_factor=1.0):
+        """Apply trust recovery for positive interactions"""
+        if node_id not in self.trust_network:
+            return
+            
+        current_trust = self.trust_network[node_id]
+        recovery_amount = self.TRUST_RECOVERY_RATE * recovery_factor
+        
+        # Recovery is stronger for lower trust values (easier to recover from bottom)
+        trust_recovery_multiplier = (1.0 - current_trust) + 0.5
+        recovery_amount *= trust_recovery_multiplier
+        
+        new_trust = min(1.0, current_trust + recovery_amount)
+        self.trust_network[node_id] = new_trust
+        self.last_decay_time[node_id] = self._get_current_time()
+        
+        return new_trust - current_trust
+    
+    def _get_current_time(self):
+        """Get current time (can be overridden for testing)"""
+        import time
+        return time.time()
