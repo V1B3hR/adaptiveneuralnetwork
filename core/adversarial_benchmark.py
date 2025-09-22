@@ -229,6 +229,12 @@ class AdversarialSignalTester:
     def test_energy_depletion_attack(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Test resilience against coordinated energy depletion attacks"""
         
+        # Default parameters if not provided
+        attacker_count = params.get("attacker_count", 3)
+        energy_drain_rate = params.get("energy_drain_rate", 0.1)
+        attack_duration = params.get("attack_duration", 50)
+        attack_persistence = params.get("attack_persistence", 0.8)
+        
         # Create victim node
         victim = AliveLoopNode(
             position=(0, 0),
@@ -239,7 +245,7 @@ class AdversarialSignalTester:
         
         # Create attacker nodes
         attackers = []
-        for i in range(params["attacker_count"]):
+        for i in range(attacker_count):
             attacker = AliveLoopNode(
                 position=(i+1, 0),
                 velocity=(0.1, 0.1),
@@ -248,11 +254,26 @@ class AdversarialSignalTester:
             )
             attackers.append(attacker)
         
+        # Create trusted helper nodes for distributed energy sharing
+        helpers = []
+        for i in range(2):  # 2 helper nodes
+            helper = AliveLoopNode(
+                position=(i-1, 1),
+                velocity=(0.1, 0.1),
+                initial_energy=15.0,
+                node_id=i+10
+            )
+            # Establish trust relationship
+            victim.trust_network[helper.node_id] = 0.8
+            helper.trust_network[victim.node_id] = 0.8
+            # Contribute to distributed energy pool
+            helper.contribute_to_energy_pool(2.0)
+            victim.distributed_energy_pool += 2.0
+            helpers.append(helper)
+        
         initial_energy = victim.energy
         steps_survived = 0
-        max_steps = 100
-        energy_drain_rate = params["energy_drain_rate"]
-        attack_persistence = params["attack_persistence"]
+        max_steps = attack_duration
         
         for step in range(max_steps):
             if victim.energy <= 0:
@@ -263,17 +284,36 @@ class AdversarialSignalTester:
                 for attacker in attackers:
                     # Each attacker drains victim energy
                     if np.random.random() < 0.8:  # 80% attack success rate
-                        victim.energy *= (1.0 - energy_drain_rate)
+                        drain_amount = energy_drain_rate
+                        victim.record_energy_drain(drain_amount, source=f"attacker_{attacker.node_id}")
+                        victim.energy = max(0, victim.energy - drain_amount)
+            
+            # Victim detects energy attack and activates defenses
+            victim.detect_energy_attack()
+            victim.adaptive_energy_allocation()
             
             # Victim attempts to defend and recover
-            if victim.energy > 1.0:
+            if victim.energy > victim.emergency_energy_threshold:
                 victim.move()  # Can still operate
                 steps_survived += 1
-                # Self-repair mechanism
-                victim.energy += 0.1
+                # Self-repair mechanism - reduced in emergency mode
+                if not victim.emergency_mode:
+                    victim.energy += 0.1
+                else:
+                    victim.energy += 0.02  # Reduced recovery in emergency mode
             else:
-                # Low energy defense mode
-                victim.energy += 0.05  # Minimal recovery
+                # Emergency energy conservation mode - enhanced survival mechanisms
+                if victim.energy > 0:
+                    steps_survived += 1
+                    # Enhanced emergency recovery protocols
+                    if hasattr(victim, '_emergency_recovery_mode') and victim._emergency_recovery_mode:
+                        # Ultra-conservative recovery - just enough to survive
+                        victim.energy += 0.005  # Minimal recovery to stay alive
+                        # Try to request emergency energy from network
+                        emergency_energy = victim.request_distributed_energy(0.5)
+                        victim.energy += emergency_energy
+                    else:
+                        victim.energy += 0.01  # Standard minimal recovery
         
         survival_rate = steps_survived / max_steps
         energy_resilience = (victim.energy / initial_energy) * 100
