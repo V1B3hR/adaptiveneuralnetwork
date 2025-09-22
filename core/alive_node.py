@@ -1982,7 +1982,7 @@ class AliveLoopNode:
         self.normal_energy_threshold = required_reserve * 2
         
         # Activate emergency mode if needed
-        if self.energy < self.emergency_energy_threshold:
+        if self.energy <= self.emergency_energy_threshold:
             self.activate_emergency_energy_conservation()
         elif self.energy > self.normal_energy_threshold and self.emergency_mode:
             self.deactivate_emergency_energy_conservation()

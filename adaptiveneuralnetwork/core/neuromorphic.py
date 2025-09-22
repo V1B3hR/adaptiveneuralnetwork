@@ -997,6 +997,21 @@ class BrainWaveOscillator:
         self.sync_strength = config.phase_coupling_strength
         self.enable_phase_locking = config.enable_phase_encoding
         
+        # Circadian rhythm integration
+        self.circadian_period = 24 * 60 * 60  # 24 hours in seconds
+        self.circadian_phase = 0.0
+        self.circadian_amplitude = 0.3  # Modulation strength
+        self.sleep_wake_cycle_active = True
+        
+        # Circadian modulation of different frequency bands
+        self.circadian_modulation = {
+            'delta': 2.0,    # Enhanced during sleep
+            'theta': 0.8,    # Reduced during sleep
+            'alpha': 1.2,    # Peak during relaxed wakefulness
+            'beta': 0.6,     # Reduced during sleep
+            'gamma': 0.4     # Minimal during sleep
+        }
+        
     def generate_oscillation(self, band: str, frequency: Optional[float] = None) -> float:
         """Generate oscillation for specific frequency band."""
         if band not in self.oscillators:
@@ -1039,6 +1054,60 @@ class BrainWaveOscillator:
         
         self.current_time += self.dt
         return oscillations
+    
+    def update_circadian_phase(self, real_time_hours: Optional[float] = None):
+        """Update circadian phase based on real time or simulation time"""
+        if real_time_hours is not None:
+            # Use real time of day (0-24 hours)
+            self.circadian_phase = (real_time_hours / 24.0) * 2 * np.pi
+        else:
+            # Use simulation time
+            self.circadian_phase = (self.current_time % self.circadian_period) / self.circadian_period * 2 * np.pi
+    
+    def get_circadian_modulation(self, band: str) -> float:
+        """Get circadian modulation factor for specific frequency band"""
+        if not self.sleep_wake_cycle_active:
+            return 1.0
+            
+        # Calculate base circadian influence (0.5 to 1.5)
+        base_circadian = 1.0 + self.circadian_amplitude * np.cos(self.circadian_phase)
+        
+        # Apply band-specific modulation
+        band_modulation = self.circadian_modulation.get(band, 1.0)
+        
+        # During sleep phase (circadian_phase around π), enhance delta and reduce others
+        sleep_factor = 0.5 * (1 + np.cos(self.circadian_phase))  # 1 during day, 0 during night
+        
+        if band == 'delta':
+            # Delta waves enhanced during sleep
+            return base_circadian * (band_modulation * (1 - sleep_factor) + sleep_factor)
+        else:
+            # Other bands reduced during sleep
+            return base_circadian * (band_modulation * sleep_factor + (1 - sleep_factor) * 0.3)
+    
+    def get_sleep_wake_state(self) -> str:
+        """Determine current sleep/wake state based on circadian phase"""
+        # Sleep phase roughly from 22:00 to 06:00 (5.76 to 1.57 in phase, wrapping around)
+        wake_phase_start = 0.25 * 2 * np.pi  # 06:00
+        sleep_phase_start = 0.917 * 2 * np.pi  # 22:00 (adjusted)
+        
+        if wake_phase_start <= self.circadian_phase <= sleep_phase_start:
+            return "wake"
+        else:
+            return "sleep"
+    
+    def apply_circadian_oscillation_modulation(self) -> Dict[str, float]:
+        """Apply circadian modulation to all oscillation bands"""
+        modulated_oscillations = {}
+        current_state = self.get_sleep_wake_state()
+        
+        for band in self.oscillators.keys():
+            base_oscillation = self.generate_oscillation(band)
+            circadian_mod = self.get_circadian_modulation(band)
+            modulated_oscillations[band] = base_oscillation * circadian_mod
+            
+        return modulated_oscillations
+
 
 
 class NeuromodulationSystem:
@@ -1063,9 +1132,28 @@ class NeuromodulationSystem:
         self.receptor_sensitivity = defaultdict(lambda: 1.0)
         self.modulation_effects = {}
         
+        # Stress response system
+        self.stress_level = 0.0  # Current stress level (0.0 to 1.0)
+        self.stress_threshold = 0.6  # Threshold for stress response activation
+        self.stress_adaptation_rate = 0.1  # How quickly to adapt to stress
+        self.baseline_stress = 0.1  # Baseline stress level
+        
+        # Stress-responsive neurotransmitter mapping
+        self.stress_responses = {
+            'cortisol': {'concentration': 0.0, 'decay_rate': 0.05, 'baseline': 0.05},
+            'adrenaline': {'concentration': 0.0, 'decay_rate': 0.3, 'baseline': 0.01}
+        }
+        
+        # Add stress hormones to neurotransmitter system
+        self.neurotransmitters.update(self.stress_responses)
+        
     def release_neurotransmitter(self, nt_type: str, amount: float):
         """Release neurotransmitter with specified amount."""
         if nt_type in self.neurotransmitters:
+            # Ensure we don't go below zero
+            if amount < 0:
+                current = self.neurotransmitters[nt_type]['concentration']
+                amount = max(amount, -current)  # Don't allow negative concentration
             self.neurotransmitters[nt_type]['concentration'] += amount
             logger.debug(f"Released {amount:.3f} {nt_type}")
     
@@ -1107,6 +1195,83 @@ class NeuromodulationSystem:
             return 1.0 - concentration * sensitivity * 0.8  # Inhibitory
         else:
             return 1.0 + concentration * sensitivity
+    
+    def update_stress_level(self, stressor_intensity: float, stressor_type: str = "general"):
+        """Update stress level based on environmental stressors"""
+        # Different stressor types have different impacts
+        stressor_multipliers = {
+            "energy_attack": 2.0,
+            "trust_violation": 1.5,
+            "communication_failure": 1.2,
+            "general": 1.0
+        }
+        
+        multiplier = stressor_multipliers.get(stressor_type, 1.0)
+        stress_increase = stressor_intensity * multiplier * self.stress_adaptation_rate
+        
+        # Update stress level with saturation
+        self.stress_level = min(1.0, max(0.0, self.stress_level + stress_increase))
+        
+        # Trigger stress response if threshold exceeded
+        if self.stress_level > self.stress_threshold:
+            self._activate_stress_response()
+    
+    def _activate_stress_response(self):
+        """Activate neuromodulatory stress response"""
+        stress_intensity = self.stress_level
+        
+        # Release stress-related neurotransmitters
+        self.release_neurotransmitter('cortisol', stress_intensity * 0.3)
+        self.release_neurotransmitter('adrenaline', stress_intensity * 0.5)
+        
+        # Reduce calming neurotransmitters
+        self.neurotransmitters['serotonin']['concentration'] *= (1.0 - stress_intensity * 0.2)
+        self.release_neurotransmitter('gaba', -stress_intensity * 0.1)  # Reduce inhibition
+        
+        # Increase attention-related neurotransmitters
+        self.release_neurotransmitter('norepinephrine', stress_intensity * 0.4)
+        self.release_neurotransmitter('acetylcholine', stress_intensity * 0.3)
+        
+        logger.debug(f"Stress response activated: level={stress_intensity:.3f}")
+    
+    def apply_stress_modulation(self, base_activity: float, neuron_type: str = "excitatory") -> float:
+        """Apply stress-based modulation to neural activity"""
+        stress_factor = 1.0
+        
+        # Get stress-related neurotransmitter concentrations
+        cortisol = self.neurotransmitters['cortisol']['concentration']
+        adrenaline = self.neurotransmitters['adrenaline']['concentration']
+        
+        if neuron_type == "excitatory":
+            # Stress increases excitatory activity
+            stress_factor = 1.0 + (cortisol * 0.5 + adrenaline * 0.8)
+        elif neuron_type == "inhibitory":
+            # Stress reduces inhibitory activity initially
+            stress_factor = 1.0 - (cortisol * 0.2 + adrenaline * 0.3)
+        
+        return base_activity * stress_factor
+    
+    def get_stress_recovery_rate(self) -> float:
+        """Calculate stress recovery rate based on current neurotransmitter balance"""
+        # Recovery enhanced by serotonin, GABA, and oxytocin
+        serotonin = self.neurotransmitters['serotonin']['concentration']
+        gaba = self.neurotransmitters['gaba']['concentration']
+        oxytocin = self.neurotransmitters['oxytocin']['concentration']
+        
+        recovery_factors = serotonin + gaba * 0.8 + oxytocin * 1.2
+        base_recovery = 0.05  # Base recovery rate
+        
+        return base_recovery * (1.0 + recovery_factors)
+    
+    def update_stress_recovery(self):
+        """Update stress level with natural recovery"""
+        recovery_rate = self.get_stress_recovery_rate()
+        
+        # Exponential decay towards baseline
+        self.stress_level = self.baseline_stress + (self.stress_level - self.baseline_stress) * (1.0 - recovery_rate)
+        
+        # Ensure stress level stays within bounds
+        self.stress_level = max(0.0, min(1.0, self.stress_level))
 
 
 class EnvironmentalAdaptationEngine:
@@ -1830,8 +1995,17 @@ class NeuromorphicAdaptiveModel(nn.Module):
             if adaptations:
                 self.config.update_parameters_realtime(adaptations, "environmental")
         
-        # Brain wave oscillations
-        oscillations = self.oscillator.generate_synchronized_oscillations()
+        # Brain wave oscillations with circadian modulation
+        self.oscillator.update_circadian_phase()  # Update circadian phase
+        oscillations = self.oscillator.apply_circadian_oscillation_modulation()
+        
+        # Update stress response and neuromodulation
+        self.neuromodulation.update_stress_recovery()
+        if environmental_data and 'stress_level' in environmental_data:
+            self.neuromodulation.update_stress_level(
+                environmental_data['stress_level'], 
+                environmental_data.get('stressor_type', 'general')
+            )
         
         # Input encoding with stochastic processing
         encoded_input = self.encoder(x)
@@ -1860,13 +2034,21 @@ class NeuromorphicAdaptiveModel(nn.Module):
                 ).unsqueeze(-1)  # [batch, 1]
                 input_current = input_current + recurrent_input
             
-            # Add oscillatory modulation
+            # Add oscillatory modulation (now includes circadian rhythm)
             osc_modulation = sum(oscillations.values()) / len(oscillations)
             input_current = input_current * (1.0 + 0.1 * osc_modulation)
             
-            # Neuromodulation
+            # Enhanced neuromodulation with stress response
             dopamine_mod = self.neuromodulation.get_modulation_factor('dopamine')
-            neuromod_signal = torch.tensor(dopamine_mod - 1.0).unsqueeze(0).expand(batch_size, 1)
+            
+            # Apply stress modulation
+            stress_base_current = self.neuromodulation.apply_stress_modulation(
+                input_current.item() if input_current.numel() == 1 else torch.mean(input_current).item(),
+                neuron_type="excitatory"  # Assume excitatory for simplicity
+            )
+            stress_mod_tensor = torch.tensor(stress_base_current / (torch.mean(input_current).item() + 1e-8))
+            
+            neuromod_signal = torch.tensor(dopamine_mod - 1.0 + stress_mod_tensor - 1.0).unsqueeze(0).expand(batch_size, 1)
             
             # Process through neuron
             spike_output, neuron_states = neuron(input_current, neuromod_signal)
