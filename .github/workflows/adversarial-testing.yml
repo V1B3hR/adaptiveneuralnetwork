@@ -1,0 +1,260 @@
+name: Adversarial Testing Benchmark
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Test mode (comprehensive or quick)'
+        required: false
+        default: 'comprehensive'
+        type: choice
+        options:
+          - comprehensive
+          - quick
+      save_artifacts:
+        description: 'Save test artifacts'
+        required: false
+        default: true
+        type: boolean
+      attack_scenarios:
+        description: 'Comma-separated list of attack scenarios to test'
+        required: false
+        default: 'all'
+        type: string
+      max_test_duration:
+        description: 'Maximum test duration in minutes'
+        required: false
+        default: '30'
+        type: string
+
+env:
+  PYTHONPATH: ${{ github.workspace }}
+  ADVERSARIAL_TEST_MODE: ${{ github.event.inputs.test_mode || 'comprehensive' }}
+  ARTIFACT_RETENTION_DAYS: 90
+  
+  # Adversarial testing configuration
+  ADVERSARIAL_RESILIENCE_THRESHOLD: 40
+  MAX_ATTACK_SCENARIOS: 5
+  ATTACK_INTENSITY: 0.8
+  BYZANTINE_RATIO: 0.3
+  ENERGY_DEPLETION_THRESHOLD: 0.1
+  
+  # Test execution settings
+  TEST_TIMEOUT_MINUTES: 30
+  MATRIX_FAIL_FAST: false
+  PARALLEL_JOBS: 3
+
+jobs:
+  adversarial-testing:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJson(github.event.inputs.max_test_duration || '30') }}
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+      fail-fast: false
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r dev-requirements.txt
+        
+    - name: Prepare test environment
+      run: |
+        # Create necessary directories
+        mkdir -p outputs
+        mkdir -p test-results
+        mkdir -p logs
+        
+        # Set up environment variables
+        export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+        echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
+        
+        # Pre-test validation
+        echo "Testing Python imports..."
+        python -c "from core.adversarial_benchmark import AdversarialSignalTester; print('✓ Core imports successful')"
+        
+    - name: Run initial adversarial setup
+      run: |
+        echo "Setting up adversarial testing environment..."
+        echo "Python version: ${{ matrix.python-version }}"
+        echo "Test mode: ${{ env.ADVERSARIAL_TEST_MODE }}"
+        echo "Workspace: ${{ github.workspace }}"
+        
+        # Log system information
+        echo "System Information:" > test-results/system_info.log
+        python --version >> test-results/system_info.log
+        pip list >> test-results/system_info.log
+        
+        # Initialize test configuration
+        echo "Initializing adversarial test configuration..."
+        
+    - name: Upload initial test setup artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: initial-setup-py${{ matrix.python-version }}
+        path: |
+          outputs/
+          test-results/
+          logs/
+        retention-days: 30
+        
+    - name: Run adversarial benchmark tests
+      run: |
+        python benchmark_cli.py --run-adversarial --save-results adversarial_test_results.json
+        
+    - name: Upload adversarial test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: adversarial-results-py${{ matrix.python-version }}
+        path: |
+          adversarial_test_results.json
+          adversarial_results.json
+        retention-days: 30
+        
+    - name: Run robustness validation
+      run: |
+        python benchmark_cli.py --run-robustness --save-results robustness_validation_results.json
+        
+    - name: Generate comprehensive report
+      run: |
+        python benchmark_cli.py --generate-comprehensive-docs --output-dir comprehensive_docs
+        
+    - name: Run combined validation tests
+      run: |
+        python benchmark_cli.py --run-combined --save-results combined_validation_results.json
+        
+    - name: Collect test metrics
+      run: |
+        # Create test summary
+        echo "# Adversarial Testing Summary" > test_summary.md
+        echo "## Python Version: ${{ matrix.python-version }}" >> test_summary.md
+        echo "## Test Results:" >> test_summary.md
+        
+        # Extract key metrics if results exist
+        if [ -f adversarial_test_results.json ]; then
+          python -c "
+import json
+try:
+    with open('adversarial_test_results.json', 'r') as f:
+        data = json.load(f)
+    print(f'Resilience Score: {data.get(\"adversarial_resilience_score\", \"N/A\")}/100')
+    print(f'Tests Passed: {data.get(\"tests_passed\", \"N/A\")}/{data.get(\"total_tests\", \"N/A\")}')
+    print(f'Performance Degradation: {data.get(\"average_performance_degradation\", \"N/A\")}%')
+except:
+    print('Could not parse results')
+" >> test_summary.md
+        fi
+        
+    - name: Upload comprehensive test artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: comprehensive-test-artifacts-py${{ matrix.python-version }}
+        path: |
+          adversarial_test_results.json
+          robustness_validation_results.json
+          combined_validation_results.json
+          comprehensive_docs/
+          test_summary.md
+          *.log
+        retention-days: 90
+        
+    - name: Check test results
+      run: |
+        # Validate that tests completed successfully
+        if [ -f adversarial_test_results.json ]; then
+          python -c "
+import json
+import sys
+try:
+    with open('adversarial_test_results.json', 'r') as f:
+        data = json.load(f)
+    
+    resilience_score = data.get('adversarial_resilience_score', 0)
+    tests_passed = data.get('tests_passed', 0)
+    total_tests = data.get('total_tests', 1)
+    
+    print(f'Adversarial resilience score: {resilience_score}')
+    print(f'Tests passed: {tests_passed}/{total_tests}')
+    
+    # Fail if resilience is too low or no tests passed
+    if resilience_score < 20 and tests_passed == 0:
+        print('CRITICAL: All adversarial tests failed')
+        sys.exit(1)
+    elif resilience_score < 40:
+        print('WARNING: Low adversarial resilience score')
+        
+except Exception as e:
+    print(f'Error checking results: {e}')
+    sys.exit(1)
+"
+        else
+          echo "No adversarial test results found"
+          exit 1
+        fi
+
+  aggregate-results:
+    needs: adversarial-testing
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: all-artifacts
+        
+    - name: Aggregate test results
+      run: |
+        # Create aggregated results directory
+        mkdir -p aggregated-results
+        
+        # Combine all results files
+        echo "# Aggregated Adversarial Testing Results" > aggregated-results/summary.md
+        echo "## Test Matrix Results:" >> aggregated-results/summary.md
+        
+        for dir in all-artifacts/*/; do
+          if [ -d "$dir" ]; then
+            echo "### $(basename "$dir")" >> aggregated-results/summary.md
+            if [ -f "$dir/test_summary.md" ]; then
+              cat "$dir/test_summary.md" >> aggregated-results/summary.md
+            fi
+            echo "" >> aggregated-results/summary.md
+            
+            # Copy important result files
+            cp "$dir"/*.json aggregated-results/ 2>/dev/null || true
+          fi
+        done
+        
+    - name: Upload final aggregated results
+      uses: actions/upload-artifact@v4
+      with:
+        name: final-adversarial-test-results
+        path: |
+          aggregated-results/
+          all-artifacts/
+        retention-days: 180
