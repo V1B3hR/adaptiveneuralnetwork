@@ -94,7 +94,7 @@ The HR Analytics training is integrated into the CI pipeline:
 - **Automated dataset caching** for efficient builds
 - **Configurable training parameters** via environment variables
 - **Artifact uploading** for training results and coverage reports
-- **Python 3.11 and 3.12 testing matrix** for compatibility validation
+- **Python 3.12 testing** for compatibility validation
 
 ### Environment Variables
 
