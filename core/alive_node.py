@@ -154,6 +154,10 @@ class AliveLoopNode:
         self.trust_network_system = TrustNetwork(node_id)
         self.trust_network = self.trust_network_system.trust_network  # Backward compatibility
         
+        # Backward compatibility: Single trust value (like Cell objects have)
+        # This represents general trustworthiness of this node (0.0 to 1.0)
+        self.trust = 0.5  # Default neutral trust level
+        
         # Enhanced social learning attributes
         self.communication_queue = deque(maxlen=20)  # Incoming signals to process
         self.signal_history = deque(maxlen=100)  # History of sent/received signals
@@ -278,6 +282,16 @@ class AliveLoopNode:
         self.energy_drain_resistance = self._get_config_value('attack_resilience', 'energy_drain_resistance', default=0.7)
         self.signal_redundancy_level = self._get_config_value('attack_resilience', 'signal_redundancy_level', default=2)
         self.jamming_detection_sensitivity = self._get_config_value('attack_resilience', 'jamming_detection_sensitivity', default=0.3)
+        
+        # Energy system hardening attributes
+        self.emergency_mode = False  # Emergency energy conservation mode
+        self.emergency_energy_threshold = 0.2  # Trigger emergency mode at 20% energy
+        self.normal_energy_threshold = 0.5   # Exit emergency mode at 50% energy
+        self.energy_attack_detected = False
+        self.energy_drain_events = deque(maxlen=10)  # Track recent energy drain events
+        self.energy_sharing_requests = deque(maxlen=5)  # Track energy sharing requests
+        self.distributed_energy_pool = 0.0  # Shared energy pool with trusted nodes
+        self.threat_assessment_level = 0  # 0=low, 1=medium, 2=high, 3=critical
 
         # Anxiety overwhelm safety protocol attributes - use config values
         self.anxiety_threshold = self._get_config_value('proactive_interventions', 'anxiety_threshold', default=8.0)
@@ -820,6 +834,9 @@ class AliveLoopNode:
         
         # Update the backward compatibility dict
         self.trust_network[target.node_id] = new_trust
+        
+        # Update single trust attribute based on trust network average
+        self._update_trust_attribute()
     
     def get_trust_summary(self):
         """Get overview of trust network health"""
@@ -844,6 +861,27 @@ class AliveLoopNode:
         self.trust_network_system.process_community_feedback(subject_id, feedback_list)
         # Update backward compatibility dict
         self.trust_network[subject_id] = self.trust_network_system.get_trust(subject_id)
+        # Update single trust attribute
+        self._update_trust_attribute()
+    
+    def _update_trust_attribute(self):
+        """Update single trust attribute based on trust network state"""
+        if not self.trust_network:
+            self.trust = 0.5  # Default neutral trust
+            return
+            
+        # Calculate trust as weighted average of trust network
+        trust_values = list(self.trust_network.values())
+        if trust_values:
+            # Base trust on average, but also consider trust network health
+            avg_trust = np.mean(trust_values)
+            trust_variance = np.var(trust_values) if len(trust_values) > 1 else 0
+            
+            # Lower trust if high variance (inconsistent relationships)
+            consistency_penalty = min(trust_variance * 0.5, 0.2)
+            self.trust = max(0.0, min(1.0, avg_trust - consistency_penalty))
+        else:
+            self.trust = 0.5
 
     def _is_memory_relevant(self, memory, query: Any) -> bool:
         """Check if a memory is relevant to a query"""
@@ -1840,6 +1878,125 @@ class AliveLoopNode:
         })
         # Implement actual energy transfer logic elsewhere
         return True
+    
+    def activate_emergency_energy_conservation(self):
+        """Activate emergency energy conservation protocols"""
+        if not self.emergency_mode:
+            self.emergency_mode = True
+            logger.warning(f"Node {self.node_id}: Emergency energy conservation activated")
+            
+            # Reduce energy consumption for non-critical operations
+            self.communication_range *= 0.5
+            self.max_communications_per_step = max(1, self.max_communications_per_step // 2)
+            
+            # Increase trust threshold for communication (conserve energy)
+            # Save current state for restoration later
+            if not hasattr(self, '_pre_emergency_state'):
+                self._pre_emergency_state = {
+                    'communication_range': self.communication_range * 2,  # Store original
+                    'max_communications': self.max_communications_per_step * 2
+                }
+    
+    def deactivate_emergency_energy_conservation(self):
+        """Deactivate emergency energy conservation protocols"""
+        if self.emergency_mode:
+            self.emergency_mode = False
+            logger.info(f"Node {self.node_id}: Emergency energy conservation deactivated")
+            
+            # Restore normal operation parameters
+            if hasattr(self, '_pre_emergency_state'):
+                self.communication_range = self._pre_emergency_state['communication_range']
+                self.max_communications_per_step = self._pre_emergency_state['max_communications']
+                delattr(self, '_pre_emergency_state')
+    
+    def detect_energy_attack(self):
+        """Detect potential energy drain attacks"""
+        if len(self.energy_drain_events) < 3:
+            return False
+            
+        # Check for rapid energy loss pattern
+        recent_events = list(self.energy_drain_events)[-3:]
+        
+        # Calculate energy loss rate
+        time_span = recent_events[-1]['timestamp'] - recent_events[0]['timestamp']
+        if time_span <= 0:
+            return False
+            
+        total_loss = sum(event['amount'] for event in recent_events)
+        loss_rate = total_loss / max(time_span, 1.0)
+        
+        # Detect attack if loss rate exceeds threshold
+        attack_threshold = 0.5  # Adjust based on normal energy consumption
+        if loss_rate > attack_threshold:
+            self.energy_attack_detected = True
+            self.threat_assessment_level = min(3, self.threat_assessment_level + 1)
+            logger.warning(f"Node {self.node_id}: Energy attack detected! Loss rate: {loss_rate:.3f}")
+            return True
+        
+        return False
+    
+    def request_distributed_energy(self, amount_needed):
+        """Request energy from trusted nodes in the network"""
+        if not self.trust_network:
+            return 0.0
+            
+        # Find trusted nodes with sufficient energy
+        trusted_nodes = [(node_id, trust) for node_id, trust in self.trust_network.items() 
+                        if trust > 0.7]
+        
+        if not trusted_nodes:
+            return 0.0
+        
+        # Record the request
+        self.energy_sharing_requests.append({
+            'timestamp': self._time,
+            'amount_requested': amount_needed,
+            'trusted_nodes': len(trusted_nodes)
+        })
+        
+        # Simple distributed energy sharing simulation
+        # In practice, this would involve actual network communication
+        shared_amount = min(amount_needed, self.distributed_energy_pool * 0.1)
+        self.distributed_energy_pool -= shared_amount
+        
+        return shared_amount
+    
+    def contribute_to_energy_pool(self, amount):
+        """Contribute energy to the distributed pool for other nodes"""
+        if self.energy > amount + self.emergency_energy_threshold:
+            self.energy -= amount
+            self.distributed_energy_pool += amount
+            return True
+        return False
+    
+    def adaptive_energy_allocation(self):
+        """Adapt energy allocation based on current threat assessment"""
+        base_energy_reserve = 0.1  # 10% base reserve
+        
+        # Increase energy reserve based on threat level
+        threat_multiplier = 1.0 + (self.threat_assessment_level * 0.1)
+        required_reserve = base_energy_reserve * threat_multiplier
+        
+        # Adjust energy thresholds
+        self.emergency_energy_threshold = required_reserve
+        self.normal_energy_threshold = required_reserve * 2
+        
+        # Activate emergency mode if needed
+        if self.energy <= self.emergency_energy_threshold:
+            self.activate_emergency_energy_conservation()
+        elif self.energy > self.normal_energy_threshold and self.emergency_mode:
+            self.deactivate_emergency_energy_conservation()
+    
+    def record_energy_drain(self, amount, source="unknown"):
+        """Record energy drain event for attack detection"""
+        self.energy_drain_events.append({
+            'timestamp': self._time,
+            'amount': amount,
+            'source': source
+        })
+        
+        # Check for attack patterns
+        self.detect_energy_attack()
 
     def update_anxiety(self, delta):
         """Adjust anxiety (inverse of calm) and record history."""
