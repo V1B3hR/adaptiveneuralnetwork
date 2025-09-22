@@ -157,16 +157,16 @@ jobs:
         # Extract key metrics if results exist
         if [ -f adversarial_test_results.json ]; then
           python -c "
-import json
-try:
-    with open('adversarial_test_results.json', 'r') as f:
-        data = json.load(f)
-    print(f'Resilience Score: {data.get(\"adversarial_resilience_score\", \"N/A\")}/100')
-    print(f'Tests Passed: {data.get(\"tests_passed\", \"N/A\")}/{data.get(\"total_tests\", \"N/A\")}')
-    print(f'Performance Degradation: {data.get(\"average_performance_degradation\", \"N/A\")}%')
-except:
-    print('Could not parse results')
-" >> test_summary.md
+          import json
+          try:
+              with open('adversarial_test_results.json', 'r') as f:
+                  data = json.load(f)
+              print(f'Resilience Score: {data.get(\"adversarial_resilience_score\", \"N/A\")}/100')
+              print(f'Tests Passed: {data.get(\"tests_passed\", \"N/A\")}/{data.get(\"total_tests\", \"N/A\")}')
+              print(f'Performance Degradation: {data.get(\"average_performance_degradation\", \"N/A\")}%')
+          except:
+              print('Could not parse results')
+          " >> test_summary.md
         fi
         
     - name: Upload comprehensive test artifacts
@@ -188,30 +188,30 @@ except:
         # Validate that tests completed successfully
         if [ -f adversarial_test_results.json ]; then
           python -c "
-import json
-import sys
-try:
-    with open('adversarial_test_results.json', 'r') as f:
-        data = json.load(f)
-    
-    resilience_score = data.get('adversarial_resilience_score', 0)
-    tests_passed = data.get('tests_passed', 0)
-    total_tests = data.get('total_tests', 1)
-    
-    print(f'Adversarial resilience score: {resilience_score}')
-    print(f'Tests passed: {tests_passed}/{total_tests}')
-    
-    # Fail if resilience is too low or no tests passed
-    if resilience_score < 20 and tests_passed == 0:
-        print('CRITICAL: All adversarial tests failed')
-        sys.exit(1)
-    elif resilience_score < 40:
-        print('WARNING: Low adversarial resilience score')
-        
-except Exception as e:
-    print(f'Error checking results: {e}')
-    sys.exit(1)
-"
+          import json
+          import sys
+          try:
+              with open('adversarial_test_results.json', 'r') as f:
+                  data = json.load(f)
+              
+              resilience_score = data.get('adversarial_resilience_score', 0)
+              tests_passed = data.get('tests_passed', 0)
+              total_tests = data.get('total_tests', 1)
+              
+              print(f'Adversarial resilience score: {resilience_score}')
+              print(f'Tests passed: {tests_passed}/{total_tests}')
+              
+              # Fail if resilience is too low or no tests passed
+              if resilience_score < 20 and tests_passed == 0:
+                  print('CRITICAL: All adversarial tests failed')
+                  sys.exit(1)
+              elif resilience_score < 40:
+                  print('WARNING: Low adversarial resilience score')
+                  
+          except Exception as e:
+              print(f'Error checking results: {e}')
+              sys.exit(1)
+          "
         else
           echo "No adversarial test results found"
           exit 1
