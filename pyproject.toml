@@ -18,14 +18,11 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 dependencies = [
     "torch>=2.0.0,<3.0.0",
     "torchvision>=0.15.0,<1.0.0",
@@ -112,7 +109,7 @@ markers = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py312"
 fix = true
 
 [tool.ruff.lint]
@@ -149,7 +146,7 @@ known-first-party = ["adaptiveneuralnetwork"]
 combine-as-imports = true
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -174,7 +171,7 @@ ignore_missing_imports = true
 
 [tool.black]
 line-length = 100
-target-version = ["py39"]
+target-version = ["py312"]
 include = '\.pyi?$'
 extend-exclude = '''
 /(

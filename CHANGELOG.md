@@ -46,12 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Core Dependencies**: Updated requirements.txt with pinned runtime dependencies
 - **Development Tools**: New dev-requirements.txt with pytest, black, mypy, etc.
 - **Optional Dependencies**: New `[nlp]` extra with pandas, scikit-learn, kagglehub
-- **Python 3.9+ Support**: Extended support from Python 3.9-3.12
+- **Python 3.12 Support**: Now requires Python 3.12+ (removed 3.9-3.11 support)
 - **Editor Configuration**: Added .editorconfig for consistent formatting
 
 #### GitHub Actions Workflows
 - **Bitext Training Workflow**: Automated training with workflow_dispatch and scheduled runs
-- **Enhanced CI**: Updated CI to support Python 3.9-3.12 with bitext smoke tests
+- **Enhanced CI**: Updated CI to support Python 3.12+ with bitext smoke tests
 - **Artifact Management**: Structured artifact uploads with validation and summaries
 
 #### Documentation
@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Version**: Bumped from 0.3.0 to 0.1.0 (reset for official release)
-- **Python Compatibility**: Now supports Python 3.9+ (previously 3.10+)
+- **Python Compatibility**: Now requires Python 3.12+ (removed 3.9-3.11 support)
 - **Dependencies**: Reorganized core vs optional dependencies for lighter installs
 - **AliveLoopNode**: Enhanced constructor to accept configuration with backward compatibility
 - **Rolling History**: Now configurable via `rolling_history.max_len` parameter
@@ -136,7 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Technical Details
 - **Dependencies**: PyTorch 2.0+, torchvision, numpy, rich, pyyaml
-- **Python Support**: 3.10, 3.11, 3.12
+- **Python Support**: 3.12+
 - **Testing**: Unit tests, integration tests, benchmark smoke tests
 - **Performance**: Vectorized operations, GPU support, batch processing
 
