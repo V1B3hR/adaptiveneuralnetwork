@@ -1,0 +1,182 @@
+name: Adversarial Resilience Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily at 2 AM UTC to catch regressions
+    - cron: '0 2 * * *'
+
+jobs:
+  adversarial-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+        
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pytest pytest-cov
+        
+    - name: Run adversarial resilience tests
+      run: |
+        python -m pytest tests/test_adversarial_resilience.py -v --tb=short
+        
+    - name: Run quick adversarial benchmark
+      run: |
+        python tests/test_adversarial_resilience.py
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: adversarial-test-results-${{ matrix.python-version }}
+        path: |
+          test-results/
+          *.log
+          
+  robustness-guard:
+    runs-on: ubuntu-latest
+    needs: adversarial-tests
+    if: always()
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        
+    - name: Run robustness guard
+      run: |
+        # Run the existing robustness guard script
+        python -m adaptiveneuralnetwork.scripts.robustness_guard --min-robustness 40 --min-adversarial 25
+        
+    - name: Check for critical regressions
+      run: |
+        echo "Checking for critical adversarial resilience regressions..."
+        python -c "
+        from core.adversarial_benchmark import AdversarialSignalTester
+        import sys
+        
+        tester = AdversarialSignalTester()
+        
+        # Critical regression checks
+        energy_result = tester.test_energy_depletion_attack({
+            'attacker_count': 3, 'energy_drain_rate': 0.2, 
+            'attack_duration': 50, 'attack_persistence': 0.8
+        })
+        
+        trust_result = tester.test_trust_manipulation_attack({
+            'trust_manipulators': 2, 'trust_decay_rate': 0.15, 
+            'false_reputation_probability': 0.7
+        })
+        
+        print(f'Energy survival rate: {energy_result[\"survival_rate\"]:.1%}')
+        print(f'Trust resilience: {trust_result[\"trust_resilience\"]:.1f}%')
+        
+        # Critical thresholds - failing these should fail the build
+        if energy_result['survival_rate'] < 0.05:
+            print('❌ CRITICAL: Energy survival rate below 5%')
+            sys.exit(1)
+            
+        if trust_result['trust_resilience'] < 30:
+            print('❌ CRITICAL: Trust resilience below 30%')
+            sys.exit(1)
+            
+        print('✅ No critical regressions detected')
+        "
+        
+  performance-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        
+    - name: Generate robustness report
+      run: |
+        python -c "
+        from core.adversarial_benchmark import AdversarialSignalTester
+        import json
+        import datetime
+        
+        tester = AdversarialSignalTester()
+        
+        # Run comprehensive tests
+        results = {
+            'timestamp': datetime.datetime.now().isoformat(),
+            'energy_baseline': tester.test_energy_depletion_attack({
+                'attacker_count': 3, 'energy_drain_rate': 0.2,
+                'attack_duration': 50, 'attack_persistence': 0.8
+            }),
+            'energy_aggressive': tester.test_energy_depletion_attack({
+                'attacker_count': 5, 'energy_drain_rate': 0.3,
+                'attack_duration': 100, 'attack_persistence': 0.95
+            }),
+            'trust_baseline': tester.test_trust_manipulation_attack({
+                'trust_manipulators': 2, 'trust_decay_rate': 0.15,
+                'false_reputation_probability': 0.7
+            }),
+            'trust_aggressive': tester.test_trust_manipulation_attack({
+                'trust_manipulators': 4, 'trust_decay_rate': 0.25,
+                'false_reputation_probability': 0.9
+            })
+        }
+        
+        # Save results
+        with open('adversarial_performance_report.json', 'w') as f:
+            json.dump(results, f, indent=2)
+            
+        # Print summary
+        print('🔍 Adversarial Performance Report')
+        print('=' * 40)
+        print(f'Energy Baseline Survival: {results[\"energy_baseline\"][\"survival_rate\"]:.1%}')
+        print(f'Energy Aggressive Survival: {results[\"energy_aggressive\"][\"survival_rate\"]:.1%}')
+        print(f'Trust Baseline Resilience: {results[\"trust_baseline\"][\"trust_resilience\"]:.1f}%')
+        print(f'Trust Aggressive Resilience: {results[\"trust_aggressive\"][\"trust_resilience\"]:.1f}%')
+        print(f'Trust Detection Count: {results[\"trust_aggressive\"][\"detection_count\"]}')
+        "
+        
+    - name: Upload performance report
+      uses: actions/upload-artifact@v3
+      with:
+        name: adversarial-performance-report
+        path: adversarial_performance_report.json
+        retention-days: 30
