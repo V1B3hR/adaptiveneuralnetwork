@@ -292,6 +292,12 @@ class AliveLoopNode:
         self.energy_sharing_requests = deque(maxlen=5)  # Track energy sharing requests
         self.distributed_energy_pool = 0.0  # Shared energy pool with trusted nodes
         self.threat_assessment_level = 0  # 0=low, 1=medium, 2=high, 3=critical
+        
+        # Enhanced energy conservation attributes
+        self.energy_conservation_multiplier = 1.0  # Multiplier for energy conservation effectiveness
+        self.last_energy_level = self.energy  # Track energy changes
+        self.energy_decline_rate = 0.0  # Track rate of energy decline
+        self.survival_mode_active = False  # Ultra-low energy survival mode
 
         # Anxiety overwhelm safety protocol attributes - use config values
         self.anxiety_threshold = self._get_config_value('proactive_interventions', 'anxiety_threshold', default=8.0)
@@ -1885,17 +1891,49 @@ class AliveLoopNode:
             self.emergency_mode = True
             logger.warning(f"Node {self.node_id}: Emergency energy conservation activated")
             
-            # Reduce energy consumption for non-critical operations
-            self.communication_range *= 0.5
-            self.max_communications_per_step = max(1, self.max_communications_per_step // 2)
-            
-            # Increase trust threshold for communication (conserve energy)
             # Save current state for restoration later
             if not hasattr(self, '_pre_emergency_state'):
                 self._pre_emergency_state = {
-                    'communication_range': self.communication_range * 2,  # Store original
-                    'max_communications': self.max_communications_per_step * 2
+                    'communication_range': self.communication_range,
+                    'max_communications': self.max_communications_per_step
                 }
+            
+            # Drastically reduce energy consumption for non-critical operations
+            self.communication_range *= 0.3  # Reduce to 30% of normal range
+            self.max_communications_per_step = max(1, self.max_communications_per_step // 4)  # Reduce to 25%
+            
+            # Request emergency energy from trusted network
+            if hasattr(self, 'trust_network') and self.trust_network:
+                emergency_energy = self.request_distributed_energy(1.0)
+                self.energy += emergency_energy
+                
+            # Activate ultra-conservative energy recovery mode
+            if not hasattr(self, '_emergency_recovery_mode'):
+                self._emergency_recovery_mode = True
+                
+            # Activate survival mode if energy is critically low
+            if self.energy <= 0.5:
+                self.activate_survival_mode()
+    
+    def activate_survival_mode(self):
+        """Activate ultra-low energy survival mode"""
+        if not self.survival_mode_active:
+            self.survival_mode_active = True
+            logger.critical(f"Node {self.node_id}: Survival mode activated - minimal operations only")
+            
+            # Extreme energy conservation measures
+            self.communication_range *= 0.2  # Further reduce to 20% of emergency levels
+            self.max_communications_per_step = 1  # Only 1 communication per step
+            
+            # Increase energy conservation multiplier
+            self.energy_conservation_multiplier = 2.0
+            
+    def deactivate_survival_mode(self):
+        """Deactivate survival mode when energy recovers"""
+        if self.survival_mode_active and self.energy > 1.5:
+            self.survival_mode_active = False
+            self.energy_conservation_multiplier = 1.0
+            logger.info(f"Node {self.node_id}: Survival mode deactivated")
     
     def deactivate_emergency_energy_conservation(self):
         """Deactivate emergency energy conservation protocols"""
@@ -1908,16 +1946,27 @@ class AliveLoopNode:
                 self.communication_range = self._pre_emergency_state['communication_range']
                 self.max_communications_per_step = self._pre_emergency_state['max_communications']
                 delattr(self, '_pre_emergency_state')
+                
+            # Deactivate emergency recovery mode
+            if hasattr(self, '_emergency_recovery_mode'):
+                delattr(self, '_emergency_recovery_mode')
+                
+            # Deactivate survival mode if active
+            if self.survival_mode_active:
+                self.deactivate_survival_mode()
     
     def detect_energy_attack(self):
         """Detect potential energy drain attacks"""
-        if len(self.energy_drain_events) < 3:
+        if len(self.energy_drain_events) < 2:  # Lower threshold for faster detection
             return False
             
         # Check for rapid energy loss pattern
-        recent_events = list(self.energy_drain_events)[-3:]
+        recent_events = list(self.energy_drain_events)[-3:] if len(self.energy_drain_events) >= 3 else list(self.energy_drain_events)
         
-        # Calculate energy loss rate
+        # Calculate energy loss rate over recent events
+        if len(recent_events) < 2:
+            return False
+            
         time_span = recent_events[-1]['timestamp'] - recent_events[0]['timestamp']
         if time_span <= 0:
             return False
@@ -1925,9 +1974,18 @@ class AliveLoopNode:
         total_loss = sum(event['amount'] for event in recent_events)
         loss_rate = total_loss / max(time_span, 1.0)
         
-        # Detect attack if loss rate exceeds threshold
-        attack_threshold = 0.5  # Adjust based on normal energy consumption
-        if loss_rate > attack_threshold:
+        # Progressive attack detection - more aggressive thresholds
+        attack_threshold = 0.2  # Lower threshold for faster detection
+        critical_threshold = 0.5  # Critical attack level
+        
+        if loss_rate > critical_threshold:
+            self.energy_attack_detected = True
+            self.threat_assessment_level = 3  # Maximum threat level
+            # Immediately activate emergency protocols
+            self.activate_emergency_energy_conservation()
+            logger.error(f"Node {self.node_id}: Critical energy attack detected! Loss rate: {loss_rate:.3f}")
+            return True
+        elif loss_rate > attack_threshold:
             self.energy_attack_detected = True
             self.threat_assessment_level = min(3, self.threat_assessment_level + 1)
             logger.warning(f"Node {self.node_id}: Energy attack detected! Loss rate: {loss_rate:.3f}")
@@ -1971,21 +2029,31 @@ class AliveLoopNode:
     
     def adaptive_energy_allocation(self):
         """Adapt energy allocation based on current threat assessment"""
+        # Calculate energy decline rate
+        if hasattr(self, 'last_energy_level'):
+            self.energy_decline_rate = max(0, self.last_energy_level - self.energy)
+            self.last_energy_level = self.energy
+        
         base_energy_reserve = 0.1  # 10% base reserve
         
-        # Increase energy reserve based on threat level
+        # Increase energy reserve based on threat level and decline rate
         threat_multiplier = 1.0 + (self.threat_assessment_level * 0.1)
-        required_reserve = base_energy_reserve * threat_multiplier
+        decline_multiplier = 1.0 + min(self.energy_decline_rate, 0.5)  # Cap at 50% increase
+        required_reserve = base_energy_reserve * threat_multiplier * decline_multiplier
         
         # Adjust energy thresholds
         self.emergency_energy_threshold = required_reserve
         self.normal_energy_threshold = required_reserve * 2
         
-        # Activate emergency mode if needed
-        if self.energy <= self.emergency_energy_threshold:
+        # Activate appropriate conservation modes based on energy level
+        if self.energy <= 0.5 and not self.survival_mode_active:
+            self.activate_survival_mode()
+        elif self.energy <= self.emergency_energy_threshold and not self.emergency_mode:
             self.activate_emergency_energy_conservation()
         elif self.energy > self.normal_energy_threshold and self.emergency_mode:
             self.deactivate_emergency_energy_conservation()
+        elif self.energy > 1.5 and self.survival_mode_active:
+            self.deactivate_survival_mode()
     
     def record_energy_drain(self, amount, source="unknown"):
         """Record energy drain event for attack detection"""

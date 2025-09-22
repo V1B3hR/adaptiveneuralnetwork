@@ -22,7 +22,7 @@ class TrustNetwork:
         self.last_decay_time = {}  # Track when trust was last decayed for each node
         
         # Configurable thresholds
-        self.SUSPICION_THRESHOLD = 0.3  # When to start community verification
+        self.SUSPICION_THRESHOLD = 0.25  # Lowered from 0.3 for more aggressive detection
         self.PARANOIA_THRESHOLD = 0.1   # Too low - we're being paranoid
         self.TRUST_VOLATILITY_LIMIT = 0.2  # Max trust change per interaction
         
@@ -147,23 +147,41 @@ class TrustNetwork:
             
         recent = self.interaction_history[node_id][-20:]
         
-        # Love bombing pattern: too many positive signals too quickly
+        # Love bombing pattern: too many positive signals too quickly (lowered threshold)
         positive_signals = ['resource', 'joy_share', 'celebration_invite', 'comfort_request']
         positive_count = sum(1 for h in recent[-5:] 
                            if h['signal_type'] in positive_signals)
-        if positive_count >= 4:
+        if positive_count >= 3:  # Lowered from 4 to 3 for more sensitive detection
             return True
         
-        # Push-pull pattern: alternating positive and negative
-        if len(recent) >= 6:
+        # Rapid trust building pattern (new detection)
+        if len(recent) >= 3:
+            trust_increases = []
+            for h in recent[-3:]:
+                if h['trust_after'] is not None and h['trust_before'] is not None:
+                    if h['trust_after'] > h['trust_before']:
+                        trust_increases.append(h['trust_after'] - h['trust_before'])
+            
+            # If all recent interactions are trust increases above threshold
+            if len(trust_increases) >= 3 and all(increase > 0.1 for increase in trust_increases):
+                return True
+        
+        # Push-pull pattern: alternating positive and negative (enhanced)
+        if len(recent) >= 4:  # Reduced from 6 to 4 for faster detection
             pattern = []
-            for h in recent[-6:]:
+            for h in recent[-4:]:
                 if h['trust_after'] is not None and h['trust_before'] is not None:
                     pattern.append(h['trust_after'] > h['trust_before'])
                     
-            if len(pattern) >= 6:
-                if pattern == [True, False, True, False, True, False] or \
-                   pattern == [False, True, False, True, False, True]:
+            if len(pattern) >= 4:
+                # Look for alternating patterns
+                alternating_patterns = [
+                    [True, False, True, False],
+                    [False, True, False, True],
+                    [True, False, False, True],  # Additional patterns
+                    [False, True, True, False]
+                ]
+                if pattern in alternating_patterns:
                     return True
         
         return False
@@ -226,7 +244,8 @@ class TrustNetwork:
         for neighbor in trusted_neighbors[:5]:  # Ask up to 5 trusted neighbors
             # This would actually send the request
             # For now, we'll just log it
-            print(f"Requesting trust verification from {neighbor} about {verification_request['subject']}")
+            # print(f"Requesting trust verification from {neighbor} about {verification_request['subject']}")  # Silenced for cleaner output
+            pass
     
     def process_community_feedback(self, subject_id, feedback_list):
         """Process community feedback on suspicious node"""
