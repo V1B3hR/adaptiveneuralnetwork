@@ -8,20 +8,29 @@ from .api.config import AdaptiveConfig
 from .api.model import AdaptiveModel
 from .config import AdaptiveNeuralNetworkConfig, load_config
 
-# AutoML components
-from .automl import (
-    AdaptiveAutoMLEngine, 
-    AutoMLConfig,
-    create_automl_engine
-)
+# Optional AutoML components
+try:
+    from .automl import (
+        AdaptiveAutoMLEngine, 
+        AutoMLConfig,
+        create_automl_engine
+    )
+    _AUTOML_AVAILABLE = True
+except ImportError:
+    _AUTOML_AVAILABLE = False
 
+# Base exports
 __all__ = [
     "AdaptiveModel", 
     "AdaptiveConfig", 
     "AdaptiveNeuralNetworkConfig", 
     "load_config",
-    # AutoML
-    "AdaptiveAutoMLEngine",
-    "AutoMLConfig", 
-    "create_automl_engine"
 ]
+
+# Add AutoML exports if available
+if _AUTOML_AVAILABLE:
+    __all__.extend([
+        "AdaptiveAutoMLEngine",
+        "AutoMLConfig", 
+        "create_automl_engine"
+    ])
