@@ -1,0 +1,47 @@
+"""
+Developer ecosystem and community tools for adaptive neural networks.
+"""
+
+from .plugins import PluginManager, PluginBase, PluginRegistry
+from .contrib import CommunityPlugin, ContributionValidator
+
+# Base exports (always available)
+__all__ = [
+    "PluginManager",
+    "PluginBase", 
+    "PluginRegistry",
+    "CommunityPlugin",
+    "ContributionValidator",
+]
+
+# Import optional components without automatic loading
+_SDK_AVAILABLE = False
+_INTEGRATIONS_AVAILABLE = False
+
+def get_sdk():
+    """Lazy import SDK components."""
+    global _SDK_AVAILABLE
+    if not _SDK_AVAILABLE:
+        try:
+            from .sdk import AdaptiveNeuralNetworkSDK, SDKClient
+            _SDK_AVAILABLE = True
+            return AdaptiveNeuralNetworkSDK, SDKClient
+        except ImportError:
+            return None, None
+    else:
+        from .sdk import AdaptiveNeuralNetworkSDK, SDKClient
+        return AdaptiveNeuralNetworkSDK, SDKClient
+
+def get_integrations():
+    """Lazy import framework integrations."""
+    global _INTEGRATIONS_AVAILABLE
+    if not _INTEGRATIONS_AVAILABLE:
+        try:
+            from .integrations import PyTorchIntegration, TensorFlowIntegration, JAXIntegration
+            _INTEGRATIONS_AVAILABLE = True
+            return PyTorchIntegration, TensorFlowIntegration, JAXIntegration
+        except ImportError:
+            return None, None, None
+    else:
+        from .integrations import PyTorchIntegration, TensorFlowIntegration, JAXIntegration
+        return PyTorchIntegration, TensorFlowIntegration, JAXIntegration
