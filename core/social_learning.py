@@ -471,3 +471,556 @@ class MultiAgentSocialLearningEnvironment:
             stats['trust_network_density'] = total_trust_connections / total_possible_connections
             
         return stats
+
+
+class SwarmIntelligenceBehavior:
+    """
+    Swarm intelligence behaviors for multi-agent coordination.
+    
+    Implements particle swarm optimization-inspired collective behaviors,
+    ant colony optimization patterns, and flocking behaviors.
+    """
+    
+    def __init__(self, agent_id: int, swarm_size: int):
+        self.agent_id = agent_id
+        self.swarm_size = swarm_size
+        
+        # Swarm parameters
+        self.position = np.random.randn(10)  # Agent's position in solution space
+        self.velocity = np.zeros(10)
+        self.personal_best = self.position.copy()
+        self.personal_best_fitness = -np.inf
+        
+        # PSO parameters
+        self.inertia = 0.7
+        self.cognitive_weight = 1.4  # Personal best influence
+        self.social_weight = 1.4     # Global best influence
+        
+        # Flocking parameters
+        self.separation_radius = 2.0
+        self.alignment_radius = 5.0
+        self.cohesion_radius = 8.0
+        
+        # Pheromone trail (ant colony inspired)
+        self.pheromone_strength = 1.0
+        self.pheromone_decay = 0.1
+        
+    def update_pso_position(self, global_best_position: np.ndarray, dt: float = 1.0) -> np.ndarray:
+        """Update position using Particle Swarm Optimization dynamics."""
+        # PSO velocity update
+        r1, r2 = np.random.random(2)
+        
+        cognitive_component = self.cognitive_weight * r1 * (self.personal_best - self.position)
+        social_component = self.social_weight * r2 * (global_best_position - self.position)
+        
+        self.velocity = (self.inertia * self.velocity + 
+                        cognitive_component + social_component)
+        
+        # Update position
+        self.position += self.velocity * dt
+        
+        return self.position
+    
+    def flocking_behavior(self, neighbor_positions: List[np.ndarray], neighbor_velocities: List[np.ndarray]) -> np.ndarray:
+        """Implement flocking behavior (separation, alignment, cohesion)."""
+        if not neighbor_positions:
+            return np.zeros_like(self.velocity)
+        
+        neighbor_positions = np.array(neighbor_positions)
+        neighbor_velocities = np.array(neighbor_velocities)
+        
+        # Calculate distances to neighbors
+        distances = np.linalg.norm(neighbor_positions - self.position, axis=1)
+        
+        # Separation: avoid crowding local flockmates
+        separation = np.zeros_like(self.position)
+        close_neighbors = distances < self.separation_radius
+        if np.any(close_neighbors):
+            diff = self.position - neighbor_positions[close_neighbors]
+            diff_norm = np.linalg.norm(diff, axis=1, keepdims=True)
+            diff_norm[diff_norm == 0] = 1e-6  # Avoid division by zero
+            separation = np.mean(diff / diff_norm, axis=0)
+        
+        # Alignment: steer towards average heading of neighbors
+        alignment = np.zeros_like(self.velocity)
+        align_neighbors = distances < self.alignment_radius
+        if np.any(align_neighbors):
+            alignment = np.mean(neighbor_velocities[align_neighbors], axis=0) - self.velocity
+        
+        # Cohesion: steer towards average position of neighbors
+        cohesion = np.zeros_like(self.position)
+        cohesion_neighbors = distances < self.cohesion_radius
+        if np.any(cohesion_neighbors):
+            center_of_mass = np.mean(neighbor_positions[cohesion_neighbors], axis=0)
+            cohesion = center_of_mass - self.position
+        
+        # Combine behaviors
+        flocking_force = separation * 1.5 + alignment * 1.0 + cohesion * 1.0
+        return flocking_force
+    
+    def ant_colony_decision(self, options: List[Dict[str, Any]], pheromone_trails: Dict[str, float]) -> int:
+        """Make decision based on ant colony optimization principles."""
+        if not options:
+            return -1
+        
+        # Calculate probabilities based on pheromone trails and heuristic information
+        probabilities = []
+        
+        for i, option in enumerate(options):
+            option_key = option.get('key', f'option_{i}')
+            pheromone = pheromone_trails.get(option_key, 0.1)
+            heuristic = option.get('quality', 0.5)  # Heuristic information
+            
+            # Probability combines pheromone trail strength and heuristic desirability
+            prob = (pheromone ** self.cognitive_weight) * (heuristic ** self.social_weight)
+            probabilities.append(prob)
+        
+        # Normalize probabilities
+        total_prob = sum(probabilities)
+        if total_prob > 0:
+            probabilities = [p / total_prob for p in probabilities]
+        else:
+            probabilities = [1.0 / len(options)] * len(options)
+        
+        # Select option based on probabilities
+        return np.random.choice(len(options), p=probabilities)
+    
+    def deposit_pheromone(self, path: List[str], success: float) -> Dict[str, float]:
+        """Deposit pheromone on successful paths."""
+        pheromone_deposit = {}
+        deposit_amount = success * self.pheromone_strength
+        
+        for step in path:
+            pheromone_deposit[step] = deposit_amount
+        
+        return pheromone_deposit
+
+
+class NegotiationProtocol:
+    """
+    Advanced negotiation and consensus protocols for multi-agent coordination.
+    
+    Implements auction-based mechanisms, voting protocols, and 
+    game-theory inspired negotiation strategies.
+    """
+    
+    def __init__(self, agent_id: int):
+        self.agent_id = agent_id
+        self.negotiation_history = []
+        self.reputation_scores = {}
+        self.negotiation_strategies = ['cooperative', 'competitive', 'adaptive']
+        self.current_strategy = 'adaptive'
+        
+        # Auction parameters
+        self.bid_strategy = 'truthful'  # 'truthful', 'strategic', 'competitive'
+        self.reservation_values = {}
+        
+        # Game theory parameters
+        self.cooperation_tendency = 0.6
+        self.risk_tolerance = 0.4
+        
+    def initiate_auction(self, item: Dict[str, Any], auction_type: str = 'first_price') -> Dict[str, Any]:
+        """Initiate an auction for resource allocation."""
+        auction = {
+            'auction_id': f'auction_{self.agent_id}_{time.time()}',
+            'auctioneer': self.agent_id,
+            'item': item,
+            'type': auction_type,  # 'first_price', 'second_price', 'english'
+            'bids': [],
+            'status': 'open',
+            'start_time': time.time(),
+            'duration': item.get('duration', 30.0)  # seconds
+        }
+        
+        return auction
+    
+    def submit_bid(self, auction: Dict[str, Any], private_value: float) -> Dict[str, Any]:
+        """Submit a bid in an auction based on strategy."""
+        if auction['status'] != 'open':
+            return None
+        
+        # Calculate bid based on strategy and auction type
+        if self.bid_strategy == 'truthful':
+            bid_amount = private_value
+        elif self.bid_strategy == 'strategic':
+            if auction['type'] == 'first_price':
+                # Shade bid in first-price auction
+                bid_amount = private_value * 0.8
+            else:
+                # Bid truthfully in second-price auction
+                bid_amount = private_value
+        else:  # competitive
+            # Bid slightly above estimated competition
+            estimated_competition = np.mean([bid['amount'] for bid in auction['bids']]) if auction['bids'] else private_value * 0.5
+            bid_amount = max(private_value * 0.9, estimated_competition * 1.1)
+        
+        bid = {
+            'bidder': self.agent_id,
+            'amount': bid_amount,
+            'timestamp': time.time(),
+            'private_value': private_value  # Hidden from others
+        }
+        
+        return bid
+    
+    def resolve_auction(self, auction: Dict[str, Any]) -> Dict[str, Any]:
+        """Resolve auction and determine winner."""
+        if not auction['bids']:
+            return {'winner': None, 'price': 0, 'status': 'no_bids'}
+        
+        sorted_bids = sorted(auction['bids'], key=lambda x: x['amount'], reverse=True)
+        
+        if auction['type'] == 'first_price':
+            winner = sorted_bids[0]
+            price = winner['amount']
+        elif auction['type'] == 'second_price':
+            winner = sorted_bids[0]
+            price = sorted_bids[1]['amount'] if len(sorted_bids) > 1 else winner['amount']
+        else:  # english auction
+            winner = sorted_bids[0]
+            price = winner['amount']
+        
+        result = {
+            'winner': winner['bidder'],
+            'price': price,
+            'status': 'completed',
+            'efficiency': self._calculate_auction_efficiency(auction, winner)
+        }
+        
+        # Update reputation based on successful participation
+        self.reputation_scores[winner['bidder']] = self.reputation_scores.get(winner['bidder'], 0.5) + 0.1
+        
+        return result
+    
+    def multi_issue_negotiation(self, issues: List[Dict[str, Any]], opponent_preferences: Dict[str, float]) -> Dict[str, Any]:
+        """Conduct multi-issue negotiation using integrative bargaining."""
+        
+        # Analyze issue importance and find potential trade-offs
+        my_priorities = self._analyze_issue_priorities(issues)
+        
+        # Generate multiple offers exploring the solution space
+        offers = []
+        for _ in range(5):  # Generate 5 different offers
+            offer = {}
+            for issue in issues:
+                issue_name = issue['name']
+                
+                # Balance my priorities with estimated opponent preferences
+                my_weight = my_priorities.get(issue_name, 0.5)
+                opponent_weight = opponent_preferences.get(issue_name, 0.5)
+                
+                # Create integrative solution
+                if my_weight > opponent_weight:
+                    # I care more, claim more value on this issue
+                    offer[issue_name] = issue['range'][1] * 0.8 + issue['range'][0] * 0.2
+                else:
+                    # Opponent cares more, concede on this issue
+                    offer[issue_name] = issue['range'][0] * 0.8 + issue['range'][1] * 0.2
+            
+            offer_value = self._calculate_offer_value(offer, my_priorities)
+            offers.append({'terms': offer, 'value': offer_value})
+        
+        # Select best offer
+        best_offer = max(offers, key=lambda x: x['value'])
+        
+        negotiation_result = {
+            'offer': best_offer['terms'],
+            'expected_value': best_offer['value'],
+            'strategy': 'integrative',
+            'concessions': self._identify_concessions(best_offer['terms'], my_priorities)
+        }
+        
+        self.negotiation_history.append(negotiation_result)
+        return negotiation_result
+    
+    def _calculate_auction_efficiency(self, auction: Dict[str, Any], winner: Dict[str, Any]) -> float:
+        """Calculate allocative efficiency of auction outcome."""
+        # Efficiency = winner's value / highest possible value
+        all_values = [bid['private_value'] for bid in auction['bids']]
+        highest_value = max(all_values)
+        winner_value = winner['private_value']
+        
+        return winner_value / highest_value if highest_value > 0 else 1.0
+    
+    def _analyze_issue_priorities(self, issues: List[Dict[str, Any]]) -> Dict[str, float]:
+        """Analyze relative importance of negotiation issues."""
+        priorities = {}
+        total_weight = 0
+        
+        for issue in issues:
+            # Simple heuristic: larger ranges indicate more important issues
+            range_size = issue['range'][1] - issue['range'][0]
+            importance = issue.get('importance', 1.0)
+            weight = range_size * importance
+            
+            priorities[issue['name']] = weight
+            total_weight += weight
+        
+        # Normalize priorities
+        if total_weight > 0:
+            priorities = {k: v / total_weight for k, v in priorities.items()}
+        
+        return priorities
+    
+    def _calculate_offer_value(self, offer: Dict[str, Any], priorities: Dict[str, float]) -> float:
+        """Calculate subjective value of an offer."""
+        total_value = 0
+        for issue, value in offer.items():
+            weight = priorities.get(issue, 1.0)
+            total_value += weight * value
+        
+        return total_value
+    
+    def _identify_concessions(self, offer: Dict[str, Any], priorities: Dict[str, float]) -> List[str]:
+        """Identify concessions made in an offer."""
+        concessions = []
+        for issue, value in offer.items():
+            priority = priorities.get(issue, 0.5)
+            if priority > 0.7 and value < 0.5:  # High priority but low value
+                concessions.append(issue)
+        
+        return concessions
+
+
+class CompetitiveCooperativeEnvironment:
+    """
+    Environment supporting both competitive and cooperative multi-agent interactions.
+    
+    Manages resource allocation, territory control, coalition formation,
+    and mixed-motive games.
+    """
+    
+    def __init__(self, num_agents: int, environment_type: str = 'mixed'):
+        self.num_agents = num_agents
+        self.environment_type = environment_type  # 'competitive', 'cooperative', 'mixed'
+        self.agents = []
+        
+        # Environment state
+        self.resources = {'food': 100, 'territory': 50, 'information': 75}
+        self.territories = {}  # agent_id -> territory_size
+        self.coalitions = []   # List of agent coalitions
+        
+        # Game mechanics
+        self.round_number = 0
+        self.resource_regeneration_rate = 0.1
+        self.competition_intensity = 0.5
+        
+        # Performance tracking
+        self.agent_scores = defaultdict(float)
+        self.interaction_history = []
+        
+    def add_agent(self, agent_id: int, initial_resources: Optional[Dict[str, float]] = None) -> None:
+        """Add an agent to the environment."""
+        if initial_resources is None:
+            initial_resources = {'food': 10, 'territory': 5, 'information': 8}
+        
+        agent_data = {
+            'id': agent_id,
+            'resources': initial_resources.copy(),
+            'strategies': [],
+            'partnerships': set(),
+            'reputation': 0.5
+        }
+        
+        self.agents.append(agent_data)
+        self.territories[agent_id] = initial_resources.get('territory', 5)
+        
+    def run_competitive_round(self) -> Dict[str, Any]:
+        """Run a round of competitive interactions."""
+        round_results = {
+            'round': self.round_number,
+            'type': 'competitive',
+            'interactions': [],
+            'resource_changes': {}
+        }
+        
+        # Random pairwise competitions
+        available_agents = list(range(len(self.agents)))
+        
+        while len(available_agents) >= 2:
+            # Select two agents for competition
+            agent1_idx = available_agents.pop(random.randint(0, len(available_agents) - 1))
+            agent2_idx = available_agents.pop(random.randint(0, len(available_agents) - 1))
+            
+            agent1 = self.agents[agent1_idx]
+            agent2 = self.agents[agent2_idx]
+            
+            # Resource competition
+            resource_type = random.choice(['food', 'territory', 'information'])
+            competition_result = self._compete_for_resource(agent1, agent2, resource_type)
+            
+            round_results['interactions'].append(competition_result)
+            
+            # Update scores
+            self.agent_scores[agent1['id']] += competition_result['agent1_gain']
+            self.agent_scores[agent2['id']] += competition_result['agent2_gain']
+        
+        self.round_number += 1
+        return round_results
+    
+    def run_cooperative_round(self) -> Dict[str, Any]:
+        """Run a round of cooperative interactions."""
+        round_results = {
+            'round': self.round_number,
+            'type': 'cooperative',
+            'coalitions_formed': [],
+            'collective_gains': {}
+        }
+        
+        # Attempt coalition formation
+        potential_coalitions = self._identify_beneficial_coalitions()
+        
+        for coalition in potential_coalitions:
+            if self._form_coalition(coalition):
+                # Execute cooperative task
+                task_result = self._execute_cooperative_task(coalition)
+                round_results['coalitions_formed'].append(task_result)
+                
+                # Distribute rewards
+                total_reward = task_result['collective_reward']
+                reward_per_agent = total_reward / len(coalition)
+                
+                for agent_id in coalition:
+                    self.agent_scores[agent_id] += reward_per_agent
+        
+        self.round_number += 1
+        return round_results
+    
+    def run_mixed_round(self) -> Dict[str, Any]:
+        """Run a round with both competitive and cooperative elements."""
+        # Randomly decide on competition vs cooperation
+        if random.random() < self.competition_intensity:
+            return self.run_competitive_round()
+        else:
+            return self.run_cooperative_round()
+    
+    def _compete_for_resource(self, agent1: Dict, agent2: Dict, resource_type: str) -> Dict[str, Any]:
+        """Simulate competition between two agents for a resource."""
+        
+        # Competition strength based on current resources and strategy
+        strength1 = agent1['resources'].get(resource_type, 0) + random.random()
+        strength2 = agent2['resources'].get(resource_type, 0) + random.random()
+        
+        # Determine winner and resource transfer
+        if strength1 > strength2:
+            winner, loser = agent1, agent2
+            transfer_amount = min(loser['resources'].get(resource_type, 0) * 0.3, 5)
+        else:
+            winner, loser = agent2, agent1
+            transfer_amount = min(loser['resources'].get(resource_type, 0) * 0.3, 5)
+        
+        # Execute transfer
+        loser['resources'][resource_type] = max(0, loser['resources'][resource_type] - transfer_amount)
+        winner['resources'][resource_type] += transfer_amount * 0.8  # Some loss in transfer
+        
+        return {
+            'type': 'competition',
+            'resource': resource_type,
+            'winner': winner['id'],
+            'loser': loser['id'],
+            'transfer_amount': transfer_amount,
+            'agent1_gain': transfer_amount * 0.8 if winner == agent1 else -transfer_amount,
+            'agent2_gain': transfer_amount * 0.8 if winner == agent2 else -transfer_amount
+        }
+    
+    def _identify_beneficial_coalitions(self) -> List[List[int]]:
+        """Identify potentially beneficial coalitions."""
+        coalitions = []
+        
+        # Find agents with complementary resources
+        for i in range(len(self.agents)):
+            for j in range(i + 1, len(self.agents)):
+                agent1, agent2 = self.agents[i], self.agents[j]
+                
+                # Check resource complementarity
+                synergy_score = 0
+                for resource in ['food', 'territory', 'information']:
+                    resource1 = agent1['resources'].get(resource, 0)
+                    resource2 = agent2['resources'].get(resource, 0)
+                    
+                    # High complementarity if one is strong where other is weak
+                    if (resource1 > 15 and resource2 < 5) or (resource2 > 15 and resource1 < 5):
+                        synergy_score += 1
+                
+                if synergy_score >= 1:  # At least one complementary resource
+                    coalitions.append([agent1['id'], agent2['id']])
+        
+        return coalitions
+    
+    def _form_coalition(self, coalition: List[int]) -> bool:
+        """Attempt to form a coalition between agents."""
+        # All agents must agree to join
+        for agent_id in coalition:
+            agent = next(a for a in self.agents if a['id'] == agent_id)
+            
+            # Simple decision: join if potential partners have good reputation
+            partners = [aid for aid in coalition if aid != agent_id]
+            avg_partner_reputation = np.mean([
+                next(a for a in self.agents if a['id'] == pid)['reputation'] 
+                for pid in partners
+            ])
+            
+            if avg_partner_reputation < 0.3:  # Don't join with untrustworthy agents
+                return False
+        
+        # Coalition formed successfully
+        self.coalitions.append({
+            'members': coalition,
+            'formed_round': self.round_number,
+            'trust_level': avg_partner_reputation
+        })
+        
+        return True
+    
+    def _execute_cooperative_task(self, coalition: List[int]) -> Dict[str, Any]:
+        """Execute a cooperative task for the coalition."""
+        
+        # Calculate collective capability
+        total_resources = defaultdict(float)
+        for agent_id in coalition:
+            agent = next(a for a in self.agents if a['id'] == agent_id)
+            for resource, amount in agent['resources'].items():
+                total_resources[resource] += amount
+        
+        # Task difficulty and reward scale with coalition size
+        base_reward = len(coalition) * 10
+        synergy_bonus = (len(coalition) - 1) * 5  # Cooperation bonus
+        
+        # Success probability based on resource adequacy
+        required_resources = {'food': len(coalition) * 8, 'territory': len(coalition) * 4, 'information': len(coalition) * 6}
+        success_prob = 1.0
+        
+        for resource, required in required_resources.items():
+            if total_resources[resource] < required:
+                success_prob *= total_resources[resource] / required
+        
+        success = random.random() < success_prob
+        collective_reward = (base_reward + synergy_bonus) * success_prob
+        
+        # Update agent reputations based on contribution and success
+        for agent_id in coalition:
+            agent = next(a for a in self.agents if a['id'] == agent_id)
+            if success:
+                agent['reputation'] = min(1.0, agent['reputation'] + 0.1)
+            else:
+                agent['reputation'] = max(0.0, agent['reputation'] - 0.05)
+        
+        return {
+            'coalition': coalition,
+            'task_type': 'resource_gathering',
+            'success': success,
+            'collective_reward': collective_reward,
+            'success_probability': success_prob
+        }
+    
+    def get_environment_state(self) -> Dict[str, Any]:
+        """Get current state of the environment."""
+        return {
+            'round': self.round_number,
+            'agents': len(self.agents),
+            'resources': self.resources.copy(),
+            'active_coalitions': len(self.coalitions),
+            'average_score': np.mean(list(self.agent_scores.values())) if self.agent_scores else 0,
+            'competition_level': self.competition_intensity,
+            'cooperation_events': len([c for c in self.coalitions if c['formed_round'] >= self.round_number - 5])
+        }

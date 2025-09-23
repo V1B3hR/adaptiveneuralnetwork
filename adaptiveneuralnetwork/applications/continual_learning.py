@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 from dataclasses import dataclass
 import logging
+import time
 
 from ..core.neuromorphic_v3 import (
     HierarchicalNetwork, MetaplasticitySynapse, HomeostaticScaling,
@@ -56,6 +57,22 @@ class ContinualLearningConfig:
     learning_rate_adaptation: bool = True
     threshold_adaptation: bool = True
     synaptic_consolidation: bool = True
+    
+    # Advanced learning paradigms
+    enable_progressive_networks: bool = False  # Progressive neural networks
+    enable_advanced_image_processing: bool = False  # Advanced visual features
+    enable_memory_augmentation: bool = True  # Enhanced memory architectures
+    enable_lifelong_benchmarking: bool = False  # Benchmark tracking
+    
+    # Image processing parameters
+    enable_spatial_attention: bool = True
+    enable_temporal_pooling: bool = True
+    visual_feature_dim: int = 2048
+    
+    # Memory augmentation parameters
+    memory_consolidation_strength: float = 0.5
+    memory_retrieval_temperature: float = 1.0
+    memory_update_frequency: int = 100
     
     def __post_init__(self):
         if self.hidden_layers is None:
@@ -313,6 +330,360 @@ class EpisodicMemory(nn.Module):
         return self.memory_features[task_indices], self.memory_labels[task_indices]
 
 
+class ProgressiveNeuralNetwork(nn.Module):
+    """
+    Progressive Neural Network for continual learning without catastrophic forgetting.
+    
+    Creates lateral connections between tasks while freezing previous task columns,
+    enabling knowledge transfer while preserving old knowledge.
+    """
+    
+    def __init__(self, input_size: int, hidden_sizes: List[int], output_size: int):
+        super().__init__()
+        
+        self.input_size = input_size
+        self.hidden_sizes = hidden_sizes
+        self.output_size = output_size
+        self.num_tasks = 0
+        
+        # Store task-specific columns
+        self.task_columns = nn.ModuleList()
+        self.lateral_connections = nn.ModuleList()  # Connections between columns
+        self.output_heads = nn.ModuleList()
+        
+        logger.debug(f"Initialized progressive network: {input_size} -> {hidden_sizes} -> {output_size}")
+    
+    def add_task(self, task_id: int) -> None:
+        """Add a new task column to the progressive network."""
+        if task_id != self.num_tasks:
+            raise ValueError(f"Expected task_id {self.num_tasks}, got {task_id}")
+        
+        # Create new column for this task
+        layers = []
+        prev_size = self.input_size
+        
+        for hidden_size in self.hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            prev_size = hidden_size
+        
+        column = nn.Sequential(*layers)
+        self.task_columns.append(column)
+        
+        # Create lateral connections from previous columns
+        if self.num_tasks > 0:
+            lateral_conn = nn.ModuleList()
+            for layer_idx in range(len(self.hidden_sizes)):
+                # Create lateral connections from all previous columns at this layer
+                conn_layers = nn.ModuleList()
+                for prev_task in range(self.num_tasks):
+                    # Lateral connections map from same hidden size to same hidden size
+                    input_size = self.hidden_sizes[layer_idx]
+                    output_size = self.hidden_sizes[layer_idx]
+                    conn_layers.append(nn.Linear(input_size, output_size))
+                lateral_conn.append(conn_layers)
+            self.lateral_connections.append(lateral_conn)
+        else:
+            self.lateral_connections.append(nn.ModuleList())
+        
+        # Create output head for this task
+        output_head = nn.Linear(self.hidden_sizes[-1], self.output_size)
+        self.output_heads.append(output_head)
+        
+        # Freeze previous task parameters
+        if self.num_tasks > 0:
+            for prev_task_idx in range(self.num_tasks):
+                for param in self.task_columns[prev_task_idx].parameters():
+                    param.requires_grad = False
+                for param in self.output_heads[prev_task_idx].parameters():
+                    param.requires_grad = False
+        
+        self.num_tasks += 1
+        logger.info(f"Added task {task_id}, total tasks: {self.num_tasks}")
+    
+    def forward(self, x: torch.Tensor, task_id: int) -> torch.Tensor:
+        """Forward pass through progressive network for specific task."""
+        if task_id >= self.num_tasks:
+            raise ValueError(f"Task {task_id} not available, only {self.num_tasks} tasks")
+        
+        # Store all layer activations for lateral connections
+        all_activations = []  # [task][layer] = activation
+        
+        # Process each column up to and including the target task
+        for col_idx in range(task_id + 1):
+            current_input = x
+            layer_activations = []
+            
+            layer_idx = 0
+            for layer in self.task_columns[col_idx]:
+                if isinstance(layer, nn.Linear):
+                    # Apply linear layer first
+                    linear_output = layer(current_input)
+                    
+                    # Add lateral connections from previous columns at same layer
+                    lateral_input = torch.zeros_like(linear_output)
+                    
+                    if (col_idx > 0 and 
+                        col_idx < len(self.lateral_connections) and 
+                        layer_idx < len(self.lateral_connections[col_idx])):
+                        
+                        connections = self.lateral_connections[col_idx][layer_idx]
+                        
+                        for prev_col_idx in range(col_idx):
+                            if (prev_col_idx < len(all_activations) and 
+                                layer_idx < len(all_activations[prev_col_idx]) and
+                                prev_col_idx < len(connections)):
+                                
+                                prev_activation = all_activations[prev_col_idx][layer_idx]
+                                lateral_conn = connections[prev_col_idx]
+                                lateral_contribution = lateral_conn(prev_activation)
+                                lateral_input += lateral_contribution
+                    
+                    # Combine linear output with lateral input
+                    current_input = linear_output + lateral_input
+                    layer_activations.append(current_input.clone())
+                    layer_idx += 1
+                else:
+                    # Non-linear activation
+                    current_input = layer(current_input)
+            
+            all_activations.append(layer_activations)
+        
+        # Use the final activation from the target task column
+        if all_activations[task_id]:
+            final_activation = all_activations[task_id][-1]
+        else:
+            # Fallback to input if no activations recorded
+            final_activation = x
+        
+        output = self.output_heads[task_id](final_activation)
+        return output
+
+
+class AdvancedImageProcessor(nn.Module):
+    """
+    Advanced image processing module for continual learning.
+    
+    Combines spatial attention, temporal pooling, and multi-scale features
+    for robust visual representation learning.
+    """
+    
+    def __init__(self, input_channels: int, feature_dim: int, config: ContinualLearningConfig):
+        super().__init__()
+        
+        self.config = config
+        self.feature_dim = feature_dim
+        
+        # Multi-scale convolutional features
+        self.conv_layers = nn.ModuleList([
+            nn.Conv2d(input_channels, 64, kernel_size=3, padding=1),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.Conv2d(256, 512, kernel_size=3, padding=1),
+        ])
+        
+        # Spatial attention mechanism
+        if config.enable_spatial_attention:
+            self.spatial_attention = nn.ModuleList([
+                nn.Conv2d(64, 1, kernel_size=1),
+                nn.Conv2d(128, 1, kernel_size=1),
+                nn.Conv2d(256, 1, kernel_size=1),
+                nn.Conv2d(512, 1, kernel_size=1),
+            ])
+        
+        # Temporal pooling for video sequences
+        if config.enable_temporal_pooling:
+            self.temporal_pooling = nn.LSTM(feature_dim, 256, batch_first=True)  # Use feature_dim not 512
+        else:
+            self.temporal_pooling = None
+        
+        # Feature fusion and projection
+        self.feature_fusion = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)),
+            nn.Flatten(),
+            nn.Linear(512, feature_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1)
+        )
+        
+        # Task-specific batch normalization layers
+        self.task_bn_layers = nn.ModuleList()
+        
+        logger.debug(f"Initialized advanced image processor: {input_channels} -> {feature_dim}")
+    
+    def add_task_adaptation(self, task_id: int) -> None:
+        """Add task-specific batch normalization for domain adaptation."""
+        task_bn = nn.ModuleList([
+            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(128), 
+            nn.BatchNorm2d(256),
+            nn.BatchNorm2d(512),
+        ])
+        self.task_bn_layers.append(task_bn)
+        logger.info(f"Added task-specific BN for task {task_id}")
+    
+    def forward(self, x: torch.Tensor, task_id: Optional[int] = None, temporal_sequence: bool = False) -> torch.Tensor:
+        """
+        Forward pass through advanced image processor.
+        
+        Args:
+            x: Input tensor of shape (B, C, H, W) or (B, T, C, H, W) for temporal
+            task_id: Optional task ID for task-specific adaptation
+            temporal_sequence: Whether input is a temporal sequence
+        """
+        if temporal_sequence and len(x.shape) == 5:
+            # Handle temporal sequences: (B, T, C, H, W)
+            batch_size, seq_len = x.shape[:2]
+            x = x.view(-1, *x.shape[2:])  # Reshape to (B*T, C, H, W)
+            process_temporal = True
+        else:
+            process_temporal = False
+            batch_size, seq_len = x.shape[0], 1
+        
+        # Multi-scale feature extraction with attention
+        features = []
+        current_x = x
+        
+        for i, conv_layer in enumerate(self.conv_layers):
+            current_x = conv_layer(current_x)
+            current_x = nn.functional.relu(current_x)
+            
+            # Apply task-specific batch normalization if available
+            if task_id is not None and task_id < len(self.task_bn_layers):
+                current_x = self.task_bn_layers[task_id][i](current_x)
+            
+            # Spatial attention
+            if self.config.enable_spatial_attention and hasattr(self, 'spatial_attention'):
+                attention_weights = torch.sigmoid(self.spatial_attention[i](current_x))
+                current_x = current_x * attention_weights
+            
+            features.append(current_x)
+            
+            # Max pooling except for last layer
+            if i < len(self.conv_layers) - 1:
+                current_x = nn.functional.max_pool2d(current_x, kernel_size=2)
+        
+        # Feature fusion
+        final_features = self.feature_fusion(current_x)
+        
+        # Temporal processing if needed
+        if process_temporal and self.config.enable_temporal_pooling and self.temporal_pooling is not None:
+            # Reshape back to temporal format
+            final_features = final_features.view(batch_size, seq_len, -1)
+            
+            # Apply LSTM for temporal modeling
+            temporal_features, _ = self.temporal_pooling(final_features)
+            # Take final timestep
+            final_features = temporal_features[:, -1, :]
+        
+        return final_features
+
+
+class MemoryAugmentedArchitecture(nn.Module):
+    """
+    Memory-augmented architecture for enhanced continual learning.
+    
+    Combines multiple memory systems: episodic, semantic, and working memory
+    for comprehensive knowledge retention and transfer.
+    """
+    
+    def __init__(self, feature_dim: int, memory_dim: int, config: ContinualLearningConfig):
+        super().__init__()
+        
+        self.config = config
+        self.feature_dim = feature_dim
+        self.memory_dim = memory_dim
+        
+        # Working memory for current task processing
+        self.working_memory = nn.LSTM(feature_dim, memory_dim, batch_first=True)
+        
+        # Semantic memory for long-term knowledge
+        self.semantic_memory = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(memory_dim, nhead=8, batch_first=True),
+            num_layers=2
+        )
+        
+        # Memory consolidation mechanism
+        self.memory_consolidation = nn.Sequential(
+            nn.Linear(memory_dim * 2, memory_dim),
+            nn.ReLU(),
+            nn.Linear(memory_dim, memory_dim),
+            nn.Tanh()
+        )
+        
+        # Attention mechanism for memory retrieval
+        self.memory_attention = nn.MultiheadAttention(
+            memory_dim, num_heads=8, batch_first=True
+        )
+        
+        # Memory buffers
+        self.register_buffer('semantic_memory_bank', torch.randn(1000, memory_dim) * 0.1)
+        self.register_buffer('memory_importance', torch.ones(1000))
+        self.register_buffer('memory_write_pointer', torch.tensor(0, dtype=torch.long))
+        
+        logger.debug(f"Initialized memory-augmented architecture: {feature_dim} -> {memory_dim}")
+    
+    def update_semantic_memory(self, features: torch.Tensor, importance: torch.Tensor) -> None:
+        """Update semantic memory with consolidated features."""
+        batch_size = features.size(0)
+        
+        for i in range(batch_size):
+            idx = self.memory_write_pointer.item() % self.semantic_memory_bank.size(0)
+            
+            # Store consolidated memory
+            self.semantic_memory_bank[idx] = features[i]
+            self.memory_importance[idx] = importance[i]
+            
+            self.memory_write_pointer += 1
+    
+    def retrieve_relevant_memories(self, query: torch.Tensor, top_k: int = 10) -> torch.Tensor:
+        """Retrieve most relevant memories using attention mechanism."""
+        batch_size = query.size(0)
+        
+        # Expand memory bank to match batch size
+        memory_bank = self.semantic_memory_bank.unsqueeze(0).expand(batch_size, -1, -1)
+        query_expanded = query.unsqueeze(1)  # Add sequence dimension
+        
+        # Use attention to find relevant memories
+        attended_memories, attention_weights = self.memory_attention(
+            query_expanded, memory_bank, memory_bank
+        )
+        
+        return attended_memories.squeeze(1)  # Remove sequence dimension
+    
+    def forward(self, features: torch.Tensor, retrieve_memories: bool = True) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Forward pass through memory-augmented architecture.
+        
+        Returns:
+            enhanced_features: Features enhanced with memory
+            memory_state: Current memory state for consolidation
+        """
+        batch_size = features.size(0)
+        
+        # Process through working memory
+        features_seq = features.unsqueeze(1)  # Add sequence dimension
+        working_output, (hidden, cell) = self.working_memory(features_seq)
+        working_features = working_output.squeeze(1)
+        
+        # Retrieve and integrate relevant memories
+        if retrieve_memories:
+            relevant_memories = self.retrieve_relevant_memories(working_features)
+            
+            # Consolidate working memory with retrieved memories
+            combined_features = torch.cat([working_features, relevant_memories], dim=-1)
+            consolidated_features = self.memory_consolidation(combined_features)
+        else:
+            consolidated_features = working_features
+        
+        # Process through semantic memory transformer
+        consolidated_seq = consolidated_features.unsqueeze(1)
+        semantic_output = self.semantic_memory(consolidated_seq)
+        enhanced_features = semantic_output.squeeze(1)
+        
+        return enhanced_features, consolidated_features
+
+
 class SynapticConsolidation(nn.Module):
     """
     Synaptic consolidation mechanism to protect important connections.
@@ -447,6 +818,34 @@ class ContinualLearningSystem(nn.Module):
         # Synaptic consolidation
         self.synaptic_consolidation = SynapticConsolidation(self.network) if config.synaptic_consolidation else None
         
+        # Advanced learning paradigm components
+        if config.enable_progressive_networks:
+            self.progressive_network = ProgressiveNeuralNetwork(
+                config.input_size, config.hidden_layers, config.output_size
+            )
+        else:
+            self.progressive_network = None
+        
+        if config.enable_advanced_image_processing:
+            input_channels = 3 if len(str(config.input_size)) > 3 else 1  # Heuristic for image channels
+            self.image_processor = AdvancedImageProcessor(
+                input_channels, config.visual_feature_dim, config
+            )
+        else:
+            self.image_processor = None
+        
+        if config.enable_memory_augmentation:
+            self.memory_augmented_arch = MemoryAugmentedArchitecture(
+                config.hidden_layers[-1], config.hidden_layers[-1], config
+            )
+        else:
+            self.memory_augmented_arch = None
+        
+        if config.enable_lifelong_benchmarking:
+            self.benchmark_system = LifelongLearningBenchmark(config)
+        else:
+            self.benchmark_system = None
+        
         # Task management
         self.current_task = 0
         self.task_performance = {}
@@ -456,6 +855,14 @@ class ContinualLearningSystem(nn.Module):
         self.current_learning_rate = 0.001
         
         logger.info(f"Initialized continual learning system for {config.num_tasks} tasks")
+        if config.enable_progressive_networks:
+            logger.info("- Progressive neural networks enabled")
+        if config.enable_advanced_image_processing:
+            logger.info("- Advanced image processing enabled")
+        if config.enable_memory_augmentation:
+            logger.info("- Memory-augmented architecture enabled")
+        if config.enable_lifelong_benchmarking:
+            logger.info("- Lifelong learning benchmarking enabled")
     
     def _build_network(self, base_config: NeuromorphicConfig) -> None:
         """Build the neuromorphic network architecture."""
@@ -471,8 +878,7 @@ class ContinualLearningSystem(nn.Module):
         topology_config = TopologyConfig(
             num_layers=len(layer_sizes),
             layer_sizes=layer_sizes,
-            connection_probability=0.1,
-            enable_dynamic_connectivity=True
+            connection_probability=0.1
         )
         
         # Hierarchical network with adaptive neurons
@@ -809,3 +1215,174 @@ class ContinualLearningSystem(nn.Module):
                     task_representations[task_id] = torch.cat(representations, dim=0)
         
         return task_representations
+
+
+class LifelongLearningBenchmark:
+    """
+    Comprehensive benchmark system for lifelong learning performance evaluation.
+    
+    Tracks multiple metrics including catastrophic forgetting, transfer learning,
+    adaptation speed, and memory efficiency.
+    """
+    
+    def __init__(self, config: ContinualLearningConfig):
+        self.config = config
+        self.metrics_history = []
+        self.task_timings = {}
+        self.memory_usage = {}
+        self.adaptation_events = {}
+        
+        # Benchmark metrics
+        self.metric_names = [
+            'average_accuracy', 'backward_transfer', 'forward_transfer',
+            'average_forgetting', 'learning_efficiency', 'memory_stability',
+            'adaptation_speed', 'knowledge_retention'
+        ]
+        
+        logger.info("Initialized lifelong learning benchmark system")
+    
+    def start_task_timing(self, task_id: int) -> None:
+        """Start timing for a task."""
+        self.task_timings[task_id] = {'start': time.time()}
+    
+    def end_task_timing(self, task_id: int) -> None:
+        """End timing for a task."""
+        if task_id in self.task_timings:
+            self.task_timings[task_id]['end'] = time.time()
+            self.task_timings[task_id]['duration'] = (
+                self.task_timings[task_id]['end'] - self.task_timings[task_id]['start']
+            )
+    
+    def record_memory_usage(self, task_id: int, model: nn.Module) -> None:
+        """Record memory usage for a task."""
+        # Calculate model parameters
+        total_params = sum(p.numel() for p in model.parameters())
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        
+        self.memory_usage[task_id] = {
+            'total_parameters': total_params,
+            'trainable_parameters': trainable_params,
+            'memory_ratio': trainable_params / total_params if total_params > 0 else 0
+        }
+    
+    def record_adaptation_event(self, task_id: int, event_type: str, value: float) -> None:
+        """Record adaptation events during learning."""
+        if task_id not in self.adaptation_events:
+            self.adaptation_events[task_id] = []
+        
+        self.adaptation_events[task_id].append({
+            'type': event_type,
+            'value': value,
+            'timestamp': time.time()
+        })
+    
+    def evaluate_comprehensive_metrics(
+        self, 
+        model: ContinualLearningSystem,
+        task_loaders: Dict[int, torch.utils.data.DataLoader],
+        baseline_performances: Optional[Dict[int, float]] = None
+    ) -> Dict[str, float]:
+        """Evaluate comprehensive lifelong learning metrics."""
+        
+        # Get basic continual learning metrics
+        base_metrics = model.evaluate_continual_performance(task_loaders)
+        
+        # Calculate additional benchmark metrics
+        benchmark_metrics = {}
+        
+        # 1. Learning Efficiency (accuracy gain per unit time)
+        if self.task_timings:
+            total_accuracy = base_metrics.get('average_accuracy', 0)
+            total_time = sum(timing.get('duration', 0) for timing in self.task_timings.values())
+            benchmark_metrics['learning_efficiency'] = total_accuracy / max(total_time, 1e-6)
+        
+        # 2. Memory Stability (consistency of memory usage)
+        if self.memory_usage:
+            memory_ratios = [usage['memory_ratio'] for usage in self.memory_usage.values()]
+            benchmark_metrics['memory_stability'] = 1.0 - np.std(memory_ratios) if memory_ratios else 0
+        
+        # 3. Adaptation Speed (time to adapt to new tasks)
+        adaptation_speeds = []
+        for task_id, events in self.adaptation_events.items():
+            if events:
+                adaptation_events = [e for e in events if e['type'] == 'adaptation']
+                if adaptation_events:
+                    avg_adaptation_time = np.mean([e['value'] for e in adaptation_events])
+                    adaptation_speeds.append(1.0 / max(avg_adaptation_time, 1e-6))
+        
+        benchmark_metrics['adaptation_speed'] = np.mean(adaptation_speeds) if adaptation_speeds else 0
+        
+        # 4. Knowledge Retention (stability of learned representations)
+        task_representations = model.get_task_representations(task_loaders)
+        if len(task_representations) > 1:
+            retention_scores = []
+            task_ids = sorted(task_representations.keys())
+            
+            for i in range(len(task_ids) - 1):
+                task_i = task_ids[i]
+                for j in range(i + 1, len(task_ids)):
+                    task_j = task_ids[j]
+                    
+                    # Calculate representation similarity
+                    repr_i = task_representations[task_i].mean(dim=0)
+                    repr_j = task_representations[task_j].mean(dim=0)
+                    
+                    similarity = torch.cosine_similarity(repr_i, repr_j, dim=0)
+                    retention_scores.append(similarity.item())
+            
+            benchmark_metrics['knowledge_retention'] = np.mean(retention_scores)
+        else:
+            benchmark_metrics['knowledge_retention'] = 1.0
+        
+        # 5. Forward Transfer (performance on new tasks using previous knowledge)
+        if baseline_performances and len(task_loaders) > 1:
+            forward_transfers = []
+            for task_id, loader in task_loaders.items():
+                if task_id in baseline_performances:
+                    current_perf = model.evaluate_task(loader)
+                    baseline_perf = baseline_performances[task_id]
+                    forward_transfers.append(current_perf - baseline_perf)
+            
+            benchmark_metrics['forward_transfer'] = np.mean(forward_transfers) if forward_transfers else 0
+        
+        # Combine all metrics
+        comprehensive_metrics = {**base_metrics, **benchmark_metrics}
+        
+        # Store metrics history
+        self.metrics_history.append({
+            'timestamp': time.time(),
+            'num_tasks': len(task_loaders),
+            'metrics': comprehensive_metrics.copy()
+        })
+        
+        return comprehensive_metrics
+    
+    def generate_benchmark_report(self) -> Dict[str, Any]:
+        """Generate comprehensive benchmark report."""
+        if not self.metrics_history:
+            return {'error': 'No metrics recorded'}
+        
+        # Latest metrics
+        latest_metrics = self.metrics_history[-1]['metrics']
+        
+        # Metric trends over time
+        trends = {}
+        for metric in self.metric_names:
+            values = [entry['metrics'].get(metric, 0) for entry in self.metrics_history]
+            if len(values) > 1:
+                trends[f'{metric}_trend'] = np.polyfit(range(len(values)), values, 1)[0]  # Linear trend
+        
+        # Performance summary
+        performance_summary = {
+            'total_tasks_learned': self.metrics_history[-1]['num_tasks'],
+            'total_learning_time': sum(timing.get('duration', 0) for timing in self.task_timings.values()),
+            'average_adaptation_events': np.mean([len(events) for events in self.adaptation_events.values()]) if self.adaptation_events else 0,
+            'memory_efficiency': np.mean([usage['memory_ratio'] for usage in self.memory_usage.values()]) if self.memory_usage else 0
+        }
+        
+        return {
+            'latest_metrics': latest_metrics,
+            'metric_trends': trends,
+            'performance_summary': performance_summary,
+            'benchmark_timestamp': time.time()
+        }
