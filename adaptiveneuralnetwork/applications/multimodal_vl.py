@@ -393,6 +393,10 @@ class VisionLanguageModel(nn.Module):
             return VisualDialogHead(self.config)
         elif task == VisionLanguageTask.SCENE_GRAPH_GENERATION:
             return SceneGraphHead(self.config)
+        elif task == VisionLanguageTask.VIDEO_TEXT_AUDIO_FUSION:
+            return VideoTextAudioMultimodalHead(self.config)
+        elif task == VisionLanguageTask.ADVANCED_ACTION_RECOGNITION:
+            return AdvancedActionRecognitionHead(self.config)
         else:
             raise ValueError(f"Unsupported task: {task}")
             
@@ -417,9 +421,41 @@ class VisionLanguageModel(nn.Module):
             layer_types=["adaptive_threshold"] * 3
         )
         
-    def forward(self, images: torch.Tensor, text_tokens: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> Dict[str, Any]:
+    def forward(self, images: torch.Tensor, text_tokens: torch.Tensor, attention_mask: Optional[torch.Tensor] = None,
+                video_features: Optional[torch.Tensor] = None, audio_features: Optional[torch.Tensor] = None) -> Dict[str, Any]:
         """Forward pass through vision-language model."""
         
+        # Handle different input modalities based on task
+        if self.task in [VisionLanguageTask.VIDEO_TEXT_AUDIO_FUSION, VisionLanguageTask.ADVANCED_ACTION_RECOGNITION]:
+            # For video-based tasks, use video features directly
+            if video_features is not None:
+                # Encode language
+                language_features, language_info = self.language_encoder(text_tokens, attention_mask)
+                
+                # For video-text-audio fusion
+                if self.task == VisionLanguageTask.VIDEO_TEXT_AUDIO_FUSION and audio_features is not None:
+                    task_output = self.task_head(video_features, language_features, audio_features)
+                    
+                    return {
+                        'task_output': task_output,
+                        'video_features': video_features,
+                        'language_features': language_features,
+                        'audio_features': audio_features,
+                        'language_info': language_info
+                    }
+                
+                # For advanced action recognition
+                elif self.task == VisionLanguageTask.ADVANCED_ACTION_RECOGNITION:
+                    task_output = self.task_head(video_features)
+                    
+                    return {
+                        'task_output': task_output,
+                        'video_features': video_features,
+                        'language_features': language_features,
+                        'language_info': language_info
+                    }
+        
+        # Standard vision-language processing
         # Encode vision and language
         vision_features, vision_info = self.vision_encoder(images)
         language_features, language_info = self.language_encoder(text_tokens, attention_mask)
@@ -615,6 +651,266 @@ class SceneGraphHead(nn.Module):
             'objects': object_logits,
             'relationships': relationship_logits
         }
+
+
+class VideoTextAudioMultimodalHead(nn.Module):
+    """Advanced multimodal head for video-text-audio fusion."""
+    
+    def __init__(self, config: VisionLanguageConfig):
+        super().__init__()
+        self.config = config
+        
+        # Video processing dimensions
+        self.video_feature_dim = config.vision_feature_dim
+        self.text_feature_dim = config.language_feature_dim
+        self.audio_feature_dim = 256  # Typical audio feature dimension
+        
+        # Temporal video processing
+        self.video_temporal_encoder = nn.LSTM(
+            input_size=self.video_feature_dim,
+            hidden_size=config.fusion_dim,
+            num_layers=2,
+            batch_first=True,
+            bidirectional=True
+        )
+        
+        # Audio encoder
+        self.audio_encoder = nn.Sequential(
+            nn.Linear(self.audio_feature_dim, config.fusion_dim),
+            nn.ReLU(),
+            nn.Dropout(config.dropout_rate),
+            nn.Linear(config.fusion_dim, config.fusion_dim)
+        )
+        
+        # Cross-modal attention mechanisms
+        self.video_text_attention = nn.MultiheadAttention(
+            embed_dim=config.fusion_dim,
+            num_heads=8,
+            batch_first=True
+        )
+        
+        self.video_audio_attention = nn.MultiheadAttention(
+            embed_dim=config.fusion_dim,
+            num_heads=8,
+            batch_first=True
+        )
+        
+        self.text_audio_attention = nn.MultiheadAttention(
+            embed_dim=config.fusion_dim,
+            num_heads=8,
+            batch_first=True
+        )
+        
+        # Trimodal fusion transformer
+        self.trimodal_transformer = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=config.fusion_dim,
+                nhead=8,
+                dim_feedforward=config.fusion_dim * 4,
+                dropout=config.dropout_rate,
+                batch_first=True
+            ),
+            num_layers=4
+        )
+        
+        # Temporal alignment module
+        self.temporal_alignment = nn.Sequential(
+            nn.Linear(config.fusion_dim * 3, config.fusion_dim * 2),
+            nn.ReLU(),
+            nn.Dropout(config.dropout_rate),
+            nn.Linear(config.fusion_dim * 2, config.fusion_dim)
+        )
+        
+        # Final classification head
+        self.classifier = nn.Sequential(
+            nn.Linear(config.fusion_dim, config.fusion_dim // 2),
+            nn.ReLU(),
+            nn.Dropout(config.dropout_rate),
+            nn.Linear(config.fusion_dim // 2, config.num_classes if hasattr(config, 'num_classes') else 1000)
+        )
+    
+    def forward(self, video_features: torch.Tensor, text_features: torch.Tensor, 
+                audio_features: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """
+        Process video, text, and audio modalities.
+        
+        Args:
+            video_features: (B, T, D_v) - Video features over time
+            text_features: (B, L, D_t) - Text features  
+            audio_features: (B, A, D_a) - Audio features over time
+            
+        Returns:
+            Dictionary with multimodal fusion results
+        """
+        B = video_features.shape[0]
+        
+        # Process video temporally
+        video_temporal, _ = self.video_temporal_encoder(video_features)
+        video_temporal = video_temporal[:, :, :self.config.fusion_dim] + video_temporal[:, :, self.config.fusion_dim:]
+        
+        # Process audio
+        audio_encoded = self.audio_encoder(audio_features)
+        
+        # Global pooling for different modalities
+        video_global = video_temporal.mean(dim=1, keepdim=True)  # (B, 1, fusion_dim)
+        text_global = text_features.mean(dim=1, keepdim=True)    # (B, 1, fusion_dim)
+        audio_global = audio_encoded.mean(dim=1, keepdim=True)   # (B, 1, fusion_dim)
+        
+        # Cross-modal attention
+        video_text_attended, vt_attention = self.video_text_attention(
+            video_global, text_features, text_features
+        )
+        
+        video_audio_attended, va_attention = self.video_audio_attention(
+            video_global, audio_encoded, audio_encoded
+        )
+        
+        text_audio_attended, ta_attention = self.text_audio_attention(
+            text_global, audio_encoded, audio_encoded
+        )
+        
+        # Combine attended features
+        multimodal_sequence = torch.cat([
+            video_text_attended,
+            video_audio_attended, 
+            text_audio_attended
+        ], dim=1)  # (B, 3, fusion_dim)
+        
+        # Apply trimodal transformer
+        fused_sequence = self.trimodal_transformer(multimodal_sequence)
+        
+        # Temporal alignment and final fusion
+        aligned_features = torch.cat([
+            fused_sequence[:, 0, :],  # Video-text
+            fused_sequence[:, 1, :],  # Video-audio
+            fused_sequence[:, 2, :]   # Text-audio
+        ], dim=1)  # (B, fusion_dim * 3)
+        
+        final_features = self.temporal_alignment(aligned_features)
+        
+        # Classification
+        output_logits = self.classifier(final_features)
+        
+        return {
+            'multimodal_logits': output_logits,
+            'fused_features': final_features,
+            'video_features': video_temporal,
+            'audio_features': audio_encoded,
+            'attention_weights': {
+                'video_text': vt_attention,
+                'video_audio': va_attention,
+                'text_audio': ta_attention
+            }
+        }
+
+
+class AdvancedActionRecognitionHead(nn.Module):
+    """Advanced action recognition for video sequences."""
+    
+    def __init__(self, config: VisionLanguageConfig):
+        super().__init__()
+        self.config = config
+        
+        # Temporal modeling for action recognition
+        self.action_lstm = nn.LSTM(
+            input_size=config.fusion_dim,
+            hidden_size=config.fusion_dim,
+            num_layers=3,
+            batch_first=True,
+            bidirectional=False,  # Causal for real-time
+            dropout=config.dropout_rate
+        )
+        
+        # Multi-scale temporal convolutions
+        self.temporal_conv_1 = nn.Conv1d(config.fusion_dim, config.fusion_dim, kernel_size=3, padding=1)
+        self.temporal_conv_2 = nn.Conv1d(config.fusion_dim, config.fusion_dim, kernel_size=5, padding=2)
+        self.temporal_conv_3 = nn.Conv1d(config.fusion_dim, config.fusion_dim, kernel_size=7, padding=3)
+        
+        # Action classification layers
+        self.action_classifier = nn.Sequential(
+            nn.Linear(config.fusion_dim * 4, config.fusion_dim),  # LSTM + 3 conv layers
+            nn.ReLU(),
+            nn.Dropout(config.dropout_rate),
+            nn.Linear(config.fusion_dim, 400)  # Kinetics-400 actions
+        )
+        
+        # Action prediction (future action)
+        self.action_predictor = nn.Sequential(
+            nn.Linear(config.fusion_dim, config.fusion_dim),
+            nn.ReLU(),
+            nn.Linear(config.fusion_dim, 400)
+        )
+        
+        # Confidence estimation
+        self.confidence_head = nn.Sequential(
+            nn.Linear(config.fusion_dim, config.fusion_dim // 2),
+            nn.ReLU(),
+            nn.Linear(config.fusion_dim // 2, 1),
+            nn.Sigmoid()
+        )
+    
+    def forward(self, video_features: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """
+        Advanced action recognition with temporal reasoning.
+        
+        Args:
+            video_features: (B, T, D) video features over time
+            
+        Returns:
+            Dictionary with action recognition results
+        """
+        B, T, D = video_features.shape
+        
+        # LSTM temporal modeling
+        lstm_out, _ = self.action_lstm(video_features)
+        
+        # Multi-scale temporal convolutions
+        features_1d = video_features.transpose(1, 2)  # (B, D, T)
+        conv_1 = F.relu(self.temporal_conv_1(features_1d))
+        conv_2 = F.relu(self.temporal_conv_2(features_1d))
+        conv_3 = F.relu(self.temporal_conv_3(features_1d))
+        
+        # Global temporal pooling
+        lstm_pooled = lstm_out.mean(dim=1)  # (B, D)
+        conv_1_pooled = conv_1.mean(dim=2)  # (B, D)
+        conv_2_pooled = conv_2.mean(dim=2)  # (B, D)
+        conv_3_pooled = conv_3.mean(dim=2)  # (B, D)
+        
+        # Combine all temporal features
+        combined_features = torch.cat([
+            lstm_pooled, conv_1_pooled, conv_2_pooled, conv_3_pooled
+        ], dim=1)  # (B, D*4)
+        
+        # Current action classification
+        current_action_logits = self.action_classifier(combined_features)
+        
+        # Future action prediction (using last frames)
+        future_context = lstm_out[:, -T//4:, :].mean(dim=1)  # Use last quarter of sequence
+        future_action_logits = self.action_predictor(future_context)
+        
+        # Confidence estimation
+        confidence = self.confidence_head(lstm_pooled)
+        
+        return {
+            'current_action_logits': current_action_logits,
+            'future_action_logits': future_action_logits,
+            'action_confidence': confidence,
+            'temporal_features': combined_features
+        }
+
+
+# Enhanced VisionLanguageTask enum to include new capabilities
+class VisionLanguageTask(Enum):
+    """Supported vision-language tasks."""
+    
+    IMAGE_CAPTIONING = "image_captioning"
+    VISUAL_QUESTION_ANSWERING = "visual_qa"
+    VISUAL_REASONING = "visual_reasoning"
+    CROSS_MODAL_RETRIEVAL = "cross_modal_retrieval"
+    VISUAL_DIALOG = "visual_dialog"
+    SCENE_GRAPH_GENERATION = "scene_graph_generation"
+    VIDEO_TEXT_AUDIO_FUSION = "video_text_audio_fusion"
+    ADVANCED_ACTION_RECOGNITION = "advanced_action_recognition"
 
 
 # Utility classes
