@@ -848,6 +848,127 @@ class AliveLoopNode:
         """Get overview of trust network health"""
         return self.trust_network_system.get_trust_summary()
     
+    # Advanced Trust Network Visualization and Monitoring
+    
+    def get_trust_network_visualization(self):
+        """Get trust network graph data for visualization"""
+        return self.trust_network_system.generate_trust_network_graph()
+    
+    def get_trust_network_metrics(self):
+        """Get comprehensive trust network health metrics"""
+        return self.trust_network_system.get_trust_network_metrics()
+    
+    def monitor_trust_network_health(self):
+        """Monitor trust network health and return warnings/alerts"""
+        metrics = self.get_trust_network_metrics()
+        alerts = []
+        
+        # Check for concerning patterns
+        if metrics['suspicious_ratio'] > 0.4:
+            alerts.append({
+                'level': 'WARNING',
+                'message': f"High suspicious node ratio: {metrics['suspicious_ratio']:.1%}"
+            })
+        
+        if metrics['network_resilience'] < 0.3:
+            alerts.append({
+                'level': 'CRITICAL', 
+                'message': f"Low network resilience: {metrics['network_resilience']:.1%}"
+            })
+        
+        if metrics['trust_variance'] > 0.3:
+            alerts.append({
+                'level': 'INFO',
+                'message': f"High trust variance: {metrics['trust_variance']:.3f} - network may be unstable"
+            })
+        
+        return {
+            'metrics': metrics,
+            'alerts': alerts,
+            'timestamp': self._time,
+            'overall_health': self._calculate_network_health_score(metrics)
+        }
+    
+    def _calculate_network_health_score(self, metrics):
+        """Calculate overall network health score (0-1)"""
+        if metrics['total_connections'] == 0:
+            return 0.5  # Neutral for no connections
+        
+        # Weight different factors
+        resilience_weight = 0.4
+        trust_avg_weight = 0.3
+        suspicious_penalty_weight = 0.2
+        variance_penalty_weight = 0.1
+        
+        score = (
+            metrics['network_resilience'] * resilience_weight +
+            metrics['average_trust'] * trust_avg_weight +
+            (1.0 - metrics['suspicious_ratio']) * suspicious_penalty_weight +
+            (1.0 - min(1.0, metrics['trust_variance'])) * variance_penalty_weight
+        )
+        
+        return max(0.0, min(1.0, score))
+    
+    # Distributed Trust Consensus Methods
+    
+    def initiate_trust_consensus_vote(self, subject_node_id, nearby_nodes):
+        """Initiate a distributed consensus vote about a node's trustworthiness"""
+        vote_request = self.trust_network_system.initiate_consensus_vote(subject_node_id)
+        
+        # Send vote request to trusted neighbors
+        responses = []
+        trusted_voters = [node for node in nearby_nodes 
+                         if self.trust_network.get(node.node_id, 0) > 0.6]
+        
+        for voter_node in trusted_voters[:5]:  # Limit to 5 voters to avoid spam
+            response = voter_node.respond_to_trust_vote(vote_request)
+            if response:
+                responses.append(response)
+        
+        # Process consensus results
+        consensus_result = self.trust_network_system.process_consensus_vote(vote_request, responses)
+        return consensus_result
+    
+    def respond_to_trust_vote(self, vote_request):
+        """Respond to a trust consensus vote request"""
+        subject_id = vote_request.get('subject')
+        if subject_id is None:
+            return None
+        
+        # Provide our assessment
+        our_trust = self.trust_network_system.get_trust(subject_id)
+        
+        # Calculate confidence based on interaction history from trust network system
+        interaction_history = self.trust_network_system.interaction_history.get(subject_id, [])
+        interaction_count = len(interaction_history)
+        confidence = min(1.0, interaction_count / 10.0)  # More interactions = higher confidence
+        
+        return {
+            'voter_id': self.node_id,
+            'trust_assessment': our_trust,
+            'confidence': confidence,
+            'interaction_count': interaction_count,
+            'timestamp': self._time
+        }
+    
+    # Byzantine Fault Tolerance Testing
+    
+    def run_byzantine_stress_test(self, malicious_ratio=0.33, num_simulations=50):
+        """Run Byzantine fault tolerance stress test"""
+        logger.info(f"Node {self.node_id}: Running Byzantine stress test with {malicious_ratio:.1%} malicious ratio")
+        
+        results = self.trust_network_system.stress_test_byzantine_resilience(
+            malicious_ratio=malicious_ratio,
+            num_simulations=num_simulations
+        )
+        
+        # Log results
+        logger.info(f"Node {self.node_id}: Byzantine resilience score: {results['resilience_score']:.3f}")
+        logger.info(f"Node {self.node_id}: Attack detection rate: {results['detection_rate']:.3f}")
+        logger.info(f"Node {self.node_id}: False positive rate: {results['false_positive_rate']:.3f}")
+        
+        return results
+    
     def process_trust_verification_request(self, verification_request):
         """Process a community trust verification request"""
         subject_id = verification_request.get('subject')
@@ -2032,7 +2153,18 @@ class AliveLoopNode:
         # Calculate energy decline rate
         if hasattr(self, 'last_energy_level'):
             self.energy_decline_rate = max(0, self.last_energy_level - self.energy)
-            self.last_energy_level = self.energy
+        else:
+            self.energy_decline_rate = 0
+        self.last_energy_level = self.energy
+        
+        # Store original thresholds to ensure they remain reasonable
+        original_emergency_threshold = getattr(self, '_original_emergency_threshold', 0.2)
+        original_normal_threshold = getattr(self, '_original_normal_threshold', 0.5)
+        
+        # Store original thresholds on first call
+        if not hasattr(self, '_original_emergency_threshold'):
+            self._original_emergency_threshold = self.emergency_energy_threshold
+            self._original_normal_threshold = self.normal_energy_threshold
         
         base_energy_reserve = 0.1  # 10% base reserve
         
@@ -2041,19 +2173,26 @@ class AliveLoopNode:
         decline_multiplier = 1.0 + min(self.energy_decline_rate, 0.5)  # Cap at 50% increase
         required_reserve = base_energy_reserve * threat_multiplier * decline_multiplier
         
-        # Adjust energy thresholds
-        self.emergency_energy_threshold = required_reserve
-        self.normal_energy_threshold = required_reserve * 2
+        # Adjust energy thresholds, but ensure they don't go below original values
+        # This prevents the bug where thresholds become too low to trigger emergency mode
+        self.emergency_energy_threshold = max(original_emergency_threshold, required_reserve)
+        self.normal_energy_threshold = max(original_normal_threshold, required_reserve * 2)
         
         # Activate appropriate conservation modes based on energy level
-        if self.energy <= 0.5 and not self.survival_mode_active:
-            self.activate_survival_mode()
-        elif self.energy <= self.emergency_energy_threshold and not self.emergency_mode:
-            self.activate_emergency_energy_conservation()
-        elif self.energy > self.normal_energy_threshold and self.emergency_mode:
-            self.deactivate_emergency_energy_conservation()
+        # Check survival mode first (most critical)
+        if self.energy <= 0.5:
+            if not self.survival_mode_active:
+                self.activate_survival_mode()
         elif self.energy > 1.5 and self.survival_mode_active:
             self.deactivate_survival_mode()
+        
+        # Check emergency mode (less critical than survival mode)
+        # Only check if NOT in survival mode to allow emergency mode testing
+        if not getattr(self, 'survival_mode_active', False):
+            if self.energy <= self.emergency_energy_threshold and not self.emergency_mode:
+                self.activate_emergency_energy_conservation()
+            elif self.energy > self.normal_energy_threshold and self.emergency_mode:
+                self.deactivate_emergency_energy_conservation()
     
     def record_energy_drain(self, amount, source="unknown"):
         """Record energy drain event for attack detection"""

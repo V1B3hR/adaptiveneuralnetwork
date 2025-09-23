@@ -376,3 +376,288 @@ class TrustNetwork:
         """Get current time (can be overridden for testing)"""
         import time
         return time.time()
+    
+    # Advanced Trust Network Visualization and Monitoring
+    
+    def generate_trust_network_graph(self):
+        """Generate a graph representation of the trust network for visualization"""
+        graph_data = {
+            'nodes': [],
+            'edges': [],
+            'metadata': self.get_trust_summary()
+        }
+        
+        # Add current node
+        graph_data['nodes'].append({
+            'id': self.node_id,
+            'label': f'Node {self.node_id}',
+            'type': 'self',
+            'trust_level': 1.0,  # Self-trust
+            'status': 'active'
+        })
+        
+        # Add connected nodes
+        for node_id, trust_level in self.trust_network.items():
+            status = 'suspicious' if trust_level < self.SUSPICION_THRESHOLD else 'trusted'
+            if node_id in self.suspicion_alerts:
+                status = 'alert'
+                
+            graph_data['nodes'].append({
+                'id': node_id,
+                'label': f'Node {node_id}',
+                'type': 'peer',
+                'trust_level': trust_level,
+                'status': status
+            })
+            
+            # Add edge from self to peer
+            edge_color = 'red' if trust_level < self.SUSPICION_THRESHOLD else 'green'
+            graph_data['edges'].append({
+                'source': self.node_id,
+                'target': node_id,
+                'weight': trust_level,
+                'color': edge_color,
+                'thickness': max(1, int(trust_level * 5))
+            })
+        
+        return graph_data
+    
+    def get_trust_network_metrics(self):
+        """Get comprehensive trust network health metrics"""
+        if not self.trust_network:
+            return {
+                'total_connections': 0,
+                'average_trust': 0,
+                'trust_variance': 0,
+                'network_resilience': 0,
+                'suspicious_ratio': 0,
+                'alert_count': 0
+            }
+        
+        trust_values = list(self.trust_network.values())
+        total_connections = len(trust_values)
+        average_trust = np.mean(trust_values)
+        trust_variance = np.var(trust_values)
+        
+        # Calculate network resilience (higher is better)
+        trusted_nodes = sum(1 for t in trust_values if t > 0.6)
+        network_resilience = trusted_nodes / total_connections if total_connections > 0 else 0
+        
+        # Calculate suspicious ratio
+        suspicious_nodes = sum(1 for t in trust_values if t < self.SUSPICION_THRESHOLD)
+        suspicious_ratio = suspicious_nodes / total_connections if total_connections > 0 else 0
+        
+        return {
+            'total_connections': total_connections,
+            'average_trust': average_trust,
+            'trust_variance': trust_variance,
+            'network_resilience': network_resilience,
+            'suspicious_ratio': suspicious_ratio,
+            'alert_count': len(self.suspicion_alerts),
+            'trusted_nodes': trusted_nodes,
+            'suspicious_nodes': suspicious_nodes
+        }
+    
+    # Distributed Trust Consensus Mechanisms
+    
+    def initiate_consensus_vote(self, subject_node_id, vote_type='trust_evaluation'):
+        """Initiate a distributed consensus vote about a node's trustworthiness"""
+        vote_request = {
+            'vote_id': f"{self.node_id}_{subject_node_id}_{self._get_current_time()}",
+            'initiator': self.node_id,
+            'subject': subject_node_id,
+            'vote_type': vote_type,
+            'timestamp': self._get_current_time(),
+            'our_trust_level': self.trust_network.get(subject_node_id, 0.5),
+            'reason': self._generate_vote_reason(subject_node_id, vote_type)
+        }
+        
+        return vote_request
+    
+    def _generate_vote_reason(self, subject_node_id, vote_type):
+        """Generate reason for consensus vote"""
+        if subject_node_id in self.suspicion_alerts:
+            alert = self.suspicion_alerts[subject_node_id]
+            return f"Suspicious behavior detected: {alert.get('reason', 'unknown')}"
+        
+        trust_level = self.trust_network.get(subject_node_id, 0.5)
+        if trust_level < self.SUSPICION_THRESHOLD:
+            return f"Low trust level: {trust_level:.3f}"
+        elif trust_level > 0.8:
+            return f"High trust level: {trust_level:.3f}"
+        else:
+            return f"Routine evaluation - trust level: {trust_level:.3f}"
+    
+    def process_consensus_vote(self, vote_request, voters_responses):
+        """Process responses from a distributed consensus vote"""
+        if not voters_responses:
+            return None
+        
+        # Aggregate votes
+        trust_votes = []
+        confidence_weights = []
+        
+        for response in voters_responses:
+            if 'trust_assessment' in response and 'confidence' in response:
+                trust_votes.append(response['trust_assessment'])
+                confidence_weights.append(response['confidence'])
+        
+        if not trust_votes:
+            return None
+        
+        # Calculate weighted consensus
+        weighted_sum = sum(trust * conf for trust, conf in zip(trust_votes, confidence_weights))
+        total_weight = sum(confidence_weights)
+        consensus_trust = weighted_sum / total_weight if total_weight > 0 else 0.5
+        
+        # Calculate agreement level
+        trust_std = np.std(trust_votes) if len(trust_votes) > 1 else 0
+        agreement_level = max(0, 1.0 - trust_std)  # High agreement = low std deviation
+        
+        consensus_result = {
+            'subject_id': vote_request['subject'],
+            'consensus_trust': consensus_trust,
+            'agreement_level': agreement_level,
+            'voter_count': len(trust_votes),
+            'confidence_average': np.mean(confidence_weights),
+            'recommendation': self._generate_consensus_recommendation(consensus_trust, agreement_level)
+        }
+        
+        # Apply consensus result if agreement is high enough
+        if agreement_level > 0.7 and len(trust_votes) >= 3:
+            self._apply_consensus_result(consensus_result)
+        
+        return consensus_result
+    
+    def _generate_consensus_recommendation(self, consensus_trust, agreement_level):
+        """Generate recommendation based on consensus results"""
+        if agreement_level < 0.5:
+            return "INCONCLUSIVE - Community divided, maintain current stance"
+        elif consensus_trust < self.SUSPICION_THRESHOLD:
+            return "SUSPICIOUS - Reduce trust and increase monitoring"
+        elif consensus_trust > 0.8:
+            return "TRUSTED - Node appears reliable based on community consensus"
+        else:
+            return "NEUTRAL - No strong community consensus, maintain normal interactions"
+    
+    def _apply_consensus_result(self, consensus_result):
+        """Apply the results of a consensus vote to local trust levels"""
+        subject_id = consensus_result['subject_id']
+        consensus_trust = consensus_result['consensus_trust']
+        agreement_level = consensus_result['agreement_level']
+        
+        # Weight consensus vs. our own assessment
+        our_trust = self.trust_network.get(subject_id, 0.5)
+        consensus_weight = min(0.7, agreement_level)  # Max 70% weight to consensus
+        our_weight = 1.0 - consensus_weight
+        
+        # Calculate new trust level
+        new_trust = (consensus_trust * consensus_weight) + (our_trust * our_weight)
+        self.trust_network[subject_id] = max(0.0, min(1.0, new_trust))
+        
+        # Clear or update suspicion alerts based on consensus
+        if subject_id in self.suspicion_alerts:
+            if consensus_trust > self.SUSPICION_THRESHOLD and agreement_level > 0.8:
+                # Strong consensus that node is trustworthy
+                self.suspicion_alerts[subject_id]['status'] = 'cleared_by_consensus'
+            elif consensus_trust < self.SUSPICION_THRESHOLD:
+                # Consensus confirms suspicion
+                self.suspicion_alerts[subject_id]['status'] = 'confirmed_by_consensus'
+    
+    # Byzantine Fault Tolerance Improvements
+    
+    def stress_test_byzantine_resilience(self, malicious_ratio=0.33, num_simulations=100):
+        """Stress test the trust network against Byzantine attacks"""
+        results = {
+            'attack_scenarios': [],
+            'resilience_score': 0,
+            'detection_rate': 0,
+            'false_positive_rate': 0
+        }
+        
+        original_trust_network = self.trust_network.copy()
+        original_alerts = self.suspicion_alerts.copy()
+        
+        successful_attacks = 0
+        successful_detections = 0
+        false_positives = 0
+        
+        for i in range(num_simulations):
+            # Reset state
+            self.trust_network = original_trust_network.copy()
+            self.suspicion_alerts = original_alerts.copy()
+            
+            # Simulate Byzantine attack
+            attack_result = self._simulate_byzantine_attack(malicious_ratio)
+            results['attack_scenarios'].append(attack_result)
+            
+            if attack_result['attack_successful']:
+                successful_attacks += 1
+            if attack_result['attack_detected']:
+                successful_detections += 1
+            if attack_result['false_positive']:
+                false_positives += 1
+        
+        # Calculate metrics
+        results['resilience_score'] = 1.0 - (successful_attacks / num_simulations)
+        results['detection_rate'] = successful_detections / num_simulations
+        results['false_positive_rate'] = false_positives / num_simulations
+        
+        # Restore original state
+        self.trust_network = original_trust_network
+        self.suspicion_alerts = original_alerts
+        
+        return results
+    
+    def _simulate_byzantine_attack(self, malicious_ratio):
+        """Simulate a Byzantine fault attack scenario"""
+        # Create simulated network
+        total_nodes = max(10, len(self.trust_network) * 2)
+        malicious_count = int(total_nodes * malicious_ratio)
+        
+        # Simulate coordinated attack
+        attack_detected = False
+        attack_successful = False
+        false_positive = False
+        
+        # Byzantine nodes coordinate to provide false information
+        malicious_nodes = list(range(1000, 1000 + malicious_count))
+        
+        for node_id in malicious_nodes:
+            # Add to trust network with initially neutral trust
+            self.trust_network[node_id] = 0.5
+            
+            # Simulate manipulation attempts
+            for _ in range(5):  # Multiple interactions
+                # Byzantine nodes try love bombing attack
+                self.update_trust(
+                    type('MockNode', (), {'node_id': node_id})(),
+                    'cooperation',
+                    {'rapid_trust_building': True}
+                )
+        
+        # Check if attack was detected
+        suspicious_byzantine = sum(1 for node_id in malicious_nodes 
+                                 if node_id in self.suspicion_alerts)
+        
+        if suspicious_byzantine > malicious_count * 0.5:
+            attack_detected = True
+        
+        # Check if attack was successful (high trust despite being malicious)
+        highly_trusted_byzantine = sum(1 for node_id in malicious_nodes
+                                     if self.trust_network.get(node_id, 0) > 0.7)
+        
+        if highly_trusted_byzantine > malicious_count * 0.3:
+            attack_successful = True
+        
+        # Check for false positives (honest nodes marked as suspicious)
+        honest_nodes = [nid for nid in self.trust_network.keys() if nid not in malicious_nodes]
+        false_positive = any(node_id in self.suspicion_alerts for node_id in honest_nodes[:3])
+        
+        return {
+            'malicious_count': malicious_count,
+            'attack_detected': attack_detected,
+            'attack_successful': attack_successful,
+            'false_positive': false_positive,
+            'suspicious_count': len(self.suspicion_alerts)
+        }
