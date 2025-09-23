@@ -444,6 +444,320 @@ class HybridVideoModel(nn.Module):
         }
 
 
+class AdvancedTemporalReasoning(nn.Module):
+    """Advanced temporal reasoning module for video sequences."""
+    
+    def __init__(self, feature_dim: int, num_frames: int, reasoning_depth: int = 3):
+        super().__init__()
+        self.feature_dim = feature_dim
+        self.num_frames = num_frames
+        self.reasoning_depth = reasoning_depth
+        
+        # Multi-scale temporal convolutions for different time scales
+        self.temporal_conv_1 = nn.Conv1d(feature_dim, feature_dim, kernel_size=3, padding=1)
+        self.temporal_conv_2 = nn.Conv1d(feature_dim, feature_dim, kernel_size=5, padding=2) 
+        self.temporal_conv_3 = nn.Conv1d(feature_dim, feature_dim, kernel_size=7, padding=3)
+        
+        # Causal reasoning layers
+        self.causal_layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(
+                d_model=feature_dim,
+                nhead=8,
+                dim_feedforward=feature_dim * 4,
+                dropout=0.1,
+                batch_first=True
+            ) for _ in range(reasoning_depth)
+        ])
+        
+        # Temporal relationship modeling
+        self.relation_attention = nn.MultiheadAttention(
+            embed_dim=feature_dim,
+            num_heads=8,
+            batch_first=True
+        )
+        
+        # Future prediction head
+        self.future_predictor = nn.Sequential(
+            nn.Linear(feature_dim, feature_dim),
+            nn.ReLU(),
+            nn.Linear(feature_dim, feature_dim)
+        )
+        
+    def forward(self, sequence_features: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """
+        Advanced temporal reasoning across video sequences.
+        
+        Args:
+            sequence_features: (B, T, D) - Batch, Time, Feature dimension
+            
+        Returns:
+            Dictionary with temporal analysis results
+        """
+        B, T, D = sequence_features.shape
+        
+        # Multi-scale temporal convolutions
+        features_1d = sequence_features.transpose(1, 2)  # (B, D, T)
+        temp_conv_1 = F.relu(self.temporal_conv_1(features_1d))
+        temp_conv_2 = F.relu(self.temporal_conv_2(features_1d))
+        temp_conv_3 = F.relu(self.temporal_conv_3(features_1d))
+        
+        # Combine multi-scale features
+        multi_scale = (temp_conv_1 + temp_conv_2 + temp_conv_3) / 3
+        multi_scale = multi_scale.transpose(1, 2)  # (B, T, D)
+        
+        # Apply causal reasoning
+        reasoned_features = multi_scale
+        for layer in self.causal_layers:
+            reasoned_features = layer(reasoned_features)
+        
+        # Temporal relationship attention
+        relations, _ = self.relation_attention(
+            reasoned_features, reasoned_features, reasoned_features
+        )
+        
+        # Future prediction
+        current_state = reasoned_features[:, -1, :]  # Use last frame
+        predicted_future = self.future_predictor(current_state)
+        
+        return {
+            'temporal_features': reasoned_features,
+            'temporal_relations': relations,
+            'future_prediction': predicted_future,
+            'multi_scale_features': multi_scale
+        }
+
+
+class ActionRecognitionHead(nn.Module):
+    """Advanced action recognition and prediction head."""
+    
+    def __init__(self, feature_dim: int, num_actions: int, temporal_window: int = 16):
+        super().__init__()
+        self.feature_dim = feature_dim
+        self.num_actions = num_actions
+        self.temporal_window = temporal_window
+        
+        # Action classification
+        self.action_classifier = nn.Sequential(
+            nn.Linear(feature_dim, feature_dim // 2),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(feature_dim // 2, num_actions)
+        )
+        
+        # Action prediction (next action)
+        self.action_predictor = nn.Sequential(
+            nn.Linear(feature_dim, feature_dim),
+            nn.ReLU(),
+            nn.Linear(feature_dim, num_actions)
+        )
+        
+        # Action confidence estimation
+        self.confidence_estimator = nn.Sequential(
+            nn.Linear(feature_dim, feature_dim // 4),
+            nn.ReLU(),
+            nn.Linear(feature_dim // 4, 1),
+            nn.Sigmoid()
+        )
+        
+    def forward(self, temporal_features: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """
+        Recognize current action and predict next action.
+        
+        Args:
+            temporal_features: (B, T, D) temporal features
+            
+        Returns:
+            Dictionary with action recognition results
+        """
+        # Use global temporal pooling for current action
+        current_action_features = temporal_features.mean(dim=1)  # (B, D)
+        
+        # Current action classification
+        current_action_logits = self.action_classifier(current_action_features)
+        
+        # Next action prediction using last few frames
+        last_frames = temporal_features[:, -self.temporal_window//4:, :].mean(dim=1)
+        next_action_logits = self.action_predictor(last_frames)
+        
+        # Confidence estimation
+        confidence = self.confidence_estimator(current_action_features)
+        
+        return {
+            'current_action_logits': current_action_logits,
+            'next_action_logits': next_action_logits,
+            'action_confidence': confidence
+        }
+
+
+class VideoTextAudioFusion(nn.Module):
+    """Multimodal fusion for video, text, and audio."""
+    
+    def __init__(self, video_dim: int, text_dim: int, audio_dim: int, fusion_dim: int):
+        super().__init__()
+        self.video_dim = video_dim
+        self.text_dim = text_dim
+        self.audio_dim = audio_dim
+        self.fusion_dim = fusion_dim
+        
+        # Individual modality projections
+        self.video_proj = nn.Linear(video_dim, fusion_dim)
+        self.text_proj = nn.Linear(text_dim, fusion_dim)
+        self.audio_proj = nn.Linear(audio_dim, fusion_dim)
+        
+        # Cross-modal attention
+        self.video_text_attention = nn.MultiheadAttention(
+            embed_dim=fusion_dim, num_heads=8, batch_first=True
+        )
+        self.video_audio_attention = nn.MultiheadAttention(
+            embed_dim=fusion_dim, num_heads=8, batch_first=True
+        )
+        self.text_audio_attention = nn.MultiheadAttention(
+            embed_dim=fusion_dim, num_heads=8, batch_first=True
+        )
+        
+        # Trimodal fusion
+        self.trimodal_fusion = nn.Sequential(
+            nn.Linear(fusion_dim * 3, fusion_dim * 2),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(fusion_dim * 2, fusion_dim)
+        )
+        
+    def forward(self, video_features: torch.Tensor, text_features: torch.Tensor, 
+                audio_features: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """
+        Fuse video, text, and audio modalities.
+        
+        Args:
+            video_features: (B, T, D_v) video features
+            text_features: (B, L, D_t) text features
+            audio_features: (B, A, D_a) audio features
+            
+        Returns:
+            Dictionary with fused features
+        """
+        B = video_features.shape[0]
+        
+        # Project to common dimension
+        video_proj = self.video_proj(video_features)  # (B, T, fusion_dim)
+        text_proj = self.text_proj(text_features)     # (B, L, fusion_dim)
+        audio_proj = self.audio_proj(audio_features)  # (B, A, fusion_dim)
+        
+        # Cross-modal attention
+        video_text_fused, _ = self.video_text_attention(
+            video_proj.mean(dim=1, keepdim=True),  # (B, 1, fusion_dim)
+            text_proj, text_proj
+        )
+        
+        video_audio_fused, _ = self.video_audio_attention(
+            video_proj.mean(dim=1, keepdim=True),
+            audio_proj, audio_proj
+        )
+        
+        text_audio_fused, _ = self.text_audio_attention(
+            text_proj.mean(dim=1, keepdim=True),
+            audio_proj, audio_proj
+        )
+        
+        # Combine all modalities
+        combined = torch.cat([
+            video_text_fused.squeeze(1),    # (B, fusion_dim)
+            video_audio_fused.squeeze(1),   # (B, fusion_dim)
+            text_audio_fused.squeeze(1)     # (B, fusion_dim)
+        ], dim=1)  # (B, fusion_dim * 3)
+        
+        # Final trimodal fusion
+        fused_features = self.trimodal_fusion(combined)
+        
+        return {
+            'fused_features': fused_features,
+            'video_text_attention': video_text_fused.squeeze(1),
+            'video_audio_attention': video_audio_fused.squeeze(1),
+            'text_audio_attention': text_audio_fused.squeeze(1)
+        }
+
+
+class AdvancedVideoTransformer(VideoTransformer):
+    """Enhanced Video Transformer with advanced temporal reasoning and action recognition."""
+    
+    def __init__(self, config: VideoModelConfig):
+        super().__init__(config)
+        
+        # Advanced temporal reasoning
+        self.temporal_reasoning = AdvancedTemporalReasoning(
+            feature_dim=config.hidden_dim,
+            num_frames=config.sequence_length
+        )
+        
+        # Action recognition head
+        self.action_head = ActionRecognitionHead(
+            feature_dim=config.hidden_dim,
+            num_actions=config.num_classes
+        )
+        
+        # Replace simple classifier with more advanced prediction head
+        self.classifier = nn.Sequential(
+            nn.Linear(config.hidden_dim, config.hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(config.dropout),
+            nn.Linear(config.hidden_dim, config.num_classes)
+        )
+        
+    def forward(self, x: torch.Tensor, return_detailed: bool = False) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
+        """
+        Enhanced forward pass with advanced temporal reasoning.
+        
+        Args:
+            x: Input tensor of shape (B, T, C, H, W)
+            return_detailed: Whether to return detailed analysis
+            
+        Returns:
+            Either classification logits or detailed analysis dictionary
+        """
+        batch_size, seq_len, channels, height, width = x.shape
+        
+        # Process each frame through CNN
+        frame_features = []
+        for i in range(seq_len):
+            frame = x[:, i, :, :, :]  # (B, C, H, W)
+            features = self.feature_extractor(frame)  # (B, 256, H', W')
+            features = self.spatial_pool(features)    # (B, 256, 1, 1)
+            features = features.view(batch_size, -1)  # (B, 256)
+            features = self.projection(features)      # (B, d_model)
+            frame_features.append(features)
+        
+        # Stack frame features: (B, T, d_model)
+        sequence_features = torch.stack(frame_features, dim=1)
+        
+        # Add positional encoding
+        sequence_features = sequence_features.transpose(0, 1)
+        sequence_features = self.pos_encoding(sequence_features)
+        sequence_features = sequence_features.transpose(0, 1)
+        
+        # Apply transformer encoder
+        encoded_features = self.transformer(sequence_features)  # (B, T, d_model)
+        
+        # Advanced temporal reasoning
+        temporal_analysis = self.temporal_reasoning(encoded_features)
+        
+        # Action recognition
+        action_analysis = self.action_head(temporal_analysis['temporal_features'])
+        
+        # Final classification using reasoned features
+        pooled_features = temporal_analysis['temporal_features'].mean(dim=1)
+        classification_output = self.classifier(pooled_features)
+        
+        if return_detailed:
+            return {
+                'classification_logits': classification_output,
+                'action_recognition': action_analysis,
+                'temporal_reasoning': temporal_analysis,
+                'sequence_features': encoded_features
+            }
+        else:
+            return classification_output
+
+
 def create_video_model(model_type: str, config: Optional[VideoModelConfig] = None, **kwargs) -> nn.Module:
     """Factory function to create video models."""
     
@@ -456,6 +770,8 @@ def create_video_model(model_type: str, config: Optional[VideoModelConfig] = Non
         return Conv3D(config)
     elif model_type.lower() == "transformer":
         return VideoTransformer(config)
+    elif model_type.lower() == "advanced_transformer":
+        return AdvancedVideoTransformer(config)
     elif model_type.lower() == "hybrid":
         return HybridVideoModel(config)
     else:
@@ -467,6 +783,11 @@ def create_convlstm_model(num_classes: int = 1000, **kwargs) -> ConvLSTM:
     """Create ConvLSTM model."""
     config = VideoModelConfig(num_classes=num_classes, **kwargs)
     return ConvLSTM(config)
+
+def create_advanced_video_transformer(num_classes: int = 1000, **kwargs) -> AdvancedVideoTransformer:
+    """Create advanced video transformer with temporal reasoning."""
+    config = VideoModelConfig(num_classes=num_classes, **kwargs)
+    return AdvancedVideoTransformer(config)
 
 
 def create_conv3d_model(num_classes: int = 1000, **kwargs) -> Conv3D:
