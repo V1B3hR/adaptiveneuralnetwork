@@ -16,6 +16,7 @@ import torch
 
 from .phases import Phase, PhaseScheduler
 from .nodes import NodeState
+from .consolidation import UnifiedConsolidationManager, PhaseBasedConsolidation
 
 
 class PhasePlugin(ABC):
@@ -151,6 +152,11 @@ class ConsolidationPhase(PhasePlugin):
         }
         default_config.update(config)
         super().__init__("consolidation", **default_config)
+        
+        # Use the unified consolidation system
+        self.consolidation_manager = UnifiedConsolidationManager()
+        self.phase_consolidation = PhaseBasedConsolidation(**default_config)
+        self.consolidation_manager.register_mechanism(self.phase_consolidation)
     
     def apply_phase_logic(
         self, 
@@ -159,28 +165,26 @@ class ConsolidationPhase(PhasePlugin):
         step: int,
         **kwargs
     ) -> Dict[str, Any]:
-        """Apply memory consolidation logic."""
-        results = {"modifications": [], "metrics": {}}
+        """Apply memory consolidation logic using unified system."""
+        # Use the unified consolidation manager
+        consolidation_results = self.consolidation_manager.consolidate_all(
+            node_state=node_state,
+            phase_scheduler=phase_scheduler,
+            step=step,
+            **kwargs
+        )
         
-        # Identify nodes in consolidation (sleep) phase
-        sleep_nodes = phase_scheduler.node_phases == 1
-        if sleep_nodes.any():
-            # Reduce activity but boost stability
-            node_state.activity[sleep_nodes] *= (1 - self.config["memory_decay"])
-            
-            # Boost energy for important nodes (high activity before sleep)
-            important_nodes = node_state.activity > 0.5
-            consolidation_nodes = sleep_nodes & important_nodes
-            if consolidation_nodes.any():
-                node_state.energy[consolidation_nodes] *= self.config["stability_boost"]
-                results["modifications"].append(f"Consolidated {consolidation_nodes.sum()} important nodes")
+        # Extract results for backward compatibility
+        if "mechanisms" in consolidation_results and "phase_consolidation" in consolidation_results["mechanisms"]:
+            phase_results = consolidation_results["mechanisms"]["phase_consolidation"]
+            return {
+                "modifications": phase_results.get("modifications", []),
+                "metrics": phase_results.get("metrics", {}),
+                "consolidation_summary": consolidation_results["summary"]
+            }
         
-        results["metrics"] = {
-            "sleep_nodes": sleep_nodes.sum().item(),
-            "consolidated_nodes": consolidation_nodes.sum().item() if 'consolidation_nodes' in locals() else 0,
-        }
-        
-        return results
+        # Fallback to empty results
+        return {"modifications": [], "metrics": {}, "consolidation_summary": {}}
     
     def get_phase_transitions(self) -> Dict[int, Dict[int, float]]:
         """Consolidation affects sleep phase transitions."""

@@ -5,6 +5,14 @@ Core modules for adaptive neural networks.
 from .dynamics import AdaptiveDynamics
 from .nodes import NodeConfig, NodeState
 from .phases import Phase, PhaseScheduler
+from .consolidation import (
+    UnifiedConsolidationManager,
+    ConsolidationType,
+    PhaseBasedConsolidation,
+    SynapticConsolidation,
+    MemoryConsolidation,
+    create_default_consolidation_manager
+)
 
 # Optional video inference components
 try:
@@ -27,6 +35,12 @@ __all__ = [
     "Phase",
     "PhaseScheduler",
     "AdaptiveDynamics",
+    "UnifiedConsolidationManager",
+    "ConsolidationType",
+    "PhaseBasedConsolidation", 
+    "SynapticConsolidation",
+    "MemoryConsolidation",
+    "create_default_consolidation_manager",
 ]
 
 if _video_inference_available:
