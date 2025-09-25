@@ -22,8 +22,8 @@ try:
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
-from ..api import AdaptiveModel, AdaptiveConfig
-from ..training.loops import train_epoch, evaluate_model
+from ...api import AdaptiveModel, AdaptiveConfig
+from ...training.loops import train_epoch, evaluate_model
 
 logger = logging.getLogger(__name__)
 
