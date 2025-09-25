@@ -22,6 +22,11 @@ from ..core.neuromorphic_v3.plasticity import STDPConfig, MetaplasticityConfig, 
 from ..core.neuromorphic_v3.network_topology import TopologyConfig  
 from ..core.neuromorphic_v3.temporal_coding import TemporalConfig
 from ..core.neuromorphic import NeuromorphicConfig
+from ..core.consolidation import (
+    UnifiedConsolidationManager, 
+    SynapticConsolidation as BaseSynapticConsolidation,
+    MemoryConsolidation as BaseMemoryConsolidation
+)
 
 logger = logging.getLogger(__name__)
 
@@ -603,7 +608,17 @@ class MemoryAugmentedArchitecture(nn.Module):
             num_layers=2
         )
         
-        # Memory consolidation mechanism
+        # Use unified consolidation system for memory consolidation
+        self.consolidation_manager = UnifiedConsolidationManager()
+        self.memory_consolidation_mechanism = BaseMemoryConsolidation(
+            memory_dim, 
+            consolidation_threshold=config.memory_consolidation_strength,
+            memory_decay=0.05,
+            semantic_boost=1.1
+        )
+        self.consolidation_manager.register_mechanism(self.memory_consolidation_mechanism)
+        
+        # Keep legacy memory consolidation network for backward compatibility
         self.memory_consolidation = nn.Sequential(
             nn.Linear(memory_dim * 2, memory_dim),
             nn.ReLU(),
@@ -670,9 +685,28 @@ class MemoryAugmentedArchitecture(nn.Module):
         if retrieve_memories:
             relevant_memories = self.retrieve_relevant_memories(working_features)
             
-            # Consolidate working memory with retrieved memories
+            # Consolidate working memory with retrieved memories using unified system
             combined_features = torch.cat([working_features, relevant_memories], dim=-1)
-            consolidated_features = self.memory_consolidation(combined_features)
+            
+            # Use unified consolidation system if available, fallback to legacy method
+            try:
+                # Try to use unified system for episodic-to-semantic consolidation
+                consolidation_results = self.consolidation_manager.consolidate_all(
+                    episodic_memories=working_features,
+                    semantic_memories=self.semantic_memory_bank[:100],  # Use subset for efficiency
+                    importance_scores=torch.ones(working_features.size(0))  # Simple importance
+                )
+                
+                if ("mechanisms" in consolidation_results and 
+                    "memory_consolidation" in consolidation_results["mechanisms"] and
+                    "consolidated_memories" in consolidation_results["mechanisms"]["memory_consolidation"]):
+                    consolidated_features = consolidation_results["mechanisms"]["memory_consolidation"]["consolidated_memories"]
+                else:
+                    # Fallback to legacy consolidation
+                    consolidated_features = self.memory_consolidation(combined_features)
+            except Exception:
+                # Fallback to legacy consolidation on any error
+                consolidated_features = self.memory_consolidation(combined_features)
         else:
             consolidated_features = working_features
         
@@ -688,8 +722,8 @@ class SynapticConsolidation(nn.Module):
     """
     Synaptic consolidation mechanism to protect important connections.
     
-    Implements Elastic Weight Consolidation (EWC) using neuromorphic
-    metaplasticity principles.
+    This is a wrapper around the unified consolidation system that maintains
+    backward compatibility while using the new consolidated approach.
     """
     
     def __init__(self, model: nn.Module):
@@ -697,15 +731,14 @@ class SynapticConsolidation(nn.Module):
         
         self.model = model
         
-        # Fisher information for parameter importance
-        self.fisher_information = {}
-        self.optimal_params = {}
+        # Use the unified consolidation system
+        self.consolidation_manager = UnifiedConsolidationManager()
+        self.synaptic_consolidation = BaseSynapticConsolidation(model)
+        self.consolidation_manager.register_mechanism(self.synaptic_consolidation)
         
-        # Initialize Fisher information storage
-        for name, param in model.named_parameters():
-            if param.requires_grad:
-                self.fisher_information[name] = torch.zeros_like(param)
-                self.optimal_params[name] = param.clone().detach()
+        # Maintain backward compatibility attributes
+        self.fisher_information = self.synaptic_consolidation.fisher_information
+        self.optimal_params = self.synaptic_consolidation.optimal_params
     
     def estimate_fisher_information(
         self, 
@@ -713,72 +746,21 @@ class SynapticConsolidation(nn.Module):
         num_samples: int = 1000
     ) -> None:
         """Estimate Fisher information matrix for current task."""
-        self.model.eval()
+        # Update configuration and run consolidation
+        self.synaptic_consolidation.config["fisher_samples"] = num_samples
+        self.consolidation_manager.consolidate_all(data_loader=data_loader)
         
-        # Reset Fisher information
-        for name in self.fisher_information:
-            self.fisher_information[name].zero_()
-        
-        sample_count = 0
-        
-        for batch_idx, (data, target) in enumerate(data_loader):
-            if sample_count >= num_samples:
-                break
-                
-            batch_size = data.size(0)
-            
-            # Forward pass
-            output = self.model(data)
-            
-            # Sample from posterior (use predicted class)
-            pred_class = output.argmax(dim=1)
-            
-            # Compute gradients for sampled classes
-            for i in range(batch_size):
-                if sample_count >= num_samples:
-                    break
-                
-                self.model.zero_grad()
-                
-                # Compute log probability for predicted class
-                log_prob = torch.nn.functional.log_softmax(output[i:i+1], dim=1)
-                loss = -log_prob[0, pred_class[i]]
-                
-                loss.backward(retain_graph=True)
-                
-                # Accumulate squared gradients (Fisher information)
-                for name, param in self.model.named_parameters():
-                    if param.requires_grad and param.grad is not None:
-                        self.fisher_information[name] += param.grad.pow(2)
-                
-                sample_count += 1
-        
-        # Normalize Fisher information
-        for name in self.fisher_information:
-            self.fisher_information[name] /= sample_count
-        
-        logger.debug(f"Estimated Fisher information from {sample_count} samples")
+        logger.debug(f"Estimated Fisher information from {num_samples} samples")
     
     def consolidation_loss(self, consolidation_strength: float = 1.0) -> torch.Tensor:
         """Compute consolidation loss to prevent catastrophic forgetting."""
-        loss = 0.0
-        
-        for name, param in self.model.named_parameters():
-            if name in self.fisher_information:
-                # EWC penalty term
-                fisher = self.fisher_information[name]
-                optimal = self.optimal_params[name]
-                
-                penalty = fisher * (param - optimal).pow(2)
-                loss += penalty.sum()
-        
-        return consolidation_strength * loss
+        # Update strength and get loss
+        self.synaptic_consolidation.config["consolidation_strength"] = consolidation_strength
+        return self.synaptic_consolidation.get_consolidation_loss()
     
     def update_optimal_params(self) -> None:
         """Update optimal parameters after learning new task."""
-        for name, param in self.model.named_parameters():
-            if name in self.optimal_params:
-                self.optimal_params[name] = param.clone().detach()
+        self.consolidation_manager.consolidate_all()  # This updates optimal params
 
 
 class ContinualLearningSystem(nn.Module):
