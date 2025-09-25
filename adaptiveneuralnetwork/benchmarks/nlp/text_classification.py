@@ -18,8 +18,8 @@ import json
 import re
 from collections import Counter
 
-from ..api import AdaptiveModel, AdaptiveConfig
-from ..training.loops import train_epoch, evaluate_model
+from ...api import AdaptiveModel, AdaptiveConfig
+from ...training.loops import train_epoch, evaluate_model
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +215,7 @@ class TextClassificationBenchmark:
         self.config.vocab_size = vocab_size  # Store for reference
         
         # Create model
-        from ..api import create_adaptive_model
+        from ...api import create_adaptive_model
         self.model = create_adaptive_model(self.config)
         self.model.to(self.device)
     
