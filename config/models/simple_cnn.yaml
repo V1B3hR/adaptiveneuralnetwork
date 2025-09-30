@@ -1,0 +1,62 @@
+# Convolutional Neural Network Configuration
+# CNN architecture for image classification
+
+name: simple_cnn
+description: "Convolutional neural network for image classification"
+seed: 42
+
+layers:
+  # First conv block
+  - type: conv2d
+    in_channels: 3
+    out_channels: 32
+    kernel_size: 3
+    padding: 1
+  
+  - type: batchnorm2d
+    num_features: 32
+  
+  - type: relu
+  
+  - type: maxpool2d
+    kernel_size: 2
+    stride: 2
+  
+  # Second conv block
+  - type: conv2d
+    in_channels: 32
+    out_channels: 64
+    kernel_size: 3
+    padding: 1
+  
+  - type: batchnorm2d
+    num_features: 64
+  
+  - type: relu
+  
+  - type: maxpool2d
+    kernel_size: 2
+    stride: 2
+  
+  # Third conv block
+  - type: conv2d
+    in_channels: 64
+    out_channels: 128
+    kernel_size: 3
+    padding: 1
+  
+  - type: batchnorm2d
+    num_features: 128
+  
+  - type: relu
+  
+  - type: adaptive_avgpool2d
+    output_size: [1, 1]
+  
+  # Classifier
+  - type: flatten
+    start_dim: 1
+  
+  - type: linear
+    in_features: 128
+    out_features: 10

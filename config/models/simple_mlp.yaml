@@ -1,0 +1,29 @@
+# Simple MLP Configuration
+# A basic multi-layer perceptron for classification tasks
+
+name: simple_mlp
+description: "Basic feedforward neural network with two hidden layers"
+seed: 42
+
+layers:
+  - type: linear
+    in_features: 784  # e.g., MNIST 28x28
+    out_features: 256
+  
+  - type: relu
+  
+  - type: dropout
+    p: 0.3
+  
+  - type: linear
+    in_features: 256
+    out_features: 128
+  
+  - type: relu
+  
+  - type: dropout
+    p: 0.3
+  
+  - type: linear
+    in_features: 128
+    out_features: 10  # 10 classes
