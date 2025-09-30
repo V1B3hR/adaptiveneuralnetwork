@@ -21,6 +21,15 @@ from .streaming_datasets import (
     UnifiedDatasetManager
 )
 
+from .optimized_datasets import (
+    VectorizedDataset,
+    PreallocatedBuffer,
+    OptimizedDatasetWrapper,
+    vectorized_collate_fn,
+    create_optimized_loader,
+    optimize_dataset,
+)
+
 # Optional video streaming components
 try:
     from .video_streaming import (
@@ -54,7 +63,13 @@ __all__ = [
     'StreamingDatasetWrapper',
     'WebDatasetWrapper',
     'HuggingFaceDatasetWrapper',
-    'UnifiedDatasetManager'
+    'UnifiedDatasetManager',
+    'VectorizedDataset',
+    'PreallocatedBuffer',
+    'OptimizedDatasetWrapper',
+    'vectorized_collate_fn',
+    'create_optimized_loader',
+    'optimize_dataset',
 ]
 
 if _video_streaming_available:

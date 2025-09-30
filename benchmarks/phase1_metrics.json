@@ -1,0 +1,56 @@
+{
+  "configuration": {
+    "num_samples": 10000,
+    "batch_size": 32,
+    "input_dim": 784,
+    "num_classes": 10,
+    "num_batches": 100,
+    "num_workers": 0
+  },
+  "baseline": {
+    "name": "Baseline (no optimizations)",
+    "num_batches_measured": 100,
+    "total_samples": 3200,
+    "total_time_sec": 0.016265128000895857,
+    "avg_batch_time_ms": 0.16265128000895857,
+    "min_batch_time_ms": 0.15127300002859556,
+    "max_batch_time_ms": 0.3584210001008614,
+    "std_batch_time_ms": 0.0224248586782368,
+    "throughput_samples_per_sec": 196739.9211259665,
+    "throughput_batches_per_sec": 6148.122535186453
+  },
+  "optimized_collation": {
+    "name": "Optimized (vectorized collation + pinned memory)",
+    "num_batches_measured": 100,
+    "total_samples": 3200,
+    "total_time_sec": 0.015131612001141548,
+    "avg_batch_time_ms": 0.15131612001141548,
+    "min_batch_time_ms": 0.13970200006951927,
+    "max_batch_time_ms": 0.35181800012651365,
+    "std_batch_time_ms": 0.022700607825879914,
+    "throughput_samples_per_sec": 211477.79891254072,
+    "throughput_batches_per_sec": 6608.681216016897
+  },
+  "optimized_preloaded": {
+    "name": "Optimized (pre-loaded + vectorized)",
+    "num_batches_measured": 100,
+    "total_samples": 3200,
+    "total_time_sec": 0.015068082997913734,
+    "avg_batch_time_ms": 0.15068082997913734,
+    "min_batch_time_ms": 0.14071299983697827,
+    "max_batch_time_ms": 0.358660999836502,
+    "std_batch_time_ms": 0.022281725956397446,
+    "throughput_samples_per_sec": 212369.41689550417,
+    "throughput_batches_per_sec": 6636.544277984505
+  },
+  "improvements": {
+    "optimized_collation_percent": 7.491045895630917,
+    "optimized_preloaded_percent": 7.94424216503095,
+    "vs_phase0_percent": 949.2560123295661,
+    "phase1_target_achieved": true
+  },
+  "phase0_baseline": {
+    "throughput_samples_per_sec": 20240.0,
+    "data_loading_time_ms": 0.067
+  }
+}
