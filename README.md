@@ -29,6 +29,7 @@ Batch latency: ____ ms
 Data throughput: ____ samples/sec
 GPU util avg: ____ %
 Peak GPU memory: ____ GB
+
 Phase 1 – Data Layer Rework
 Purpose: Remove I/O and collation bottlenecks; ensure efficient batching & transfer.
 
@@ -57,7 +58,9 @@ Success Metrics:
 Data throughput: +X% (target)
 Loader CPU time share: < Y%
 Prefetch queue idle time: < Z%
+
 Phase 2 – Core Tensor Path Optimization
+
 Purpose: Reduce per-batch compute overhead and allocation churn.
 
 Entry Criteria:
@@ -85,7 +88,9 @@ Success Metrics:
 Mean step latency: -X%
 Allocations per step: -Y%
 Kernel launches: -Z%
+
 Phase 3 – Model Architecture Modularization
+
 Purpose: Make architecture configurable and extensible without editing core logic.
 
 Entry Criteria:
@@ -112,7 +117,9 @@ Success Metrics:
 Core architecture LOC: -X%
 Time to add new layer: < Y minutes
 Variant config coverage: Z models
+
 Phase 4 – Training Loop Abstraction
+
 Purpose: Centralize training orchestration with hooks/callbacks for extensibility.
 
 Entry Criteria:
@@ -140,7 +147,9 @@ Success Metrics:
 
 Lines duplicated across scripts: -X%
 Adding new behavior (e.g., LR scheduler logging) requires 0 core edits.
+
 Phase 5 – Parallelization & Hardware Utilization
+
 Purpose: Maximize device utilization and reduce idle periods.
 
 Entry Criteria:
@@ -169,7 +178,9 @@ Success Metrics:
 GPU utilization: +X%
 Memory footprint: -Y% or batch size +Z%
 Training time per epoch: -Q%
+
 Phase 6 – Evaluation & Validation Layer
+
 Purpose: Reliable, reproducible model assessment and benchmark tracking.
 
 Entry Criteria:
@@ -196,34 +207,9 @@ Success Metrics:
 
 Repro variance (latency std dev): < X%
 Benchmark automation success rate: 100%
-Phase 7 – CI + Regression Guardrails
-Purpose: Prevent silent performance and correctness regressions.
 
-Entry Criteria:
+Phase 7 – machine deep learning process
 
-Benchmarks & evaluation repeatable.
-Core Tasks:
-
- Set up GitHub Actions workflow (lint, type-check, tests).
- Add performance smoke benchmarks (fast subset).
- Fail build if perf deviates > threshold.
- Cache dataset subset for speed.
- Upload benchmark artifacts for PR comparison.
- Add code coverage reporting.
-Exit Criteria:
-
-CI green with thresholds enforced.
-PR template encourages perf note.
-Deliverables:
-
-CI workflow files
-Threshold config (e.g., perf_thresholds.json)
-Coverage & perf badges (optional)
-Success Metrics:
-
-CI duration: < X min
-False positive perf fails: < Y%
-Coverage: ≥ Z%
 Phase 8 – Documentation & Onboarding
 Purpose: Make the refactored system understandable and maintainable.
 
