@@ -13,6 +13,15 @@ from .reproducibility import (
     set_global_seed,
     verify_reproducible_function
 )
+from .phase2_optimizations import (
+    AMPContext,
+    try_compile,
+    mixed_precision_wrapper,
+    Phase2OptimizedModel,
+    optimize_model_phase2,
+    supports_amp,
+    get_amp_dtype
+)
 
 __all__ = [
     "PerformanceProfiler", 
@@ -26,5 +35,13 @@ __all__ = [
     "DeterminismReport",
     "create_reproducible_experiment",
     "set_global_seed",
-    "verify_reproducible_function"
+    "verify_reproducible_function",
+    # Phase 2 optimizations
+    "AMPContext",
+    "try_compile",
+    "mixed_precision_wrapper",
+    "Phase2OptimizedModel",
+    "optimize_model_phase2",
+    "supports_amp",
+    "get_amp_dtype"
 ]

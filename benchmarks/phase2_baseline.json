@@ -1,0 +1,12 @@
+{
+  "phase": "Phase 2 - Baseline",
+  "timestamp": 1759245964.6420918,
+  "metrics": {
+    "mean_step_latency_ms": 264.3578015777823,
+    "forward_latency_ms": 261.955471244442,
+    "backward_latency_ms": 1.7669755333347186,
+    "optimizer_latency_ms": 0.635354800005593,
+    "peak_memory_mb": 0.0,
+    "throughput_samples_per_sec": 121.04806368116435
+  }
+}

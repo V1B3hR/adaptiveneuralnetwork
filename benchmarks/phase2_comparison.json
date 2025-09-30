@@ -1,0 +1,14 @@
+{
+  "timestamp": 1759246065.8060896,
+  "device": "cpu",
+  "baseline": {
+    "mean_step_ms": 240.02890064445586,
+    "mean_forward_ms": 237.72478699999687,
+    "peak_memory_mb": 0.0
+  },
+  "compiled": {
+    "mean_step_ms": 396.637201533349,
+    "mean_forward_ms": 394.2252422888941,
+    "peak_memory_mb": 0.0
+  }
+}

@@ -63,6 +63,11 @@ class AdaptiveModel(nn.Module):
         """
         batch_size = x.shape[0]
 
+        # Detach node state from previous computational graph (Phase 2 optimization)
+        # This prevents accumulation of gradients across batches
+        if self.training:
+            self.node_state.detach()
+
         # Expand node state for current batch size
         self.node_state.expand_batch(batch_size)
 
