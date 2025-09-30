@@ -1,3 +1,268 @@
+Phase 0 – Inventory & Metrics (Foundation)
+Purpose: Understand the current state and quantify baseline performance before changing anything.
+
+Entry Criteria:
+
+Code builds and runs end-to-end.
+Core Tasks:
+
+ List all modules (data, model, training, utilities).
+ Generate dependency graph (e.g., pydeps).
+ Add lightweight timing & memory instrumentation (per batch).
+ Profile 1–2 representative training runs (CPU + GPU).
+ Capture data loader throughput (samples/sec).
+ Record peak GPU memory and host RSS.
+ Identify top 5 hotspots (function level).
+ Store baseline metrics JSON (benchmarks/baseline.json).
+Exit Criteria:
+
+Hotspots ranked.
+Baseline reproducible and documented.
+Deliverables:
+
+System map diagram
+Profiling report
+Baseline metrics file
+Success Metrics (Baseline Numbers Captured):
+
+Batch latency: ____ ms
+Data throughput: ____ samples/sec
+GPU util avg: ____ %
+Peak GPU memory: ____ GB
+Phase 1 – Data Layer Rework
+Purpose: Remove I/O and collation bottlenecks; ensure efficient batching & transfer.
+
+Entry Criteria:
+
+Baseline metrics established (Phase 0 complete).
+Core Tasks:
+
+ Replace per-sample Python loops with vectorized batch collation.
+ Introduce pinned memory + async prefetch (e.g., prefetch factor or ring buffer).
+ (Optional) Convert raw dataset to memory-mapped or Arrow/Parquet format.
+ Implement Dataset / Buffer abstraction returning ready tensors.
+ Add index-based sampling (avoid copying large structures).
+ Add mini benchmark script for loader only.
+ Re-profile data path.
+Exit Criteria:
+
+Data loader no longer a top 2 hotspot.
+Throughput improved ≥ target (define X%).
+Deliverables:
+
+New Dataset/Buffer API
+Loader benchmark script + updated metrics snapshot
+Success Metrics:
+
+Data throughput: +X% (target)
+Loader CPU time share: < Y%
+Prefetch queue idle time: < Z%
+Phase 2 – Core Tensor Path Optimization
+Purpose: Reduce per-batch compute overhead and allocation churn.
+
+Entry Criteria:
+
+Data path stable and not dominant bottleneck.
+Core Tasks:
+
+ Audit tensor device transfers (eliminate duplicates).
+ Ensure tensor layouts contiguous / channels-last if beneficial.
+ Merge redundant elementwise ops (fuse expressions).
+ Enable torch.compile or TorchScript (experiment).
+ Remove unnecessary dtype casts.
+ Evaluate mixed precision trial (forward-only test).
+ Profile kernel launch counts pre/post changes.
+Exit Criteria:
+
+Step time reduced by target %.
+Allocation count per batch decreased.
+Deliverables:
+
+Optimized forward/training path
+Before/after profiling diff
+Success Metrics:
+
+Mean step latency: -X%
+Allocations per step: -Y%
+Kernel launches: -Z%
+Phase 3 – Model Architecture Modularization
+Purpose: Make architecture configurable and extensible without editing core logic.
+
+Entry Criteria:
+
+Stable optimized tensor path (Phase 2).
+Core Tasks:
+
+ Extract layer classes into separate modules.
+ Introduce layer registry (string → class).
+ Implement config-driven model assembly (YAML/JSON).
+ Remove hidden global state (random seeds localized).
+ Add tests: construct model variants from config.
+Exit Criteria:
+
+New model variant can be added via config only.
+Core model file LOC reduced vs baseline.
+Deliverables:
+
+Layer registry
+Config examples
+Architecture assembly function
+Success Metrics:
+
+Core architecture LOC: -X%
+Time to add new layer: < Y minutes
+Variant config coverage: Z models
+Phase 4 – Training Loop Abstraction
+Purpose: Centralize training orchestration with hooks/callbacks for extensibility.
+
+Entry Criteria:
+
+Modular model architecture complete.
+Core Tasks:
+
+ Implement Trainer class (fit, evaluate).
+ Define callback interface (events: epoch start/end, batch start/end, after backward).
+ Integrate AMP support toggle.
+ Add gradient accumulation option.
+ Add deterministic seed initialization.
+ Add logging callback (throughput, loss).
+ Write unit test with mock callback order assertions.
+Exit Criteria:
+
+Existing training logic replaced by Trainer.
+At least 2 callbacks functioning (logging, profiling).
+Deliverables:
+
+Trainer module
+Callback examples
+Tests for callback sequencing
+Success Metrics:
+
+Lines duplicated across scripts: -X%
+Adding new behavior (e.g., LR scheduler logging) requires 0 core edits.
+Phase 5 – Parallelization & Hardware Utilization
+Purpose: Maximize device utilization and reduce idle periods.
+
+Entry Criteria:
+
+Stable trainer abstraction.
+Core Tasks:
+
+ Measure current GPU utilization (profiling tool).
+ Enable multi-process Distributed Data Parallel (if multi-GPU available).
+ Add gradient checkpointing for memory pressure (if needed).
+ Integrate mixed precision fully (training + scaler).
+ Optimize batch size (auto-scaling search).
+ Overlap data prefetch with compute (verify queue depth).
+ Track utilization before/after for 3 runs.
+Exit Criteria:
+
+GPU utilization improved to target.
+No regression in accuracy/metrics.
+Deliverables:
+
+DDP/FSDP setup (conditional)
+Mixed precision training path
+Utilization report
+Success Metrics:
+
+GPU utilization: +X%
+Memory footprint: -Y% or batch size +Z%
+Training time per epoch: -Q%
+Phase 6 – Evaluation & Validation Layer
+Purpose: Reliable, reproducible model assessment and benchmark tracking.
+
+Entry Criteria:
+
+Performance path mostly optimized.
+Core Tasks:
+
+ Create evaluation module separate from training.
+ Add standardized metrics (accuracy, loss, custom metrics).
+ Implement deterministic test run script.
+ Add microbenchmarks (forward-only latency, data loader throughput, memory).
+ Store benchmark results versioned (JSON history).
+ Add drift detection (compare last vs median of last N).
+Exit Criteria:
+
+One command produces evaluation & benchmark artifacts.
+Baseline metrics versioned for >1 run.
+Deliverables:
+
+eval/ scripts
+benchmarks/ history JSON
+Metrics comparison utility
+Success Metrics:
+
+Repro variance (latency std dev): < X%
+Benchmark automation success rate: 100%
+Phase 7 – CI + Regression Guardrails
+Purpose: Prevent silent performance and correctness regressions.
+
+Entry Criteria:
+
+Benchmarks & evaluation repeatable.
+Core Tasks:
+
+ Set up GitHub Actions workflow (lint, type-check, tests).
+ Add performance smoke benchmarks (fast subset).
+ Fail build if perf deviates > threshold.
+ Cache dataset subset for speed.
+ Upload benchmark artifacts for PR comparison.
+ Add code coverage reporting.
+Exit Criteria:
+
+CI green with thresholds enforced.
+PR template encourages perf note.
+Deliverables:
+
+CI workflow files
+Threshold config (e.g., perf_thresholds.json)
+Coverage & perf badges (optional)
+Success Metrics:
+
+CI duration: < X min
+False positive perf fails: < Y%
+Coverage: ≥ Z%
+Phase 8 – Documentation & Onboarding
+Purpose: Make the refactored system understandable and maintainable.
+
+Entry Criteria:
+
+Core systems stabilized (previous phases done).
+Core Tasks:
+
+ Architecture diagram (current state).
+ ADRs for major decisions (data format, trainer, parallelization choices).
+ Onboarding guide: “Add a new layer”, “Add a callback”, “Run benchmarks”.
+ Glossary of internal terms.
+ Update README with performance summary table.
+ Contribution guide (coding standards, profiling workflow).
+Exit Criteria:
+
+A new contributor can implement a new layer using only docs.
+All major decisions have ADR entries.
+Deliverables:
+
+docs/adr/*.md
+CONTRIBUTING.md
+Updated README with perf table
+Success Metrics:
+
+Time-to-first-PR for new contributor: < X days
+Docs coverage satisfaction (subjective review) ≥ Y/10
+Master Checklist (Condensed View)
+ Phase 0: Baseline established
+ Phase 1: Data loader optimized
+ Phase 2: Core tensor path streamlined
+ Phase 3: Modular architecture
+ Phase 4: Trainer + callbacks
+ Phase 5: Parallelization & AMP
+ Phase 6: Bench & eval suite
+ Phase 7: Machine learning
+ Phase 8: Documentation complete
+
+
 # Adaptive Neural Network
 
 [![CI](https://github.com/V1B3hR/adaptiveneuralnetwork/workflows/CI%20-%20Train,%20Test,%20Coverage%20&%20Artifacts/badge.svg)](https://github.com/V1B3hR/adaptiveneuralnetwork/actions)
