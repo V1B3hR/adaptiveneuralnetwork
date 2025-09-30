@@ -1,0 +1,52 @@
+{
+  "data": [
+    "benchmarks"
+  ],
+  "models": [
+    "api",
+    "core"
+  ],
+  "training": [
+    "api",
+    "core"
+  ],
+  "core": [
+    "data",
+    "models",
+    "neuromorphic"
+  ],
+  "utils": [
+    "api",
+    "training"
+  ],
+  "api": [
+    "core"
+  ],
+  "benchmarks": [
+    "api",
+    "training"
+  ],
+  "scripts": [
+    "automl",
+    "core",
+    "data",
+    "models"
+  ],
+  "neuromorphic": [
+    "core"
+  ],
+  "production": [
+    "api"
+  ],
+  "applications": [
+    "core"
+  ],
+  "automl": [
+    "api",
+    "core"
+  ],
+  "ecosystem": [
+    "api",
+    "production"
+  ]
+}
