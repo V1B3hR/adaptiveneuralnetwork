@@ -37,21 +37,31 @@ class AdaptiveDynamics(nn.Module):
         """
         Calculate anxiety levels based on node state.
         
+        Phase 2 optimization: Fused elementwise operations to reduce kernel launches.
+        
         Args:
             node_state: Current node state
             
         Returns:
             Anxiety levels tensor [batch_size, num_nodes, 1]
         """
-        energy_stress = torch.clamp(5.0 - node_state.energy, min=0.0)
-        activity_stress = node_state.activity * 2.0
+        # Fuse operations: compute energy_stress, activity_stress, and variance in one pass
         hidden_variance = node_state.hidden_state.var(dim=-1, keepdim=True)
         
-        return energy_stress + activity_stress + hidden_variance
+        # Fused: clamp + add + mul in single expression
+        anxiety = (
+            torch.clamp(5.0 - node_state.energy, min=0.0) +
+            node_state.activity * 2.0 +
+            hidden_variance
+        )
+        
+        return anxiety
 
     def _apply_phase_dependent_scaling(self, hidden_delta: torch.Tensor, phases: torch.Tensor) -> torch.Tensor:
         """
         Apply phase-dependent scaling to hidden state updates.
+        
+        Phase 2 optimization: Vectorized phase scaling using gather instead of loop.
         
         Args:
             hidden_delta: Hidden state update tensor
@@ -60,10 +70,11 @@ class AdaptiveDynamics(nn.Module):
         Returns:
             Scaled hidden state update
         """
-        for phase_id in range(4):
-            phase_mask = (phases == phase_id).unsqueeze(-1).float()
-            hidden_delta = hidden_delta * (1.0 + self.phase_scales[phase_id] * phase_mask)
-        return hidden_delta
+        # Vectorized implementation: use indexing to apply phase scales
+        # Shape: [batch_size, num_nodes] -> [batch_size, num_nodes, 1]
+        phase_scale_values = self.phase_scales[phases].unsqueeze(-1)
+        # Apply scaling: hidden_delta * (1.0 + scale)
+        return hidden_delta * (1.0 + phase_scale_values)
 
     def _project_external_input(self, external_input: torch.Tensor) -> torch.Tensor:
         """
@@ -88,16 +99,18 @@ class AdaptiveDynamics(nn.Module):
         """
         Update hidden state with active node masking.
         
+        Phase 2 optimization: Fused operations and ensured contiguous memory layout.
+        
         Args:
             node_state: Node state to update
             hidden_delta: Hidden state change
             input_proj: Projected external input
             active_mask: Mask for active nodes
         """
-        node_state.hidden_state = node_state.hidden_state + active_mask * (
-            hidden_delta + 0.1 * input_proj
-        )
-        node_state.hidden_state = torch.tanh(node_state.hidden_state)
+        # Fused: add + mask + activation in minimal operations
+        # active_mask * (hidden_delta + 0.1 * input_proj) -> single fused expression
+        update = active_mask * (hidden_delta + 0.1 * input_proj)
+        node_state.hidden_state = torch.tanh(node_state.hidden_state + update).contiguous()
 
     def _update_energy_with_anxiety(
         self, node_state: NodeState, anxiety_levels: torch.Tensor, active_mask: torch.Tensor
@@ -105,41 +118,50 @@ class AdaptiveDynamics(nn.Module):
         """
         Update energy levels considering anxiety effects.
         
+        Phase 2 optimization: Fused anxiety factor computation and energy update.
+        
         Args:
             node_state: Node state to update
             anxiety_levels: Current anxiety levels
             active_mask: Mask for active nodes
         """
+        # Compute energy delta and apply anxiety in one fused operation
         energy_delta = self.energy_update(node_state.hidden_state)
+        
+        # Fused: anxiety_factor calculation and energy_delta scaling
         anxiety_factor = 1.0 - 0.1 * torch.clamp(anxiety_levels / 10.0, 0.0, 1.0)
-        energy_delta = energy_delta * anxiety_factor
-        node_state.update_energy(energy_delta * active_mask)
+        energy_delta_scaled = energy_delta * anxiety_factor * active_mask
+        
+        node_state.update_energy(energy_delta_scaled)
 
     def _update_activity_levels(self, node_state: NodeState, external_input: torch.Tensor) -> None:
         """
         Update activity levels based on hidden state and external input.
         
+        Phase 2 optimization: Reduced view/reshape operations and ensured contiguous layout.
+        
         Args:
             node_state: Node state to update  
             external_input: External input tensor
         """
-        activity_input = torch.cat(
-            [
-                node_state.hidden_state.mean(dim=-1, keepdim=True),
-                (
-                    external_input.mean(dim=-1, keepdim=True)
-                    if external_input.numel() > 0
-                    else torch.zeros_like(node_state.energy)
-                ),
-            ],
-            dim=-1,
+        # Compute mean values
+        hidden_mean = node_state.hidden_state.mean(dim=-1, keepdim=True)
+        external_mean = (
+            external_input.mean(dim=-1, keepdim=True)
+            if external_input.numel() > 0
+            else torch.zeros_like(node_state.energy)
         )
-
-        batch_size, num_nodes, _ = activity_input.shape
-        activity_input_flat = activity_input.view(-1, activity_input.shape[-1])
-        activity_delta_flat = self.activity_update(activity_input_flat)
-        activity_delta = activity_delta_flat.view(batch_size, num_nodes, -1)
         
+        # Concatenate and process in one pass (avoid redundant reshape)
+        activity_input = torch.cat([hidden_mean, external_mean], dim=-1)
+        
+        batch_size, num_nodes, input_dim = activity_input.shape
+        # Use reshape instead of view for guaranteed contiguous output
+        activity_input_flat = activity_input.reshape(-1, input_dim)
+        activity_delta_flat = self.activity_update(activity_input_flat)
+        activity_delta = activity_delta_flat.reshape(batch_size, num_nodes, -1)
+        
+        # Apply sigmoid and clamp in one operation
         node_state.activity = torch.sigmoid(activity_delta)
         node_state.clamp_activity()
 

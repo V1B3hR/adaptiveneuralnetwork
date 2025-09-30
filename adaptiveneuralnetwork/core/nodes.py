@@ -134,3 +134,17 @@ class NodeState:
         self.position = self.position.to(device)
         self.phase_mask = self.phase_mask.to(device)
         return self
+    
+    def detach(self) -> "NodeState":
+        """Detach state tensors from computational graph.
+        
+        This is important for training to avoid keeping the full computational
+        graph across batches, which would cause memory issues and prevent
+        proper gradient computation.
+        """
+        self.hidden_state = self.hidden_state.detach()
+        self.energy = self.energy.detach()
+        self.activity = self.activity.detach()
+        self.position = self.position.detach()
+        self.phase_mask = self.phase_mask.detach()
+        return self
