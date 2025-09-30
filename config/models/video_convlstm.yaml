@@ -1,0 +1,18 @@
+# Video ConvLSTM Model Configuration
+# Spatiotemporal model for video sequence analysis
+
+name: video_convlstm
+description: "ConvLSTM model for video action recognition"
+seed: 42
+
+layers:
+  - type: convlstm
+    input_channels: 3
+    hidden_dim: 256
+    num_layers: 2
+    kernel_size: 3
+    input_height: 224
+    input_width: 224
+    sequence_length: 16
+    num_classes: 1000
+    dropout: 0.1

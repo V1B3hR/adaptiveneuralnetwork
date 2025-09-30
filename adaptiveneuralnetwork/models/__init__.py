@@ -19,6 +19,9 @@ from .video_models import (
     create_hybrid_model
 )
 
+# Register custom layers with the layer registry
+from .layer_registration import register_all_custom_layers
+
 __all__ = [
     'POSTagger', 
     'POSTaggerConfig',
@@ -33,5 +36,6 @@ __all__ = [
     'create_convlstm_model',
     'create_conv3d_model',
     'create_video_transformer',
-    'create_hybrid_model'
+    'create_hybrid_model',
+    'register_all_custom_layers',
 ]

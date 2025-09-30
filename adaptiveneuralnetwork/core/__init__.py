@@ -13,6 +13,8 @@ from .consolidation import (
     MemoryConsolidation,
     create_default_consolidation_manager
 )
+from .layer_registry import LayerRegistry, layer_registry
+from .model_builder import ModelBuilder, register_builtin_layers
 
 # Optional video inference components
 try:
@@ -41,6 +43,10 @@ __all__ = [
     "SynapticConsolidation",
     "MemoryConsolidation",
     "create_default_consolidation_manager",
+    "LayerRegistry",
+    "layer_registry",
+    "ModelBuilder",
+    "register_builtin_layers",
 ]
 
 if _video_inference_available:
