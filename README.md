@@ -1,3 +1,5 @@
+Refactor phases.
+
 Phase 0 – Inventory & Metrics (Foundation)
 Purpose: Understand the current state and quantify baseline performance before changing anything.
 
