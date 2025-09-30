@@ -335,7 +335,7 @@ Master Checklist (Condensed View)
  ✅ Phase 3: Modular architecture (config-driven assembly)
  ✅ Phase 4: Trainer + callbacks
  ✅ Phase 5: Parallelization & AMP
- Phase 6: Bench & eval suite
+ ✅ Phase 6: Bench & eval suite
  Phase 7: Machine learning
  Phase 8: Documentation complete
 
