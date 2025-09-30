@@ -1,0 +1,848 @@
+{
+  "timestamp": "2025-09-30T13:48:43.893469",
+  "root_path": "/home/runner/work/adaptiveneuralnetwork/adaptiveneuralnetwork",
+  "modules": {
+    "data": {
+      "path": "adaptiveneuralnetwork/data",
+      "files": [
+        {
+          "name": "video_streaming.py",
+          "path": "adaptiveneuralnetwork/data/video_streaming.py",
+          "total_lines": 485,
+          "code_lines": 353,
+          "comment_lines": 36
+        },
+        {
+          "name": "streaming_datasets.py",
+          "path": "adaptiveneuralnetwork/data/streaming_datasets.py",
+          "total_lines": 631,
+          "code_lines": 482,
+          "comment_lines": 31
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/data/__init__.py",
+          "total_lines": 72,
+          "code_lines": 66,
+          "comment_lines": 1
+        },
+        {
+          "name": "kaggle_datasets.py",
+          "path": "adaptiveneuralnetwork/data/kaggle_datasets.py",
+          "total_lines": 1150,
+          "code_lines": 841,
+          "comment_lines": 97
+        }
+      ],
+      "stats": {
+        "file_count": 4,
+        "total_lines": 2338,
+        "code_lines": 1742,
+        "comment_lines": 165
+      }
+    },
+    "models": {
+      "path": "adaptiveneuralnetwork/models",
+      "files": [
+        {
+          "name": "graph_spatial.py",
+          "path": "adaptiveneuralnetwork/models/graph_spatial.py",
+          "total_lines": 592,
+          "code_lines": 413,
+          "comment_lines": 63
+        },
+        {
+          "name": "pos_tagger.py",
+          "path": "adaptiveneuralnetwork/models/pos_tagger.py",
+          "total_lines": 273,
+          "code_lines": 210,
+          "comment_lines": 16
+        },
+        {
+          "name": "video_models.py",
+          "path": "adaptiveneuralnetwork/models/video_models.py",
+          "total_lines": 808,
+          "code_lines": 549,
+          "comment_lines": 84
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/models/__init__.py",
+          "total_lines": 37,
+          "code_lines": 34,
+          "comment_lines": 0
+        }
+      ],
+      "stats": {
+        "file_count": 4,
+        "total_lines": 1710,
+        "code_lines": 1206,
+        "comment_lines": 163
+      }
+    },
+    "training": {
+      "path": "adaptiveneuralnetwork/training",
+      "files": [
+        {
+          "name": "enhanced_continual.py",
+          "path": "adaptiveneuralnetwork/training/enhanced_continual.py",
+          "total_lines": 491,
+          "code_lines": 369,
+          "comment_lines": 29
+        },
+        {
+          "name": "distributed.py",
+          "path": "adaptiveneuralnetwork/training/distributed.py",
+          "total_lines": 510,
+          "code_lines": 386,
+          "comment_lines": 35
+        },
+        {
+          "name": "loops.py",
+          "path": "adaptiveneuralnetwork/training/loops.py",
+          "total_lines": 358,
+          "code_lines": 246,
+          "comment_lines": 33
+        },
+        {
+          "name": "continual.py",
+          "path": "adaptiveneuralnetwork/training/continual.py",
+          "total_lines": 816,
+          "code_lines": 576,
+          "comment_lines": 81
+        },
+        {
+          "name": "energy_optimizers.py",
+          "path": "adaptiveneuralnetwork/training/energy_optimizers.py",
+          "total_lines": 486,
+          "code_lines": 340,
+          "comment_lines": 44
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/training/__init__.py",
+          "total_lines": 32,
+          "code_lines": 27,
+          "comment_lines": 2
+        },
+        {
+          "name": "text_baseline.py",
+          "path": "adaptiveneuralnetwork/training/models/text_baseline.py",
+          "total_lines": 518,
+          "code_lines": 389,
+          "comment_lines": 25
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/training/models/__init__.py",
+          "total_lines": 0,
+          "code_lines": 0,
+          "comment_lines": 0
+        },
+        {
+          "name": "run_bitext_training.py",
+          "path": "adaptiveneuralnetwork/training/scripts/run_bitext_training.py",
+          "total_lines": 552,
+          "code_lines": 415,
+          "comment_lines": 38
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/training/scripts/__init__.py",
+          "total_lines": 0,
+          "code_lines": 0,
+          "comment_lines": 0
+        },
+        {
+          "name": "bitext_dataset.py",
+          "path": "adaptiveneuralnetwork/training/datasets/bitext_dataset.py",
+          "total_lines": 394,
+          "code_lines": 294,
+          "comment_lines": 25
+        },
+        {
+          "name": "datasets.py",
+          "path": "adaptiveneuralnetwork/training/datasets/datasets.py",
+          "total_lines": 573,
+          "code_lines": 424,
+          "comment_lines": 43
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/training/datasets/__init__.py",
+          "total_lines": 0,
+          "code_lines": 0,
+          "comment_lines": 0
+        }
+      ],
+      "stats": {
+        "file_count": 13,
+        "total_lines": 4730,
+        "code_lines": 3466,
+        "comment_lines": 355
+      }
+    },
+    "core": {
+      "path": "adaptiveneuralnetwork/core",
+      "files": [
+        {
+          "name": "adaptive_pruning.py",
+          "path": "adaptiveneuralnetwork/core/adaptive_pruning.py",
+          "total_lines": 490,
+          "code_lines": 346,
+          "comment_lines": 51
+        },
+        {
+          "name": "phases.py",
+          "path": "adaptiveneuralnetwork/core/phases.py",
+          "total_lines": 514,
+          "code_lines": 370,
+          "comment_lines": 52
+        },
+        {
+          "name": "consolidation.py",
+          "path": "adaptiveneuralnetwork/core/consolidation.py",
+          "total_lines": 493,
+          "code_lines": 357,
+          "comment_lines": 28
+        },
+        {
+          "name": "precision_phases.py",
+          "path": "adaptiveneuralnetwork/core/precision_phases.py",
+          "total_lines": 279,
+          "code_lines": 209,
+          "comment_lines": 22
+        },
+        {
+          "name": "plugin_system.py",
+          "path": "adaptiveneuralnetwork/core/plugin_system.py",
+          "total_lines": 483,
+          "code_lines": 363,
+          "comment_lines": 26
+        },
+        {
+          "name": "neuromorphic.py",
+          "path": "adaptiveneuralnetwork/core/neuromorphic.py",
+          "total_lines": 2350,
+          "code_lines": 1585,
+          "comment_lines": 284
+        },
+        {
+          "name": "jax_backend.py",
+          "path": "adaptiveneuralnetwork/core/jax_backend.py",
+          "total_lines": 440,
+          "code_lines": 313,
+          "comment_lines": 33
+        },
+        {
+          "name": "dynamics.py",
+          "path": "adaptiveneuralnetwork/core/dynamics.py",
+          "total_lines": 214,
+          "code_lines": 155,
+          "comment_lines": 14
+        },
+        {
+          "name": "nodes.py",
+          "path": "adaptiveneuralnetwork/core/nodes.py",
+          "total_lines": 136,
+          "code_lines": 98,
+          "comment_lines": 11
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/core/__init__.py",
+          "total_lines": 55,
+          "code_lines": 50,
+          "comment_lines": 1
+        },
+        {
+          "name": "video_inference.py",
+          "path": "adaptiveneuralnetwork/core/video_inference.py",
+          "total_lines": 588,
+          "code_lines": 433,
+          "comment_lines": 40
+        },
+        {
+          "name": "advanced_neurons.py",
+          "path": "adaptiveneuralnetwork/core/neuromorphic_v3/advanced_neurons.py",
+          "total_lines": 594,
+          "code_lines": 412,
+          "comment_lines": 59
+        },
+        {
+          "name": "temporal_coding.py",
+          "path": "adaptiveneuralnetwork/core/neuromorphic_v3/temporal_coding.py",
+          "total_lines": 526,
+          "code_lines": 345,
+          "comment_lines": 63
+        },
+        {
+          "name": "plasticity.py",
+          "path": "adaptiveneuralnetwork/core/neuromorphic_v3/plasticity.py",
+          "total_lines": 581,
+          "code_lines": 396,
+          "comment_lines": 64
+        },
+        {
+          "name": "network_topology.py",
+          "path": "adaptiveneuralnetwork/core/neuromorphic_v3/network_topology.py",
+          "total_lines": 656,
+          "code_lines": 454,
+          "comment_lines": 73
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/core/neuromorphic_v3/__init__.py",
+          "total_lines": 64,
+          "code_lines": 51,
+          "comment_lines": 4
+        }
+      ],
+      "stats": {
+        "file_count": 16,
+        "total_lines": 8463,
+        "code_lines": 5937,
+        "comment_lines": 825
+      }
+    },
+    "utils": {
+      "path": "adaptiveneuralnetwork/utils",
+      "files": [
+        {
+          "name": "forgetting.py",
+          "path": "adaptiveneuralnetwork/utils/forgetting.py",
+          "total_lines": 102,
+          "code_lines": 69,
+          "comment_lines": 11
+        },
+        {
+          "name": "reproducibility.py",
+          "path": "adaptiveneuralnetwork/utils/reproducibility.py",
+          "total_lines": 379,
+          "code_lines": 293,
+          "comment_lines": 21
+        },
+        {
+          "name": "profiling.py",
+          "path": "adaptiveneuralnetwork/utils/profiling.py",
+          "total_lines": 263,
+          "code_lines": 196,
+          "comment_lines": 16
+        },
+        {
+          "name": "drift.py",
+          "path": "adaptiveneuralnetwork/utils/drift.py",
+          "total_lines": 69,
+          "code_lines": 53,
+          "comment_lines": 1
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/utils/__init__.py",
+          "total_lines": 30,
+          "code_lines": 28,
+          "comment_lines": 0
+        },
+        {
+          "name": "onnx_export.py",
+          "path": "adaptiveneuralnetwork/utils/onnx_export.py",
+          "total_lines": 348,
+          "code_lines": 264,
+          "comment_lines": 19
+        }
+      ],
+      "stats": {
+        "file_count": 6,
+        "total_lines": 1191,
+        "code_lines": 903,
+        "comment_lines": 68
+      }
+    },
+    "api": {
+      "path": "adaptiveneuralnetwork/api",
+      "files": [
+        {
+          "name": "backend_factory.py",
+          "path": "adaptiveneuralnetwork/api/backend_factory.py",
+          "total_lines": 221,
+          "code_lines": 166,
+          "comment_lines": 9
+        },
+        {
+          "name": "model.py",
+          "path": "adaptiveneuralnetwork/api/model.py",
+          "total_lines": 168,
+          "code_lines": 113,
+          "comment_lines": 17
+        },
+        {
+          "name": "config.py",
+          "path": "adaptiveneuralnetwork/api/config.py",
+          "total_lines": 117,
+          "code_lines": 90,
+          "comment_lines": 7
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/api/__init__.py",
+          "total_lines": 15,
+          "code_lines": 13,
+          "comment_lines": 0
+        }
+      ],
+      "stats": {
+        "file_count": 4,
+        "total_lines": 521,
+        "code_lines": 382,
+        "comment_lines": 33
+      }
+    },
+    "benchmarks": {
+      "path": "adaptiveneuralnetwork/benchmarks",
+      "files": [
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/benchmarks/__init__.py",
+          "total_lines": 7,
+          "code_lines": 5,
+          "comment_lines": 0
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/benchmarks/nlp/__init__.py",
+          "total_lines": 0,
+          "code_lines": 0,
+          "comment_lines": 0
+        },
+        {
+          "name": "text_classification.py",
+          "path": "adaptiveneuralnetwork/benchmarks/nlp/text_classification.py",
+          "total_lines": 449,
+          "code_lines": 323,
+          "comment_lines": 39
+        },
+        {
+          "name": "mnist.py",
+          "path": "adaptiveneuralnetwork/benchmarks/vision/mnist.py",
+          "total_lines": 152,
+          "code_lines": 110,
+          "comment_lines": 13
+        },
+        {
+          "name": "cifar10.py",
+          "path": "adaptiveneuralnetwork/benchmarks/vision/cifar10.py",
+          "total_lines": 373,
+          "code_lines": 280,
+          "comment_lines": 24
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/benchmarks/vision/__init__.py",
+          "total_lines": 7,
+          "code_lines": 5,
+          "comment_lines": 0
+        },
+        {
+          "name": "multimodal.py",
+          "path": "adaptiveneuralnetwork/benchmarks/multimodal/multimodal.py",
+          "total_lines": 604,
+          "code_lines": 446,
+          "comment_lines": 43
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/benchmarks/multimodal/__init__.py",
+          "total_lines": 0,
+          "code_lines": 0,
+          "comment_lines": 0
+        }
+      ],
+      "stats": {
+        "file_count": 8,
+        "total_lines": 1592,
+        "code_lines": 1169,
+        "comment_lines": 119
+      }
+    },
+    "scripts": {
+      "path": "adaptiveneuralnetwork/scripts",
+      "files": [
+        {
+          "name": "adaptive_report.py",
+          "path": "adaptiveneuralnetwork/scripts/adaptive_report.py",
+          "total_lines": 330,
+          "code_lines": 242,
+          "comment_lines": 32
+        },
+        {
+          "name": "adaptive_video_benchmark.py",
+          "path": "adaptiveneuralnetwork/scripts/adaptive_video_benchmark.py",
+          "total_lines": 485,
+          "code_lines": 358,
+          "comment_lines": 44
+        },
+        {
+          "name": "sparsity_guard.py",
+          "path": "adaptiveneuralnetwork/scripts/sparsity_guard.py",
+          "total_lines": 242,
+          "code_lines": 188,
+          "comment_lines": 15
+        },
+        {
+          "name": "adaptive_live_infer.py",
+          "path": "adaptiveneuralnetwork/scripts/adaptive_live_infer.py",
+          "total_lines": 653,
+          "code_lines": 475,
+          "comment_lines": 55
+        },
+        {
+          "name": "robustness_guard.py",
+          "path": "adaptiveneuralnetwork/scripts/robustness_guard.py",
+          "total_lines": 207,
+          "code_lines": 168,
+          "comment_lines": 12
+        },
+        {
+          "name": "automl_cli.py",
+          "path": "adaptiveneuralnetwork/scripts/automl_cli.py",
+          "total_lines": 372,
+          "code_lines": 268,
+          "comment_lines": 31
+        },
+        {
+          "name": "performance_guard.py",
+          "path": "adaptiveneuralnetwork/scripts/performance_guard.py",
+          "total_lines": 165,
+          "code_lines": 126,
+          "comment_lines": 9
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/scripts/__init__.py",
+          "total_lines": 1,
+          "code_lines": 1,
+          "comment_lines": 0
+        }
+      ],
+      "stats": {
+        "file_count": 8,
+        "total_lines": 2455,
+        "code_lines": 1826,
+        "comment_lines": 198
+      }
+    },
+    "neuromorphic": {
+      "path": "adaptiveneuralnetwork/neuromorphic",
+      "files": [
+        {
+          "name": "loihi2_backend.py",
+          "path": "adaptiveneuralnetwork/neuromorphic/loihi2_backend.py",
+          "total_lines": 579,
+          "code_lines": 428,
+          "comment_lines": 46
+        },
+        {
+          "name": "hardware_backends.py",
+          "path": "adaptiveneuralnetwork/neuromorphic/hardware_backends.py",
+          "total_lines": 279,
+          "code_lines": 212,
+          "comment_lines": 10
+        },
+        {
+          "name": "spinnaker2_backend.py",
+          "path": "adaptiveneuralnetwork/neuromorphic/spinnaker2_backend.py",
+          "total_lines": 589,
+          "code_lines": 448,
+          "comment_lines": 39
+        },
+        {
+          "name": "custom_spike_simulator.py",
+          "path": "adaptiveneuralnetwork/neuromorphic/custom_spike_simulator.py",
+          "total_lines": 632,
+          "code_lines": 453,
+          "comment_lines": 54
+        },
+        {
+          "name": "generic_v3_backend.py",
+          "path": "adaptiveneuralnetwork/neuromorphic/generic_v3_backend.py",
+          "total_lines": 749,
+          "code_lines": 579,
+          "comment_lines": 36
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/neuromorphic/__init__.py",
+          "total_lines": 19,
+          "code_lines": 16,
+          "comment_lines": 0
+        }
+      ],
+      "stats": {
+        "file_count": 6,
+        "total_lines": 2847,
+        "code_lines": 2136,
+        "comment_lines": 185
+      }
+    },
+    "production": {
+      "path": "adaptiveneuralnetwork/production",
+      "files": [
+        {
+          "name": "auth.py",
+          "path": "adaptiveneuralnetwork/production/auth.py",
+          "total_lines": 500,
+          "code_lines": 374,
+          "comment_lines": 20
+        },
+        {
+          "name": "database.py",
+          "path": "adaptiveneuralnetwork/production/database.py",
+          "total_lines": 488,
+          "code_lines": 368,
+          "comment_lines": 24
+        },
+        {
+          "name": "messaging.py",
+          "path": "adaptiveneuralnetwork/production/messaging.py",
+          "total_lines": 517,
+          "code_lines": 394,
+          "comment_lines": 22
+        },
+        {
+          "name": "deployment.py",
+          "path": "adaptiveneuralnetwork/production/deployment.py",
+          "total_lines": 318,
+          "code_lines": 272,
+          "comment_lines": 12
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/production/__init__.py",
+          "total_lines": 57,
+          "code_lines": 42,
+          "comment_lines": 3
+        },
+        {
+          "name": "serving.py",
+          "path": "adaptiveneuralnetwork/production/serving.py",
+          "total_lines": 425,
+          "code_lines": 316,
+          "comment_lines": 29
+        }
+      ],
+      "stats": {
+        "file_count": 6,
+        "total_lines": 2305,
+        "code_lines": 1766,
+        "comment_lines": 110
+      }
+    },
+    "applications": {
+      "path": "adaptiveneuralnetwork/applications",
+      "files": [
+        {
+          "name": "enhanced_memory_systems.py",
+          "path": "adaptiveneuralnetwork/applications/enhanced_memory_systems.py",
+          "total_lines": 386,
+          "code_lines": 261,
+          "comment_lines": 35
+        },
+        {
+          "name": "self_supervised_learning.py",
+          "path": "adaptiveneuralnetwork/applications/self_supervised_learning.py",
+          "total_lines": 258,
+          "code_lines": 181,
+          "comment_lines": 24
+        },
+        {
+          "name": "advanced_language_understanding.py",
+          "path": "adaptiveneuralnetwork/applications/advanced_language_understanding.py",
+          "total_lines": 590,
+          "code_lines": 399,
+          "comment_lines": 70
+        },
+        {
+          "name": "curriculum_learning.py",
+          "path": "adaptiveneuralnetwork/applications/curriculum_learning.py",
+          "total_lines": 373,
+          "code_lines": 263,
+          "comment_lines": 29
+        },
+        {
+          "name": "few_shot_learning.py",
+          "path": "adaptiveneuralnetwork/applications/few_shot_learning.py",
+          "total_lines": 560,
+          "code_lines": 382,
+          "comment_lines": 58
+        },
+        {
+          "name": "sensory_processing.py",
+          "path": "adaptiveneuralnetwork/applications/sensory_processing.py",
+          "total_lines": 721,
+          "code_lines": 507,
+          "comment_lines": 69
+        },
+        {
+          "name": "multimodal_vl.py",
+          "path": "adaptiveneuralnetwork/applications/multimodal_vl.py",
+          "total_lines": 979,
+          "code_lines": 689,
+          "comment_lines": 92
+        },
+        {
+          "name": "dynamic_benchmarking.py",
+          "path": "adaptiveneuralnetwork/applications/dynamic_benchmarking.py",
+          "total_lines": 570,
+          "code_lines": 394,
+          "comment_lines": 49
+        },
+        {
+          "name": "continual_learning.py",
+          "path": "adaptiveneuralnetwork/applications/continual_learning.py",
+          "total_lines": 1370,
+          "code_lines": 943,
+          "comment_lines": 145
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/applications/__init__.py",
+          "total_lines": 84,
+          "code_lines": 67,
+          "comment_lines": 6
+        },
+        {
+          "name": "iot_edge_integration.py",
+          "path": "adaptiveneuralnetwork/applications/iot_edge_integration.py",
+          "total_lines": 711,
+          "code_lines": 514,
+          "comment_lines": 63
+        }
+      ],
+      "stats": {
+        "file_count": 11,
+        "total_lines": 6602,
+        "code_lines": 4600,
+        "comment_lines": 640
+      }
+    },
+    "automl": {
+      "path": "adaptiveneuralnetwork/automl",
+      "files": [
+        {
+          "name": "preprocessing.py",
+          "path": "adaptiveneuralnetwork/automl/preprocessing.py",
+          "total_lines": 629,
+          "code_lines": 481,
+          "comment_lines": 42
+        },
+        {
+          "name": "feature_selection.py",
+          "path": "adaptiveneuralnetwork/automl/feature_selection.py",
+          "total_lines": 558,
+          "code_lines": 399,
+          "comment_lines": 51
+        },
+        {
+          "name": "optimization.py",
+          "path": "adaptiveneuralnetwork/automl/optimization.py",
+          "total_lines": 662,
+          "code_lines": 491,
+          "comment_lines": 53
+        },
+        {
+          "name": "pipeline.py",
+          "path": "adaptiveneuralnetwork/automl/pipeline.py",
+          "total_lines": 668,
+          "code_lines": 496,
+          "comment_lines": 41
+        },
+        {
+          "name": "config.py",
+          "path": "adaptiveneuralnetwork/automl/config.py",
+          "total_lines": 272,
+          "code_lines": 182,
+          "comment_lines": 30
+        },
+        {
+          "name": "engine.py",
+          "path": "adaptiveneuralnetwork/automl/engine.py",
+          "total_lines": 493,
+          "code_lines": 379,
+          "comment_lines": 30
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/automl/__init__.py",
+          "total_lines": 67,
+          "code_lines": 55,
+          "comment_lines": 5
+        },
+        {
+          "name": "feature_engineering.py",
+          "path": "adaptiveneuralnetwork/automl/feature_engineering.py",
+          "total_lines": 538,
+          "code_lines": 387,
+          "comment_lines": 43
+        }
+      ],
+      "stats": {
+        "file_count": 8,
+        "total_lines": 3887,
+        "code_lines": 2870,
+        "comment_lines": 295
+      }
+    },
+    "ecosystem": {
+      "path": "adaptiveneuralnetwork/ecosystem",
+      "files": [
+        {
+          "name": "sdk.py",
+          "path": "adaptiveneuralnetwork/ecosystem/sdk.py",
+          "total_lines": 567,
+          "code_lines": 422,
+          "comment_lines": 32
+        },
+        {
+          "name": "contrib.py",
+          "path": "adaptiveneuralnetwork/ecosystem/contrib.py",
+          "total_lines": 590,
+          "code_lines": 451,
+          "comment_lines": 18
+        },
+        {
+          "name": "plugins.py",
+          "path": "adaptiveneuralnetwork/ecosystem/plugins.py",
+          "total_lines": 498,
+          "code_lines": 367,
+          "comment_lines": 23
+        },
+        {
+          "name": "__init__.py",
+          "path": "adaptiveneuralnetwork/ecosystem/__init__.py",
+          "total_lines": 47,
+          "code_lines": 40,
+          "comment_lines": 2
+        },
+        {
+          "name": "integrations.py",
+          "path": "adaptiveneuralnetwork/ecosystem/integrations.py",
+          "total_lines": 616,
+          "code_lines": 453,
+          "comment_lines": 35
+        }
+      ],
+      "stats": {
+        "file_count": 5,
+        "total_lines": 2318,
+        "code_lines": 1733,
+        "comment_lines": 110
+      }
+    }
+  },
+  "summary": {
+    "total_files": 99,
+    "total_lines": 40959,
+    "total_code_lines": 29736,
+    "total_comment_lines": 3266
+  }
+}
