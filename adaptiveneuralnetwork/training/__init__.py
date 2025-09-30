@@ -5,6 +5,10 @@ Training utilities for adaptive neural networks.
 from .datasets import create_synthetic_loaders, load_mnist, load_mnist_subset
 from .loops import TrainingLoop, quick_train
 
+# Phase 4: Training Loop Abstraction
+from .callbacks import Callback, CallbackList, LoggingCallback, ProfilingCallback
+from .trainer import Trainer
+
 # Try to import new modules (with fallback for gradual implementation)
 try:
     from .bitext_dataset import BitextDatasetLoader
@@ -17,6 +21,11 @@ try:
         "create_synthetic_loaders",
         "TrainingLoop",
         "quick_train",
+        "Callback",
+        "CallbackList",
+        "LoggingCallback",
+        "ProfilingCallback",
+        "Trainer",
         "BitextDatasetLoader",
         "TextClassificationBaseline",
         "run_bitext_training",
@@ -29,4 +38,9 @@ except ImportError:
         "create_synthetic_loaders",
         "TrainingLoop",
         "quick_train",
+        "Callback",
+        "CallbackList",
+        "LoggingCallback",
+        "ProfilingCallback",
+        "Trainer",
     ]
