@@ -411,6 +411,19 @@ pip install -e ".[jax,neuromorphic,multimodal]"
 pip install -e ".[nlp,dev]"  # NLP + development tools
 ```
 
+### Run Consolidation Demo
+Execute the unified consolidation system demonstration:
+```bash
+python consolidate.py
+```
+
+This demonstrates:
+- Phase-based consolidation (sleep-phase memory strengthening)
+- Synaptic consolidation (EWC-based weight protection)  
+- Memory consolidation (episodic-to-semantic transfer)
+
+See [CONSOLIDATION.md](CONSOLIDATION.md) for detailed documentation.
+
 ---
 
 ## 📊 HR Analytics Integration
