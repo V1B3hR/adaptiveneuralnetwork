@@ -90,8 +90,7 @@ class TextClassificationBaseline:
             ngram_range=self.ngram_range,
             stop_words='english',
             lowercase=True,
-            strip_accents='unicode',
-            random_state=self.random_state
+            strip_accents='unicode'
         )
     
     def _create_classifier(self):
@@ -189,7 +188,7 @@ class TextClassificationBaseline:
                 val_report = classification_report(
                     val_encoded_labels, 
                     val_predictions,
-                    target_names=self.label_encoder.classes_,
+                    target_names=[str(c) for c in self.label_encoder.classes_],
                     output_dict=True
                 )
                 metrics["val_classification_report"] = val_report
