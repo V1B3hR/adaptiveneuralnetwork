@@ -62,7 +62,7 @@ Scripts for text/sequence/specialized dataset training are in:
 
 - **Bitext Training (smoke test):**
   ```bash
-  python -m adaptiveneuralnetwork.training.run_bitext_training --mode smoke
+  python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode smoke
   ```
 - **Full Benchmark:**
   ```bash
@@ -154,9 +154,9 @@ See `tests/test_alive_node.py` for full examples of training tests and reproduci
 
 ```bash
 # Smoke test
-python -m adaptiveneuralnetwork.training.run_bitext_training --mode smoke
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode smoke
 # Full benchmark (with Kaggle)
-python -m adaptiveneuralnetwork.training.run_bitext_training --mode benchmark --subset-size 10000 --dataset-name kaggle-user/dataset-name
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode benchmark --subset-size 10000 --dataset-name kaggle-user/dataset-name
 ```
 
 ### Essay Benchmark

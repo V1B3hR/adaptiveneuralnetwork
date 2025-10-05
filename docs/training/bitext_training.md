@@ -40,27 +40,27 @@ This installs:
 ### 1. Check Dependencies
 
 ```bash
-python -m adaptiveneuralnetwork.training.run_bitext_training --check-deps
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --check-deps
 ```
 
 ### 2. Run Smoke Test
 
 ```bash
 # With synthetic data
-python -m adaptiveneuralnetwork.training.run_bitext_training --mode smoke
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode smoke
 
 # With local CSV file
-python -m adaptiveneuralnetwork.training.run_bitext_training --mode smoke --local-path data.csv
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode smoke --local-path data.csv
 ```
 
 ### 3. Run Benchmark
 
 ```bash
 # Full benchmark with synthetic data
-python -m adaptiveneuralnetwork.training.run_bitext_training --mode benchmark --subset-size 5000
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode benchmark --subset-size 5000
 
 # With Kaggle dataset (requires credentials)
-python -m adaptiveneuralnetwork.training.run_bitext_training --mode benchmark --dataset-name username/dataset-name
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode benchmark --dataset-name username/dataset-name
 ```
 
 ## Usage
@@ -76,7 +76,7 @@ The main entry point is `run_bitext_training.py` which provides two modes:
 - **Use Case**: CI/CD, development testing
 
 ```bash
-python -m adaptiveneuralnetwork.training.run_bitext_training \
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training \
   --mode smoke \
   --subset-size 50 \
   --output-dir outputs
@@ -89,7 +89,7 @@ python -m adaptiveneuralnetwork.training.run_bitext_training \
 - **Use Case**: Model evaluation, performance testing
 
 ```bash
-python -m adaptiveneuralnetwork.training.run_bitext_training \
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training \
   --mode benchmark \
   --subset-size 10000 \
   --epochs 1 \
@@ -123,7 +123,7 @@ python -m adaptiveneuralnetwork.training.run_bitext_training \
 export KAGGLE_USERNAME=your_username
 export KAGGLE_KEY=your_api_key
 
-python -m adaptiveneuralnetwork.training.run_bitext_training \
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training \
   --dataset-name username/sentiment-analysis-dataset
 ```
 
@@ -142,7 +142,7 @@ text,label
 
 **Usage:**
 ```bash
-python -m adaptiveneuralnetwork.training.run_bitext_training \
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training \
   --local-path /path/to/your/data.csv
 ```
 
@@ -243,7 +243,7 @@ To use Kaggle datasets in GitHub Actions, configure repository secrets:
     KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
     KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
   run: |
-    python -m adaptiveneuralnetwork.training.run_bitext_training \
+    python -m adaptiveneuralnetwork.training.scripts.run_bitext_training \
       --mode benchmark \
       --subset-size 1000 \
       --dataset-name "username/dataset" \
@@ -365,7 +365,7 @@ node = AliveLoopNode(
 Enable verbose logging for troubleshooting:
 
 ```bash
-python -m adaptiveneuralnetwork.training.run_bitext_training \
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training \
   --mode smoke \
   --verbose
 ```
