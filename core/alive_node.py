@@ -1315,7 +1315,7 @@ class AliveLoopNode:
                         'next_state': next_state
                     },
                     importance=importance,
-                    timestamp=get_timestamp(),
+                    timestamp=self._time,
                     memory_type='reward',
                     emotional_valence=np.tanh(reward)  # Map reward to [-1, 1]
                 )
