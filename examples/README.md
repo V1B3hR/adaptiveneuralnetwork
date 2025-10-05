@@ -1,4 +1,34 @@
-# Phase 4 Training Loop Abstraction - Examples
+# Examples Directory
+
+This directory contains examples demonstrating various features of the Adaptive Neural Network framework.
+
+## Quick Start Example
+
+**New to Adaptive Neural Network?** Start here!
+
+### Running the Quick Start Examples
+
+```bash
+# Run all quick start examples
+PYTHONPATH=. python examples/quickstart_example.py
+
+# Or from within examples/
+cd examples
+PYTHONPATH=.. python quickstart_example.py
+```
+
+The quick start example demonstrates:
+1. **Smoke Test** - Quick validation with default settings
+2. **Custom Smoke Test** - Custom parameters and output directory
+3. **Benchmark Mode** - Full evaluation with detailed metrics
+4. **Load and Predict** - Loading trained models and making predictions
+5. **Analyze Results** - Reading and analyzing results JSON files
+
+📖 See [QUICKSTART.md](../QUICKSTART.md) for comprehensive documentation.
+
+---
+
+## Phase 4 Training Loop Abstraction - Examples
 
 This directory contains examples demonstrating the Phase 4 Trainer class and callback system.
 
