@@ -97,6 +97,49 @@ class TestAliveLoopNode(unittest.TestCase):
         
         # Should be identical
         self.assertEqual(states_run1, states_run2, "Behavior should be reproducible with same seed")
+    
+    def test_train_method(self):
+        """Test the train method with experience-based learning"""
+        # Create sample experiences
+        experiences = [
+            {
+                'state': {'energy': 10.0, 'position': (0, 0)},
+                'action': 'move_forward',
+                'reward': 5.0,
+                'next_state': {'energy': 9.5, 'position': (1, 0)},
+                'done': False
+            },
+            {
+                'state': {'energy': 9.5, 'position': (1, 0)},
+                'action': 'interact',
+                'reward': -2.0,
+                'next_state': {'energy': 9.0, 'position': (1, 0)},
+                'done': False
+            },
+            {
+                'state': {'energy': 9.0, 'position': (1, 0)},
+                'action': 'rest',
+                'reward': 3.0,
+                'next_state': {'energy': 10.0, 'position': (1, 0)},
+                'done': True
+            }
+        ]
+        
+        # Record initial state
+        initial_memory_count = len(self.node.memory)
+        initial_joy = self.node.joy
+        
+        # Train the node
+        metrics = self.node.train(experiences)
+        
+        # Verify training metrics
+        self.assertEqual(metrics['total_reward'], 6.0)
+        self.assertAlmostEqual(metrics['avg_reward'], 2.0)
+        self.assertGreater(metrics['memories_created'], 0)
+        self.assertGreater(len(self.node.memory), initial_memory_count)
+        
+        # Verify emotional adaptation (positive net reward should increase joy)
+        self.assertGreater(self.node.joy, initial_joy)
 
 
 if __name__ == "__main__":

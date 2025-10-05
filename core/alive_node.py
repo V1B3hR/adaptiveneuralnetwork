@@ -1264,6 +1264,97 @@ class AliveLoopNode:
         else:
             self.predicted_energy = self.energy
 
+    def train(self, experiences: List[Dict[str, Any]], learning_rate: Optional[float] = None) -> Dict[str, Any]:
+        """
+        Train the node based on a batch of experiences using reinforcement learning principles.
+        
+        This method enables the node to learn from past experiences by:
+        - Storing valuable experiences as memories
+        - Adjusting behavioral parameters based on rewards
+        - Updating predictions based on patterns
+        - Adapting emotional responses to outcomes
+        
+        Args:
+            experiences: List of experience dictionaries, each containing:
+                - 'state': Dictionary of state variables (energy, position, etc.)
+                - 'action': Description of action taken
+                - 'reward': Numerical reward received (positive or negative)
+                - 'next_state': Dictionary of resulting state variables
+                - 'done': Boolean indicating if episode ended
+            learning_rate: Optional override for social_learning_rate (default: uses node's social_learning_rate)
+        
+        Returns:
+            Dictionary containing training metrics:
+                - 'total_reward': Sum of all rewards in batch
+                - 'avg_reward': Average reward across experiences
+                - 'memories_created': Number of new memories created
+                - 'learning_rate': Learning rate used
+        """
+        if learning_rate is None:
+            learning_rate = self.social_learning_rate
+        
+        total_reward = 0.0
+        memories_created = 0
+        
+        for experience in experiences:
+            reward = experience.get('reward', 0.0)
+            action = experience.get('action', 'unknown')
+            state = experience.get('state', {})
+            next_state = experience.get('next_state', {})
+            
+            total_reward += reward
+            
+            # Create memory from significant experiences (high reward or punishment)
+            importance = min(1.0, abs(reward) / 10.0)  # Normalize reward to [0, 1]
+            if importance > 0.2:  # Only store moderately important experiences
+                memory = Memory(
+                    content={
+                        'action': action,
+                        'reward': reward,
+                        'state': state,
+                        'next_state': next_state
+                    },
+                    importance=importance,
+                    timestamp=get_timestamp(),
+                    memory_type='reward',
+                    emotional_valence=np.tanh(reward)  # Map reward to [-1, 1]
+                )
+                self.memory.append(memory)
+                memories_created += 1
+            
+            # Update emotional states based on reward
+            if reward > 0:
+                # Positive reward increases joy, hope, and reduces anxiety
+                self.update_joy(learning_rate * reward * 0.1)
+                self.update_hope(learning_rate * reward * 0.05)
+                self.update_anxiety(-learning_rate * reward * 0.1)
+            elif reward < 0:
+                # Negative reward increases frustration, sadness
+                self.update_frustration(learning_rate * abs(reward) * 0.1)
+                self.update_sadness(learning_rate * abs(reward) * 0.05)
+            
+            # Update energy predictions based on state transitions
+            if 'energy' in state and 'energy' in next_state:
+                energy_change = next_state['energy'] - state['energy']
+                # Adjust predicted energy based on learned patterns
+                self.predicted_energy = max(0, self.predicted_energy + learning_rate * energy_change)
+        
+        # Trigger memory cleanup if we added many memories
+        if memories_created > 10:
+            self._cleanup_memory()
+        
+        # Calculate metrics
+        avg_reward = total_reward / len(experiences) if experiences else 0.0
+        
+        return {
+            'total_reward': total_reward,
+            'avg_reward': avg_reward,
+            'memories_created': memories_created,
+            'learning_rate': learning_rate,
+            'current_energy': self.energy,
+            'predicted_energy': self.predicted_energy
+        }
+    
     def clear_anxiety(self):
         """Reduce anxiety, especially during deep sleep"""
         if self.phase == "sleep" and self.sleep_stage == "deep":
