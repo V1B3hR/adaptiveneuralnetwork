@@ -1,4 +1,36 @@
-Refactor phases.
+# Adaptive Neural Network
+
+> A production-ready neural network framework with adaptive learning capabilities
+
+## 🚀 Quick Start
+
+**New to Adaptive Neural Network?** Get started in 5 minutes with our [Quick Start Guide](QUICKSTART.md)!
+
+```bash
+# Install with NLP support
+pip install 'adaptiveneuralnetwork[nlp]'
+
+# Run a quick validation test
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode smoke
+
+# Run a full benchmark
+python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode benchmark --subset-size 1000
+```
+
+**Key Features:**
+- ✅ Run smoke tests for quick validation
+- ✅ Run benchmarks for full evaluation
+- ✅ Use local CSV files or Kaggle datasets
+- ✅ Configure output directories and subset sizes
+- ✅ Access trained models and detailed metrics
+
+📖 **[Read the Quick Start Guide](QUICKSTART.md)** for complete examples and troubleshooting.
+
+---
+
+## Development Roadmap
+
+### Refactor phases.
 
 Phase 0 – Inventory & Metrics (Foundation)
 Purpose: Understand the current state and quantify baseline performance before changing anything.

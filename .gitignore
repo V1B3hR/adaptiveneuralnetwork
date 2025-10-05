@@ -154,3 +154,4 @@ pos_tagging_output/
 eval_results/
 # HR Analytics training outputs (available as CI artifacts)
 outputs/
+examples/outputs/
