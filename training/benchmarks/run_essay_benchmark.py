@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent))
 
 from adaptiveneuralnetwork.api import AdaptiveConfig
-from adaptiveneuralnetwork.benchmarks.text_classification import (
+from adaptiveneuralnetwork.benchmarks.nlp.text_classification import (
     run_essay_classification_benchmark,
     SyntheticEssayDataset,
     EssayDataset

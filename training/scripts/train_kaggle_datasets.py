@@ -19,8 +19,9 @@ import logging
 import sys
 from pathlib import Path
 
-# Add the current directory to Python path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add the parent directory to Python path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent / "benchmarks"))
 
 from run_essay_benchmark import main as run_benchmark
 from adaptiveneuralnetwork.data import print_dataset_info
@@ -38,10 +39,13 @@ def train_dataset(dataset_type, args):
         # Import and use the new training system
         try:
             import subprocess
-            import sys
+            
+            # Get the full path to train_new_datasets.py
+            script_dir = Path(__file__).parent
+            train_script = script_dir / "train_new_datasets.py"
             
             cmd = [
-                sys.executable, "train_new_datasets.py",
+                sys.executable, str(train_script),
                 "--dataset", dataset_type,
                 "--epochs", str(args.epochs),
                 "--num-samples", str(args.samples),
@@ -235,13 +239,8 @@ def main():
                 print("\n" + "="*80)
             print(f"Training on {dataset} ({i+1}/{len(datasets)})")
             print("="*80)
-            # For new datasets, use the specialized training script
-            if dataset in ["vr_driving", "autvi", "digakust"]:
-                print(f"Using specialized training for {dataset}")
-                # This would call the new training script in a real implementation
-                print(f"[PLACEHOLDER] Training {dataset} with train_new_datasets.py")
-            else:
-                train_dataset(dataset, args)
+            # Train all datasets using the train_dataset function
+            train_dataset(dataset, args)
     else:
         if args.dataset in ["vr_driving", "autvi", "digakust"]:
             print(f"\nNOTE: Dataset '{args.dataset}' is supported by the new training system.")
