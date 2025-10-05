@@ -17,7 +17,7 @@ import random
 import numpy as np
 from collections import Counter, defaultdict
 
-from ..benchmarks.text_classification import EssayDataset
+from ..benchmarks.nlp.text_classification import EssayDataset
 
 logger = logging.getLogger(__name__)
 

@@ -235,13 +235,8 @@ def main():
                 print("\n" + "="*80)
             print(f"Training on {dataset} ({i+1}/{len(datasets)})")
             print("="*80)
-            # For new datasets, use the specialized training script
-            if dataset in ["vr_driving", "autvi", "digakust"]:
-                print(f"Using specialized training for {dataset}")
-                # This would call the new training script in a real implementation
-                print(f"[PLACEHOLDER] Training {dataset} with train_new_datasets.py")
-            else:
-                train_dataset(dataset, args)
+            # Train all datasets using the train_dataset function
+            train_dataset(dataset, args)
     else:
         if args.dataset in ["vr_driving", "autvi", "digakust"]:
             print(f"\nNOTE: Dataset '{args.dataset}' is supported by the new training system.")
