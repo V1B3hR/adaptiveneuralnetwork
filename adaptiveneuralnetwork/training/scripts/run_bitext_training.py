@@ -125,10 +125,15 @@ def run_smoke_test(
         train_df, val_df = None, None
 
         if dataset_name or local_path:
+            # For local files, load all data first then limit
+            # For Kaggle datasets, use sampling fraction
+            use_sampling = dataset_name is not None
+            sampling_frac = min(subset_size / 10000, 1.0) if use_sampling else None
+            
             loader = BitextDatasetLoader(
                 dataset_name=dataset_name,
                 local_path=local_path,
-                sampling_fraction=min(subset_size / 10000, 1.0),  # Rough sampling
+                sampling_fraction=sampling_frac,  # Only sample for Kaggle datasets
                 normalize_text=True,
                 random_seed=42
             )
@@ -136,13 +141,13 @@ def run_smoke_test(
             try:
                 train_df, val_df = loader.load_dataset(val_split=0.2)
                 if train_df is not None:
-                    # Limit to subset size
-                    if len(train_df) > subset_size:
-                        train_df = train_df.head(subset_size)
-                    if len(val_df) > subset_size // 4:
-                        val_df = val_df.head(subset_size // 4)
+                    # Limit to subset size after loading
+                    if len(train_df) > int(subset_size * 0.8):  # 80% for training
+                        train_df = train_df.head(int(subset_size * 0.8))
+                    if val_df is not None and len(val_df) > int(subset_size * 0.2):  # 20% for validation
+                        val_df = val_df.head(int(subset_size * 0.2))
 
-                    logger.info(f"Loaded real data: {len(train_df)} train, {len(val_df)} val samples")
+                    logger.info(f"Loaded real data: {len(train_df)} train, {len(val_df) if val_df is not None else 0} val samples")
             except Exception as e:
                 logger.warning(f"Failed to load real data: {e}")
                 train_df, val_df = None, None
@@ -290,15 +295,17 @@ def run_benchmark(
         train_df, val_df = None, None
 
         if dataset_name or local_path:
+            # For local files, load all data first then limit
+            # For Kaggle datasets, use sampling fraction
             sampling_fraction = None
-            if subset_size:
-                # Rough estimate for sampling fraction
+            if subset_size and dataset_name:
+                # Only use sampling for Kaggle datasets
                 sampling_fraction = min(subset_size / 100000, 1.0)
 
             loader = BitextDatasetLoader(
                 dataset_name=dataset_name,
                 local_path=local_path,
-                sampling_fraction=sampling_fraction,
+                sampling_fraction=sampling_fraction,  # Only sample for Kaggle datasets
                 normalize_text=True,
                 random_seed=42
             )
