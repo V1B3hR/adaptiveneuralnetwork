@@ -99,6 +99,19 @@ def _cleanup_memory(self):
 - Periodically prunes memory by importance.
 - Ages memories and removes if retention/importance limits are hit.
 
+### **Training and Learning**
+```python
+def train(self, experiences: List[Dict[str, Any]], learning_rate: Optional[float] = None) -> Dict[str, Any]:
+    ...
+```
+- Enables reinforcement learning from batches of experiences
+- Each experience contains: state, action, reward, next_state, done
+- Creates memories from significant experiences (high reward/punishment)
+- Updates emotional states based on rewards (joy for positive, frustration for negative)
+- Adjusts energy predictions based on learned patterns
+- Returns metrics: total_reward, avg_reward, memories_created, learning_rate
+- Useful for training nodes to adapt behavior based on environmental feedback
+
 ### **Social and Emotional Adaptation**
 ```python
 def share_valuable_memory(self, nodes: List['AliveLoopNode']) -> List[SocialSignal]:
@@ -175,6 +188,32 @@ if node.check_anxiety_overwhelm():
 ```python
 node.predict_energy()
 print(node.predicted_energy)
+```
+
+### **Training from Experience**
+```python
+# Create training experiences
+experiences = [
+    {
+        'state': {'energy': 10.0, 'position': (0, 0)},
+        'action': 'move_forward',
+        'reward': 5.0,
+        'next_state': {'energy': 9.5, 'position': (1, 0)},
+        'done': False
+    },
+    {
+        'state': {'energy': 9.5, 'position': (1, 0)},
+        'action': 'collect_resource',
+        'reward': 10.0,
+        'next_state': {'energy': 15.0, 'position': (1, 0)},
+        'done': True
+    }
+]
+
+# Train node on experiences
+metrics = node.train(experiences)
+print(f"Total reward: {metrics['total_reward']}")
+print(f"Memories created: {metrics['memories_created']}")
 ```
 
 ### **Attack Detection**
