@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 import warnings
+import numpy as np
 
 # Set up logging
 logging.basicConfig(
@@ -22,6 +23,21 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def convert_numpy_types(obj):
+    """Convert numpy types to native Python types for JSON serialization."""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: convert_numpy_types(value) for key, value in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [convert_numpy_types(item) for item in obj]
+    return obj
 
 
 def check_dependencies() -> Dict[str, bool]:
@@ -92,11 +108,11 @@ def run_smoke_test(
         Dictionary with test results
     """
     try:
-        from adaptiveneuralnetwork.training.bitext_dataset import (
+        from adaptiveneuralnetwork.training.datasets.bitext_dataset import (
             BitextDatasetLoader,
             create_synthetic_bitext_data
         )
-        from adaptiveneuralnetwork.training.text_baseline import TextClassificationBaseline
+        from adaptiveneuralnetwork.training.models.text_baseline import TextClassificationBaseline
 
         logger.info("Starting smoke test...")
         start_time = time.time()
@@ -193,8 +209,27 @@ def run_smoke_test(
 
         # Save results
         results_file = output_path / "smoke_test_results.json"
-        with open(results_file, 'w') as f:
-            json.dump(results, f, indent=2, default=str)
+        try:
+            # Convert numpy types before saving
+            results_converted = convert_numpy_types(results)
+            with open(results_file, 'w') as f:
+                json.dump(results_converted, f, indent=2, default=str)
+        except Exception as save_error:
+            logger.error(f"Failed to save results: {save_error}")
+            # Try to identify which part is problematic
+            for key, value in results.items():
+                try:
+                    json.dumps({key: value})
+                    logger.debug(f"  {key}: OK")
+                except Exception as e:
+                    logger.error(f"  {key}: FAILED - {e}")
+                    if isinstance(value, dict):
+                        for subkey, subvalue in value.items():
+                            try:
+                                json.dumps({subkey: subvalue})
+                            except Exception as e2:
+                                logger.error(f"    {subkey} (type {type(subkey).__name__}): FAILED - {e2}")
+            raise
 
         # Save model
         model_file = output_path / "smoke_test_model.pkl"
@@ -238,11 +273,11 @@ def run_benchmark(
         Dictionary with benchmark results
     """
     try:
-        from adaptiveneuralnetwork.training.bitext_dataset import (
+        from adaptiveneuralnetwork.training.datasets.bitext_dataset import (
             BitextDatasetLoader,
             create_synthetic_bitext_data
         )
-        from adaptiveneuralnetwork.training.text_baseline import TextClassificationBaseline
+        from adaptiveneuralnetwork.training.models.text_baseline import TextClassificationBaseline
 
         logger.info("Starting benchmark...")
         start_time = time.time()
@@ -345,7 +380,9 @@ def run_benchmark(
         # Save results
         results_file = output_path / "benchmark_results.json"
         with open(results_file, 'w') as f:
-            json.dump(results, f, indent=2, default=str)
+            # Convert numpy types before saving
+            results_converted = convert_numpy_types(results)
+            json.dump(results_converted, f, indent=2, default=str)
 
         # Save model
         model_file = output_path / "benchmark_model.pkl"
