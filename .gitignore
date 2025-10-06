@@ -155,3 +155,7 @@ eval_results/
 # HR Analytics training outputs (available as CI artifacts)
 outputs/
 examples/outputs/
+
+# AliveNode training results
+*training_results.json
+alive_node_training*.json
