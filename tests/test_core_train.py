@@ -35,7 +35,7 @@ class TestCoreTrainModule(unittest.TestCase):
             text=True
         )
         self.assertEqual(result.returncode, 0)
-        self.assertIn("Core training script", result.stdout)
+        self.assertIn("Training Script", result.stdout)
         self.assertIn("--dataset", result.stdout)
         self.assertIn("--epochs", result.stdout)
     
