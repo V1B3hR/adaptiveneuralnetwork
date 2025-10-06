@@ -11,10 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/upload-artifact@v4
     - uses: actions/checkout@v4
-    
-    
+
     - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
@@ -33,7 +31,6 @@ jobs:
       run: |
         ls -la results/
         cat results/metrics.json
-        # Verify metrics.json has required fields
         python -c "
         import json
         with open('results/metrics.json') as f:
@@ -47,7 +44,7 @@ jobs:
         "
     
     - name: Upload metrics artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: bitext-smoke-metrics
         path: results/metrics.json
