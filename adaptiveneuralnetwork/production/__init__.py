@@ -5,7 +5,7 @@ This module provides production-ready components for deployment, scaling,
 and enterprise integration of adaptive neural networks.
 """
 
-from .deployment import KubernetesDeployment, AutoScaler
+from .deployment import AutoScaler, KubernetesDeployment
 
 # Import optional components with error handling
 _SERVING_AVAILABLE = False
@@ -14,19 +14,19 @@ _MESSAGING_AVAILABLE = False
 _AUTH_AVAILABLE = False
 
 try:
-    from .serving import ModelServer, FastAPIServer
+    from .serving import FastAPIServer, ModelServer
     _SERVING_AVAILABLE = True
 except ImportError:
     pass
 
 try:
-    from .database import DatabaseManager, SQLManager, NoSQLManager
+    from .database import DatabaseManager, NoSQLManager, SQLManager
     _DATABASE_AVAILABLE = True
 except ImportError:
     pass
 
 try:
-    from .messaging import MessageQueue, KafkaProducer, RabbitMQProducer
+    from .messaging import KafkaProducer, MessageQueue, RabbitMQProducer
     _MESSAGING_AVAILABLE = True
 except ImportError:
     pass
@@ -40,7 +40,7 @@ except ImportError:
 # Base exports (always available)
 __all__ = [
     "KubernetesDeployment",
-    "AutoScaler", 
+    "AutoScaler",
 ]
 
 # Add conditional exports

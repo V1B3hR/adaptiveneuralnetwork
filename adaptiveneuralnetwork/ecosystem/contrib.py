@@ -2,14 +2,14 @@
 Community contribution system and governance.
 """
 
-import json
 import hashlib
-from typing import Dict, Any, List, Optional, Union
-from dataclasses import dataclass, field
-from pathlib import Path
-from datetime import datetime
+import json
 import logging
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 from .plugins import PluginBase, PluginMetadata
 
@@ -41,14 +41,14 @@ class Contributor:
     id: str
     name: str
     email: str
-    github_username: Optional[str] = None
-    affiliation: Optional[str] = None
+    github_username: str | None = None
+    affiliation: str | None = None
     contributions_count: int = 0
     reputation_score: float = 0.0
     joined_date: datetime = field(default_factory=datetime.utcnow)
     last_active: datetime = field(default_factory=datetime.utcnow)
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -61,9 +61,9 @@ class Contributor:
             "joined_date": self.joined_date.isoformat(),
             "last_active": self.last_active.isoformat()
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Contributor':
+    def from_dict(cls, data: dict[str, Any]) -> 'Contributor':
         """Create from dictionary."""
         data = data.copy()
         if "joined_date" in data:
@@ -83,17 +83,17 @@ class Contribution:
     contribution_type: ContributionType
     status: ContributionStatus = ContributionStatus.SUBMITTED
     submitted_date: datetime = field(default_factory=datetime.utcnow)
-    review_date: Optional[datetime] = None
-    merge_date: Optional[datetime] = None
+    review_date: datetime | None = None
+    merge_date: datetime | None = None
     version: str = "1.0.0"
-    tags: List[str] = field(default_factory=list)
-    dependencies: List[str] = field(default_factory=list)
-    file_path: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    review_comments: List[Dict[str, Any]] = field(default_factory=list)
-    test_results: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    tags: list[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
+    file_path: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    review_comments: list[dict[str, Any]] = field(default_factory=list)
+    test_results: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -113,9 +113,9 @@ class Contribution:
             "review_comments": self.review_comments,
             "test_results": self.test_results
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Contribution':
+    def from_dict(cls, data: dict[str, Any]) -> 'Contribution':
         """Create from dictionary."""
         data = data.copy()
         data["contribution_type"] = ContributionType(data["contribution_type"])
@@ -130,12 +130,12 @@ class Contribution:
 
 class CommunityPlugin(PluginBase):
     """Base class for community-contributed plugins."""
-    
+
     def __init__(self, contribution: Contribution):
         super().__init__()
         self.contribution = contribution
         self._metadata = None
-    
+
     def get_metadata(self) -> PluginMetadata:
         """Get plugin metadata from contribution."""
         if self._metadata is None:
@@ -148,7 +148,7 @@ class CommunityPlugin(PluginBase):
                 tags=self.contribution.tags
             )
         return self._metadata
-    
+
     def get_contribution_info(self) -> Contribution:
         """Get contribution information."""
         return self.contribution
@@ -156,7 +156,7 @@ class CommunityPlugin(PluginBase):
 
 class ContributionValidator:
     """Validator for community contributions."""
-    
+
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.validation_rules = {
@@ -168,9 +168,9 @@ class ContributionValidator:
             ContributionType.FEATURE: self._validate_feature,
             ContributionType.OPTIMIZATION: self._validate_optimization
         }
-    
-    def validate_contribution(self, contribution: Contribution, 
-                            file_content: Optional[bytes] = None) -> Dict[str, Any]:
+
+    def validate_contribution(self, contribution: Contribution,
+                            file_content: bytes | None = None) -> dict[str, Any]:
         """Validate a contribution."""
         validation_result = {
             "valid": True,
@@ -179,17 +179,17 @@ class ContributionValidator:
             "suggestions": [],
             "score": 0.0
         }
-        
+
         # Basic validation
         if not contribution.title or len(contribution.title) < 5:
             validation_result["errors"].append("Title must be at least 5 characters long")
-        
+
         if not contribution.description or len(contribution.description) < 20:
             validation_result["errors"].append("Description must be at least 20 characters long")
-        
+
         if not contribution.contributor_id:
             validation_result["errors"].append("Contributor ID is required")
-        
+
         # Type-specific validation
         validator = self.validation_rules.get(contribution.contribution_type)
         if validator:
@@ -197,26 +197,26 @@ class ContributionValidator:
             validation_result["errors"].extend(type_result.get("errors", []))
             validation_result["warnings"].extend(type_result.get("warnings", []))
             validation_result["suggestions"].extend(type_result.get("suggestions", []))
-        
+
         # Calculate score
         validation_result["score"] = self._calculate_score(contribution, validation_result)
-        
+
         # Determine if valid
         validation_result["valid"] = len(validation_result["errors"]) == 0
-        
+
         return validation_result
-    
-    def _validate_plugin(self, contribution: Contribution, 
-                        file_content: Optional[bytes] = None) -> Dict[str, Any]:
+
+    def _validate_plugin(self, contribution: Contribution,
+                        file_content: bytes | None = None) -> dict[str, Any]:
         """Validate a plugin contribution."""
         result = {"errors": [], "warnings": [], "suggestions": []}
-        
+
         if not contribution.dependencies:
             result["warnings"].append("No dependencies specified - consider adding them")
-        
+
         if not contribution.tags:
             result["warnings"].append("No tags specified - consider adding descriptive tags")
-        
+
         if file_content:
             # Check if it's valid Python code
             try:
@@ -226,164 +226,164 @@ class ContributionValidator:
                 result["errors"].append(f"Python syntax error: {e}")
             except UnicodeDecodeError:
                 result["errors"].append("File must be valid UTF-8 encoded Python code")
-            
+
             # Check for required imports
             if b"PluginBase" not in file_content:
                 result["errors"].append("Plugin must inherit from PluginBase")
-            
+
             # Check for required methods
             required_methods = [b"get_metadata", b"initialize", b"finalize"]
             for method in required_methods:
                 if method not in file_content:
                     result["errors"].append(f"Plugin must implement {method.decode()} method")
-        
+
         return result
-    
-    def _validate_model(self, contribution: Contribution, 
-                       file_content: Optional[bytes] = None) -> Dict[str, Any]:
+
+    def _validate_model(self, contribution: Contribution,
+                       file_content: bytes | None = None) -> dict[str, Any]:
         """Validate a model contribution."""
         result = {"errors": [], "warnings": [], "suggestions": []}
-        
+
         # Check metadata
         if not contribution.metadata.get("model_type"):
             result["errors"].append("Model type must be specified in metadata")
-        
+
         if not contribution.metadata.get("input_shape"):
             result["warnings"].append("Input shape should be specified in metadata")
-        
+
         if not contribution.metadata.get("output_shape"):
             result["warnings"].append("Output shape should be specified in metadata")
-        
+
         if not contribution.metadata.get("performance_metrics"):
             result["warnings"].append("Performance metrics should be provided")
-        
+
         return result
-    
-    def _validate_dataset(self, contribution: Contribution, 
-                         file_content: Optional[bytes] = None) -> Dict[str, Any]:
+
+    def _validate_dataset(self, contribution: Contribution,
+                         file_content: bytes | None = None) -> dict[str, Any]:
         """Validate a dataset contribution."""
         result = {"errors": [], "warnings": [], "suggestions": []}
-        
+
         # Check metadata
         if not contribution.metadata.get("size"):
             result["warnings"].append("Dataset size should be specified")
-        
+
         if not contribution.metadata.get("format"):
             result["errors"].append("Dataset format must be specified")
-        
+
         if not contribution.metadata.get("license"):
             result["warnings"].append("Dataset license should be specified")
-        
+
         return result
-    
-    def _validate_documentation(self, contribution: Contribution, 
-                              file_content: Optional[bytes] = None) -> Dict[str, Any]:
+
+    def _validate_documentation(self, contribution: Contribution,
+                              file_content: bytes | None = None) -> dict[str, Any]:
         """Validate a documentation contribution."""
         result = {"errors": [], "warnings": [], "suggestions": []}
-        
+
         if file_content:
             content = file_content.decode('utf-8', errors='ignore')
-            
+
             # Check for basic markdown structure
             if not any(line.startswith('#') for line in content.split('\n')):
                 result["warnings"].append("Documentation should include headers")
-            
+
             # Check for examples
             if 'example' not in content.lower():
                 result["suggestions"].append("Consider adding examples to documentation")
-        
+
         return result
-    
-    def _validate_bug_fix(self, contribution: Contribution, 
-                         file_content: Optional[bytes] = None) -> Dict[str, Any]:
+
+    def _validate_bug_fix(self, contribution: Contribution,
+                         file_content: bytes | None = None) -> dict[str, Any]:
         """Validate a bug fix contribution."""
         result = {"errors": [], "warnings": [], "suggestions": []}
-        
+
         if not contribution.metadata.get("bug_report_id"):
             result["warnings"].append("Bug report ID should be referenced")
-        
+
         if not contribution.metadata.get("affected_versions"):
             result["warnings"].append("Affected versions should be specified")
-        
+
         return result
-    
-    def _validate_feature(self, contribution: Contribution, 
-                         file_content: Optional[bytes] = None) -> Dict[str, Any]:
+
+    def _validate_feature(self, contribution: Contribution,
+                         file_content: bytes | None = None) -> dict[str, Any]:
         """Validate a feature contribution."""
         result = {"errors": [], "warnings": [], "suggestions": []}
-        
+
         if not contribution.metadata.get("use_cases"):
             result["warnings"].append("Use cases should be described")
-        
+
         if not contribution.metadata.get("api_changes"):
             result["warnings"].append("API changes should be documented")
-        
+
         return result
-    
-    def _validate_optimization(self, contribution: Contribution, 
-                             file_content: Optional[bytes] = None) -> Dict[str, Any]:
+
+    def _validate_optimization(self, contribution: Contribution,
+                             file_content: bytes | None = None) -> dict[str, Any]:
         """Validate an optimization contribution."""
         result = {"errors": [], "warnings": [], "suggestions": []}
-        
+
         if not contribution.metadata.get("performance_improvement"):
             result["errors"].append("Performance improvement metrics must be provided")
-        
+
         if not contribution.metadata.get("benchmark_results"):
             result["warnings"].append("Benchmark results should be provided")
-        
+
         return result
-    
-    def _calculate_score(self, contribution: Contribution, 
-                        validation_result: Dict[str, Any]) -> float:
+
+    def _calculate_score(self, contribution: Contribution,
+                        validation_result: dict[str, Any]) -> float:
         """Calculate quality score for a contribution."""
         score = 100.0
-        
+
         # Deduct for errors
         score -= len(validation_result["errors"]) * 20
-        
+
         # Deduct for warnings
         score -= len(validation_result["warnings"]) * 5
-        
+
         # Bonus for good practices
         if contribution.dependencies:
             score += 5
-        
+
         if contribution.tags:
             score += 5
-        
+
         if contribution.metadata.get("tests"):
             score += 10
-        
+
         if contribution.metadata.get("documentation"):
             score += 10
-        
+
         return max(0.0, min(100.0, score))
 
 
 class ContributionManager:
     """Manager for community contributions."""
-    
+
     def __init__(self, storage_path: str = "contributions"):
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(exist_ok=True)
-        
+
         self.contributors_file = self.storage_path / "contributors.json"
         self.contributions_file = self.storage_path / "contributions.json"
-        
+
         self.contributors = self._load_contributors()
         self.contributions = self._load_contributions()
         self.validator = ContributionValidator()
         self.logger = logging.getLogger(__name__)
-    
-    def _load_contributors(self) -> Dict[str, Contributor]:
+
+    def _load_contributors(self) -> dict[str, Contributor]:
         """Load contributors from storage."""
         if not self.contributors_file.exists():
             return {}
-        
+
         try:
             with open(self.contributors_file) as f:
                 data = json.load(f)
-            
+
             return {
                 contributor_id: Contributor.from_dict(contributor_data)
                 for contributor_id, contributor_data in data.items()
@@ -391,7 +391,7 @@ class ContributionManager:
         except Exception as e:
             self.logger.error(f"Failed to load contributors: {e}")
             return {}
-    
+
     def _save_contributors(self):
         """Save contributors to storage."""
         try:
@@ -399,21 +399,21 @@ class ContributionManager:
                 contributor_id: contributor.to_dict()
                 for contributor_id, contributor in self.contributors.items()
             }
-            
+
             with open(self.contributors_file, 'w') as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             self.logger.error(f"Failed to save contributors: {e}")
-    
-    def _load_contributions(self) -> Dict[str, Contribution]:
+
+    def _load_contributions(self) -> dict[str, Contribution]:
         """Load contributions from storage."""
         if not self.contributions_file.exists():
             return {}
-        
+
         try:
             with open(self.contributions_file) as f:
                 data = json.load(f)
-            
+
             return {
                 contribution_id: Contribution.from_dict(contribution_data)
                 for contribution_id, contribution_data in data.items()
@@ -421,7 +421,7 @@ class ContributionManager:
         except Exception as e:
             self.logger.error(f"Failed to load contributions: {e}")
             return {}
-    
+
     def _save_contributions(self):
         """Save contributions to storage."""
         try:
@@ -429,21 +429,21 @@ class ContributionManager:
                 contribution_id: contribution.to_dict()
                 for contribution_id, contribution in self.contributions.items()
             }
-            
+
             with open(self.contributions_file, 'w') as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             self.logger.error(f"Failed to save contributions: {e}")
-    
-    def register_contributor(self, name: str, email: str, 
-                           github_username: Optional[str] = None,
-                           affiliation: Optional[str] = None) -> str:
+
+    def register_contributor(self, name: str, email: str,
+                           github_username: str | None = None,
+                           affiliation: str | None = None) -> str:
         """Register a new contributor."""
         contributor_id = hashlib.md5(f"{name}:{email}".encode()).hexdigest()[:12]
-        
+
         if contributor_id in self.contributors:
             return contributor_id
-        
+
         contributor = Contributor(
             id=contributor_id,
             name=name,
@@ -451,24 +451,24 @@ class ContributionManager:
             github_username=github_username,
             affiliation=affiliation
         )
-        
+
         self.contributors[contributor_id] = contributor
         self._save_contributors()
-        
+
         self.logger.info(f"Registered new contributor: {name} ({contributor_id})")
         return contributor_id
-    
+
     def submit_contribution(self, title: str, description: str, contributor_id: str,
-                          contribution_type: ContributionType, file_path: Optional[str] = None,
-                          version: str = "1.0.0", tags: Optional[List[str]] = None,
-                          dependencies: Optional[List[str]] = None,
-                          metadata: Optional[Dict[str, Any]] = None) -> str:
+                          contribution_type: ContributionType, file_path: str | None = None,
+                          version: str = "1.0.0", tags: list[str] | None = None,
+                          dependencies: list[str] | None = None,
+                          metadata: dict[str, Any] | None = None) -> str:
         """Submit a new contribution."""
         if contributor_id not in self.contributors:
             raise ValueError("Contributor not found")
-        
+
         contribution_id = hashlib.md5(f"{title}:{contributor_id}:{datetime.utcnow().isoformat()}".encode()).hexdigest()[:12]
-        
+
         contribution = Contribution(
             id=contribution_id,
             title=title,
@@ -481,26 +481,26 @@ class ContributionManager:
             dependencies=dependencies or [],
             metadata=metadata or {}
         )
-        
+
         self.contributions[contribution_id] = contribution
         self._save_contributions()
-        
+
         # Update contributor stats
         self.contributors[contributor_id].contributions_count += 1
         self.contributors[contributor_id].last_active = datetime.utcnow()
         self._save_contributors()
-        
+
         self.logger.info(f"Submitted contribution: {title} ({contribution_id})")
         return contribution_id
-    
+
     def review_contribution(self, contribution_id: str, reviewer_id: str,
                           approved: bool, comments: str) -> bool:
         """Review a contribution."""
         if contribution_id not in self.contributions:
             return False
-        
+
         contribution = self.contributions[contribution_id]
-        
+
         # Add review comment
         review_comment = {
             "reviewer_id": reviewer_id,
@@ -508,50 +508,50 @@ class ContributionManager:
             "approved": approved,
             "comments": comments
         }
-        
+
         contribution.review_comments.append(review_comment)
         contribution.review_date = datetime.utcnow()
-        
+
         # Update status
         if approved:
             contribution.status = ContributionStatus.APPROVED
         else:
             contribution.status = ContributionStatus.REJECTED
-        
+
         self._save_contributions()
-        
+
         # Update contributor reputation
         if approved:
             self.contributors[contribution.contributor_id].reputation_score += 10
         else:
             self.contributors[contribution.contributor_id].reputation_score -= 2
-        
+
         self._save_contributors()
-        
+
         return True
-    
-    def validate_contribution(self, contribution_id: str, 
-                            file_content: Optional[bytes] = None) -> Dict[str, Any]:
+
+    def validate_contribution(self, contribution_id: str,
+                            file_content: bytes | None = None) -> dict[str, Any]:
         """Validate a contribution."""
         if contribution_id not in self.contributions:
             return {"valid": False, "errors": ["Contribution not found"]}
-        
+
         contribution = self.contributions[contribution_id]
         return self.validator.validate_contribution(contribution, file_content)
-    
-    def get_contribution_stats(self) -> Dict[str, Any]:
+
+    def get_contribution_stats(self) -> dict[str, Any]:
         """Get contribution statistics."""
         total_contributions = len(self.contributions)
         status_counts = {}
         type_counts = {}
-        
+
         for contribution in self.contributions.values():
             status = contribution.status.value
             contrib_type = contribution.contribution_type.value
-            
+
             status_counts[status] = status_counts.get(status, 0) + 1
             type_counts[contrib_type] = type_counts.get(contrib_type, 0) + 1
-        
+
         return {
             "total_contributions": total_contributions,
             "total_contributors": len(self.contributors),
@@ -563,28 +563,28 @@ class ContributionManager:
                 reverse=True
             )[:10]
         }
-    
-    def list_contributions(self, status: Optional[ContributionStatus] = None,
-                         contribution_type: Optional[ContributionType] = None,
-                         contributor_id: Optional[str] = None) -> List[Contribution]:
+
+    def list_contributions(self, status: ContributionStatus | None = None,
+                         contribution_type: ContributionType | None = None,
+                         contributor_id: str | None = None) -> list[Contribution]:
         """List contributions with optional filters."""
         contributions = list(self.contributions.values())
-        
+
         if status:
             contributions = [c for c in contributions if c.status == status]
-        
+
         if contribution_type:
             contributions = [c for c in contributions if c.contribution_type == contribution_type]
-        
+
         if contributor_id:
             contributions = [c for c in contributions if c.contributor_id == contributor_id]
-        
+
         return sorted(contributions, key=lambda c: c.submitted_date, reverse=True)
-    
-    def get_contributor(self, contributor_id: str) -> Optional[Contributor]:
+
+    def get_contributor(self, contributor_id: str) -> Contributor | None:
         """Get contributor information."""
         return self.contributors.get(contributor_id)
-    
-    def get_contribution(self, contribution_id: str) -> Optional[Contribution]:
+
+    def get_contribution(self, contribution_id: str) -> Contribution | None:
         """Get contribution information."""
         return self.contributions.get(contribution_id)

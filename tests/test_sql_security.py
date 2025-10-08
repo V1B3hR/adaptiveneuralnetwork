@@ -3,38 +3,37 @@ Test cases for SQL injection prevention and database security
 in the TimeSeriesTracker system.
 """
 
-import unittest
-import tempfile
 import os
-import time
 import sqlite3
-from unittest.mock import patch
 
 # Add the project root to the path
 import sys
+import tempfile
+import unittest
+
 sys.path.insert(0, '/home/runner/work/adaptiveneuralnetwork/adaptiveneuralnetwork')
 
-from core.time_series_tracker import TimeSeriesTracker, TimeSeriesQuery
+from core.time_series_tracker import TimeSeriesQuery, TimeSeriesTracker
 
 
 class TestSQLSecurity(unittest.TestCase):
     """Test SQL injection prevention and security measures"""
-    
+
     def setUp(self):
         # Use temporary database file
         self.db_file = tempfile.NamedTemporaryFile(delete=False)
         self.db_file.close()
-        
+
         self.tracker = TimeSeriesTracker(
             max_memory_points=1000,
             persist_to_disk=True,
             db_path=self.db_file.name
         )
-        
+
         # Add some test data
         self.tracker.record_node_state(1, {"energy": 10.0, "anxiety": 2.0})
         self.tracker.record_node_state(2, {"energy": 15.0, "trust": 0.8})
-        
+
     def tearDown(self):
         # Clean up temporary database
         try:
@@ -48,12 +47,12 @@ class TestSQLSecurity(unittest.TestCase):
         query = TimeSeriesQuery(node_ids=[1, 2])
         results = self.tracker.query(query)
         self.assertGreater(len(results), 0)
-        
+
         # Invalid types should be rejected or coerced
         with self.assertRaises((TypeError, ValueError)):
             query = TimeSeriesQuery(node_ids=["'; DROP TABLE time_series; --"])
             self.tracker.query(query)
-            
+
         with self.assertRaises((TypeError, ValueError)):
             query = TimeSeriesQuery(node_ids=[1.5, 2.7])  # Floats should be rejected or coerced
             self.tracker.query(query)
@@ -64,12 +63,12 @@ class TestSQLSecurity(unittest.TestCase):
         query = TimeSeriesQuery(variables=["energy", "anxiety"])
         results = self.tracker.query(query)
         self.assertGreater(len(results), 0)
-        
+
         # Invalid variable names should be rejected
         with self.assertRaises((ValueError, KeyError)):
             query = TimeSeriesQuery(variables=["'; DROP TABLE time_series; --"])
             self.tracker.query(query)
-            
+
         with self.assertRaises((ValueError, KeyError)):
             query = TimeSeriesQuery(variables=["invalid_variable_name"])
             self.tracker.query(query)
@@ -82,7 +81,7 @@ class TestSQLSecurity(unittest.TestCase):
             "1' UNION SELECT * FROM sqlite_master--",
             "1; INSERT INTO time_series (timestamp, node_id, variable_name, value) VALUES (0, 999, 'hacked', 999); --"
         ]
-        
+
         for attempt in injection_attempts:
             with self.subTest(injection_attempt=attempt):
                 # Should not cause errors or unexpected behavior
@@ -100,9 +99,9 @@ class TestSQLSecurity(unittest.TestCase):
         """Verify that parameterized queries are being used"""
         # This test ensures the implementation uses parameterized queries
         # by checking that malicious input doesn't affect the database
-        
+
         original_count = self._count_records()
-        
+
         # Try query with malicious input
         try:
             query = TimeSeriesQuery(
@@ -114,7 +113,7 @@ class TestSQLSecurity(unittest.TestCase):
             self.tracker.query(query)
         except:
             pass  # Errors are fine, we just don't want data corruption
-        
+
         # Verify database wasn't corrupted
         final_count = self._count_records()
         self.assertEqual(original_count, final_count)
@@ -123,14 +122,14 @@ class TestSQLSecurity(unittest.TestCase):
         """Test EXPLAIN functionality for query performance analysis"""
         # This will test the new EXPLAIN functionality we'll add
         query = TimeSeriesQuery(node_ids=[1], variables=["energy"])
-        
+
         # Check if explain functionality exists
         if hasattr(self.tracker, 'explain_query'):
             explain_result = self.tracker.explain_query(query)
             self.assertIsInstance(explain_result, str)
             # Should contain query plan information (SCAN or SEARCH indicates index usage)
             upper_result = explain_result.upper()
-            self.assertTrue('SCAN' in upper_result or 'SEARCH' in upper_result, 
+            self.assertTrue('SCAN' in upper_result or 'SEARCH' in upper_result,
                           f"Expected query plan info, got: {explain_result}")
             # Should mention the table name
             self.assertIn('TIME_SERIES', upper_result)
@@ -141,7 +140,7 @@ class TestSQLSecurity(unittest.TestCase):
         with self.assertRaises((TypeError, ValueError)):
             query = TimeSeriesQuery(start_time="invalid_time")
             self.tracker.query(query)
-        
+
         # Test max_points validation
         query = TimeSeriesQuery(max_points="10")  # String instead of int
         # Should either work (coerced) or raise validation error
@@ -150,13 +149,13 @@ class TestSQLSecurity(unittest.TestCase):
             self.assertIsInstance(results, list)
         except (TypeError, ValueError):
             pass  # Validation error is acceptable
-            
+
     def test_multi_statement_prevention(self):
         """Test that multi-statements are prevented"""
         # SQLite doesn't support multi-statements by default, but let's verify
         with sqlite3.connect(self.db_file.name) as conn:
             cursor = conn.cursor()
-            
+
             # This should fail or only execute the first statement
             try:
                 cursor.execute("SELECT COUNT(*) FROM time_series; DROP TABLE time_series;")

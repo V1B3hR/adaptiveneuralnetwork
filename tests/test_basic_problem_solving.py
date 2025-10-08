@@ -14,9 +14,11 @@ Example usage:
     python -m unittest tests/test_basic_problem_solving.py
 """
 
-import unittest
 import random
+import unittest
+
 import numpy as np
+
 from core.alive_node import AliveLoopNode
 
 
@@ -41,10 +43,10 @@ class TestBasicProblemSolving(unittest.TestCase):
         # Setup low energy scenario
         self.node.energy = 2.0
         initial_energy = self.node.energy
-        
+
         # Execute movement behavior
         self.node.move()
-        
+
         # Assert energy conservation behavior
         energy_lost = initial_energy - self.node.energy
         self.assertLess(energy_lost, 1.0, "Node should conserve energy when low")
@@ -57,10 +59,10 @@ class TestBasicProblemSolving(unittest.TestCase):
         # Setup critical energy scenario
         self.node.energy = 1.0
         self.node.anxiety = 15.0
-        
+
         # Execute phase step
         self.node.step_phase(current_time=23)
-        
+
         # Assert appropriate phase transition
         self.assertEqual(self.node.phase, "sleep")
         self.assertEqual(self.node.sleep_stage, "deep")
@@ -73,12 +75,12 @@ class TestBasicProblemSolving(unittest.TestCase):
         # Setup memory with energy patterns
         self.node.memory.append({"memory_type": "energy_change", "content": {"energy": 3}})
         self.node.memory.append({"memory_type": "energy_change", "content": {"energy": 2}})
-        
+
         initial_predicted = self.node.predicted_energy
-        
+
         # Execute prediction
         self.node.predict_energy()
-        
+
         # Assert prediction improvement
         self.assertGreater(self.node.predicted_energy, initial_predicted)
 

@@ -14,9 +14,11 @@ Example usage:
     python -m unittest tests/test_cognitive_functioning.py
 """
 
-import unittest
 import random
+import unittest
+
 import numpy as np
+
 from core.alive_node import AliveLoopNode, SocialSignal
 from core.capacitor import CapacitorInSpace
 
@@ -41,7 +43,7 @@ class TestCognitiveFunctioning(unittest.TestCase):
         """
         # Setup attention scenario
         initial_focus = self.node.attention_focus.copy()
-        
+
         # Simulate warning signal that should redirect attention
         warning_signal = SocialSignal(
             content="danger from north",
@@ -49,11 +51,11 @@ class TestCognitiveFunctioning(unittest.TestCase):
             urgency=0.8,
             source_id=2
         )
-        
+
         # Process warning
         self.node.trust_network[2] = 0.7
         self.node.receive_signal(warning_signal)
-        
+
         # Assert attention redirection
         self.assertNotEqual(self.node.attention_focus.tolist(), initial_focus.tolist())
 
@@ -65,10 +67,10 @@ class TestCognitiveFunctioning(unittest.TestCase):
         # Setup high stress scenario
         self.node.anxiety = 15.0
         self.node.energy = 2.0
-        
+
         # Execute decision-making process
         self.node.step_phase(current_time=23)
-        
+
         # Assert appropriate stress response
         self.assertEqual(self.node.phase, "sleep")
         self.assertEqual(self.node.sleep_stage, "deep")  # Appropriate response to stress
@@ -81,10 +83,10 @@ class TestCognitiveFunctioning(unittest.TestCase):
         # Setup resource scenario
         capacitor = CapacitorInSpace(position=(0.3, 0.3), capacity=10.0, initial_energy=8.0)
         initial_node_energy = self.node.energy = 5.0
-        
+
         # Execute resource interaction
         self.node.interact_with_capacitor(capacitor, threshold=1.0)
-        
+
         # Assert resource management behavior
         # Node should receive energy from capacitor when it has more energy
         self.assertGreaterEqual(self.node.energy, initial_node_energy)
@@ -102,7 +104,7 @@ class TestCognitiveFunctioning(unittest.TestCase):
             source_id=3,
             requires_response=True
         )
-        
+
         # Establish trust and add relevant memory
         self.node.trust_network[3] = 0.6
         self.node.memory.append({
@@ -110,11 +112,11 @@ class TestCognitiveFunctioning(unittest.TestCase):
             "content": "optimal_path_found",
             "importance": 0.7
         })
-        
+
         # Process communication
         initial_queue_size = len(self.node.communication_queue)
         response = self.node.receive_signal(query_signal)
-        
+
         # Assert cognitive processing
         self.assertGreater(len(self.node.communication_queue), initial_queue_size)
         # Note: Response might be None if no relevant memories match the simplified implementation
@@ -127,17 +129,17 @@ class TestCognitiveFunctioning(unittest.TestCase):
         # Setup multiple task scenario
         self.node.energy = 8.0
         self.node.anxiety = 5.0
-        
+
         # Task 1: Phase management
         self.node.step_phase(current_time=14)
-        
+
         # Task 2: Movement
         initial_position = self.node.position.copy()
         self.node.move()
-        
+
         # Task 3: Energy prediction
         self.node.predict_energy()
-        
+
         # Assert multi-tasking capability
         self.assertIn(self.node.phase, ["active", "interactive", "inspired"])
         self.assertNotEqual(self.node.position.tolist(), initial_position.tolist())

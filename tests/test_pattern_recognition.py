@@ -14,9 +14,11 @@ Example usage:
     python -m unittest tests/test_pattern_recognition.py
 """
 
-import unittest
 import random
+import unittest
+
 import numpy as np
+
 from core.alive_node import AliveLoopNode, Memory
 
 
@@ -46,7 +48,7 @@ class TestPatternRecognition(unittest.TestCase):
             {"time": 3, "energy": 10},
             {"time": 4, "energy": 5}
         ]
-        
+
         # Add pattern data to memory
         for i, data in enumerate(pattern_data):
             memory = Memory(
@@ -56,10 +58,10 @@ class TestPatternRecognition(unittest.TestCase):
                 memory_type="pattern"
             )
             self.node.memory.append(memory)
-        
+
         # Test pattern-based prediction
         self.node.predict_energy()
-        
+
         # Assert pattern recognition capability
         self.assertIsNotNone(self.node.predicted_energy)
         # With the pattern, next energy should be around 10 (high phase)
@@ -76,7 +78,7 @@ class TestPatternRecognition(unittest.TestCase):
             {"position": [2, 2], "energy_gain": 3},
             {"position": [3, 3], "energy_gain": 3}  # Diagonal pattern
         ]
-        
+
         # Add spatial memories
         for pos_data in beneficial_positions:
             memory = Memory(
@@ -86,7 +88,7 @@ class TestPatternRecognition(unittest.TestCase):
                 memory_type="spatial"
             )
             self.node.memory.append(memory)
-        
+
         # Test spatial awareness
         self.assertGreater(len(self.node.memory), 0)
         # Check if node has learned about beneficial positions
@@ -100,7 +102,7 @@ class TestPatternRecognition(unittest.TestCase):
         """
         # Setup behavioral pattern data
         behavior_sequence = ["move", "rest", "move", "rest", "move"]
-        
+
         for i, behavior in enumerate(behavior_sequence):
             memory = Memory(
                 content={"behavior": behavior, "energy_after": 8 if behavior == "rest" else 6},
@@ -109,11 +111,11 @@ class TestPatternRecognition(unittest.TestCase):
                 memory_type="behavior"
             )
             self.node.memory.append(memory)
-        
+
         # Test if patterns are stored
         behavior_memories = [m for m in self.node.memory if m.memory_type == "behavior"]
         self.assertEqual(len(behavior_memories), 5)
-        
+
         # Test prediction based on behavioral patterns
         self.node.predict_energy()
         self.assertIsNotNone(self.node.predicted_energy)
@@ -127,7 +129,7 @@ class TestPatternRecognition(unittest.TestCase):
         # Node 2 is reliable, Node 3 is unreliable
         self.node.trust_network[2] = 0.9  # High trust
         self.node.trust_network[3] = 0.2  # Low trust
-        
+
         # Add interaction memories
         reliable_memory = Memory(
             content={"interaction": "helpful_information", "source": 2},
@@ -135,20 +137,20 @@ class TestPatternRecognition(unittest.TestCase):
             timestamp=0,
             memory_type="social"
         )
-        
+
         unreliable_memory = Memory(
             content={"interaction": "misleading_information", "source": 3},
             importance=0.3,
             timestamp=1,
             memory_type="social"
         )
-        
+
         self.node.memory.extend([reliable_memory, unreliable_memory])
-        
+
         # Test social pattern recognition
         social_memories = [m for m in self.node.memory if m.memory_type == "social"]
         self.assertEqual(len(social_memories), 2)
-        
+
         # Check trust differential reflects pattern
         self.assertGreater(self.node.trust_network[2], self.node.trust_network[3])
 
@@ -167,7 +169,7 @@ class TestPatternRecognition(unittest.TestCase):
                 memory_type="normal"
             )
             self.node.memory.append(memory)
-        
+
         # Add anomalous event
         anomaly_memory = Memory(
             content={"energy_level": 2},  # Significantly different
@@ -176,7 +178,7 @@ class TestPatternRecognition(unittest.TestCase):
             memory_type="anomaly"
         )
         self.node.memory.append(anomaly_memory)
-        
+
         # Test anomaly recognition
         anomaly_memories = [m for m in self.node.memory if m.memory_type == "anomaly"]
         self.assertEqual(len(anomaly_memories), 1)

@@ -2,9 +2,11 @@
 Test utilities and seed control for reproducible testing
 """
 
-import random
-import numpy as np
 import os
+import random
+
+import numpy as np
+
 
 def set_seed(seed=42):
     """Set random seed for reproducible testing"""
@@ -22,16 +24,16 @@ class SeedContext:
         self.seed = seed
         self.old_random_state = None
         self.old_numpy_state = None
-    
+
     def __enter__(self):
         # Save current states
         self.old_random_state = random.getstate()
         self.old_numpy_state = np.random.get_state()
-        
+
         # Set new seed
         set_seed(self.seed)
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Restore old states
         random.setstate(self.old_random_state)

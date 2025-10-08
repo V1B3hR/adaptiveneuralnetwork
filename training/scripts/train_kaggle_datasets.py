@@ -15,7 +15,6 @@ Usage:
 """
 
 import argparse
-import logging
 import sys
 from pathlib import Path
 
@@ -24,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "benchmarks"))
 
 from run_essay_benchmark import main as run_benchmark
+
 from adaptiveneuralnetwork.data import print_dataset_info
 
 
@@ -32,18 +32,18 @@ def train_dataset(dataset_type, args):
     print(f"\n{'='*60}")
     print(f"TRAINING {dataset_type.upper()} DATASET")
     print(f"{'='*60}")
-    
+
     # Handle new datasets differently
     if dataset_type in ["vr_driving", "autvi", "digakust"]:
         print(f"Training {dataset_type} using specialized new dataset training...")
         # Import and use the new training system
         try:
             import subprocess
-            
+
             # Get the full path to train_new_datasets.py
             script_dir = Path(__file__).parent
             train_script = script_dir / "train_new_datasets.py"
-            
+
             cmd = [
                 sys.executable, str(train_script),
                 "--dataset", dataset_type,
@@ -51,16 +51,16 @@ def train_dataset(dataset_type, args):
                 "--num-samples", str(args.samples),
                 "--output-dir", "outputs"
             ]
-            
+
             if args.data_path:
                 cmd.extend(["--data-path", args.data_path])
-            
+
             if args.verbose:
                 cmd.append("--verbose")
-            
+
             print(f"Running command: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True)
-            
+
             if result.returncode == 0:
                 print(f"✅ {dataset_type} training completed successfully!")
                 print(result.stdout)
@@ -69,14 +69,14 @@ def train_dataset(dataset_type, args):
                 print("STDOUT:", result.stdout)
                 print("STDERR:", result.stderr)
                 raise Exception(f"Training failed for {dataset_type}")
-                
+
         except Exception as e:
             print(f"Error training {dataset_type} with new system: {e}")
             print("Falling back to legacy placeholder...")
             print(f"[SIMULATED] Training {dataset_type} completed with synthetic data")
-        
+
         return
-    
+
     # Legacy training for original datasets
     # Construct arguments for the main benchmark script
     benchmark_args = [
@@ -88,20 +88,20 @@ def train_dataset(dataset_type, args):
         "--num-nodes", str(args.num_nodes),
         "--device", args.device
     ]
-    
+
     if args.data_path:
         benchmark_args.extend(["--data-path", args.data_path])
     else:
         benchmark_args.append("--synthetic")
         benchmark_args.extend(["--samples", str(args.samples)])
-    
+
     if args.verbose:
         benchmark_args.append("--verbose")
-    
+
     # Override sys.argv to pass arguments to the benchmark script
     original_argv = sys.argv
     sys.argv = ["run_essay_benchmark.py"] + benchmark_args
-    
+
     try:
         print(f"Starting {dataset_type} training...")
         run_benchmark()
@@ -118,10 +118,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="Train Adaptive Neural Network on Kaggle Datasets (50 epochs for sentiment analysis)"
     )
-    
+
     parser.add_argument(
         "--dataset",
-        choices=["annomi", "mental_health", "social_media_sentiment", "pos_tagging", 
+        choices=["annomi", "mental_health", "social_media_sentiment", "pos_tagging",
                 "vr_driving", "autvi", "digakust", "both", "all"],
         default="social_media_sentiment",
         help="Which dataset(s) to train on"
@@ -133,7 +133,7 @@ def main():
     )
     parser.add_argument(
         "--epochs",
-        type=int, 
+        type=int,
         default=None,
         help="Number of training epochs (default: 50 for sentiment analysis, 100 for others)"
     )
@@ -178,16 +178,16 @@ def main():
         action="store_true",
         help="Enable verbose logging"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Set default epochs based on dataset choice
     if args.epochs is None:
         if args.dataset == "social_media_sentiment":
             args.epochs = 50  # As specified in problem statement
         else:
             args.epochs = 100  # Original default for other datasets
-    
+
     # Print dataset information
     print("=" * 80)
     print("KAGGLE DATASETS TRAINING - ADAPTIVE NEURAL NETWORK")
@@ -202,9 +202,9 @@ def main():
     print("- Support AUTVI Dataset (Automated Vehicle Inspection)")
     print("- Support Digakust Dataset (Digital Acoustic Analysis)")
     print("=" * 80)
-    
+
     print_dataset_info()
-    
+
     if not args.data_path and args.dataset not in ["both", "all"]:
         print(f"\nWARNING: No dataset path provided for {args.dataset}.")
         print("Using synthetic data for demonstration.")
@@ -223,7 +223,7 @@ def main():
             print("6. Download: https://www.kaggle.com/datasets/resc28/digakust-dataset-mensa-saarland-university")
         print(f"7. Run: python train_kaggle_datasets.py --dataset {args.dataset} --data-path /path/to/dataset")
         print()
-    
+
     # Train based on dataset selection
     if args.dataset == "both":
         print("\nTraining on legacy datasets with synthetic data...")
@@ -232,7 +232,7 @@ def main():
         train_dataset("mental_health", args)
     elif args.dataset == "all":
         print("\nTraining on all supported datasets...")
-        datasets = ["annomi", "mental_health", "social_media_sentiment", 
+        datasets = ["annomi", "mental_health", "social_media_sentiment",
                    "vr_driving", "autvi", "digakust"]
         for i, dataset in enumerate(datasets):
             if i > 0:
@@ -247,7 +247,7 @@ def main():
             print(f"Use: python train_new_datasets.py --dataset {args.dataset}")
             print("Falling back to legacy training system...")
         train_dataset(args.dataset, args)
-    
+
     print("\n" + "="*80)
     print("TRAINING COMPLETE")
     print("="*80)

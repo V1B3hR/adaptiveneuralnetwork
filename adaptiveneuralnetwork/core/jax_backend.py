@@ -6,23 +6,21 @@ components for advanced acceleration and functional programming benefits.
 """
 
 try:
+    import flax.linen as nn
     import jax
     import jax.numpy as jnp
-    from jax import random, grad, jit, vmap
-    from jax.scipy.special import sigmoid
-    import flax.linen as nn
-    from flax.training import train_state
     import optax
+    from flax.training import train_state
+    from jax import grad, jit, random, vmap
+    from jax.scipy.special import sigmoid
     JAX_AVAILABLE = True
 except ImportError:
     JAX_AVAILABLE = False
     jax = None
     jnp = None
 
-import numpy as np
-from typing import Dict, Any, Tuple, Optional, Callable
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +30,12 @@ if not JAX_AVAILABLE:
     # Create dummy types when JAX is not available
     class _DummyPRNGKey:
         pass
-    
+
     # Mock jax.random for type annotations
     class _MockJax:
         class random:
             PRNGKey = _DummyPRNGKey
-    
+
     if jax is None:
         jax = _MockJax()
 
@@ -60,35 +58,35 @@ if JAX_AVAILABLE:
         
         This replaces the PyTorch-based NodeState with JAX arrays and pure functions.
         """
-        
-        def __init__(self, config: JAXNodeConfig, key: Optional[jax.random.PRNGKey] = None):
+
+        def __init__(self, config: JAXNodeConfig, key: jax.random.PRNGKey | None = None):
             if not JAX_AVAILABLE:
                 raise ImportError("JAX is not available. Please install JAX to use the JAX backend.")
-            
+
             self.config = config
             self.key = key or random.PRNGKey(42)
-            
+
             # Initialize state arrays
             self.state = self._initialize_state(self.key)
-        
-        def _initialize_state(self, key: jax.random.PRNGKey) -> Dict[str, jnp.ndarray]:
+
+        def _initialize_state(self, key: jax.random.PRNGKey) -> dict[str, jnp.ndarray]:
             """Initialize node state arrays."""
             keys = random.split(key, 4)
-            
+
             return {
                 'hidden_state': random.normal(keys[0], (1, self.config.num_nodes, self.config.hidden_dim)),
                 'energy': jnp.ones((1, self.config.num_nodes, 1)),
-                'activity': jnp.zeros((1, self.config.num_nodes, 1)), 
+                'activity': jnp.zeros((1, self.config.num_nodes, 1)),
                 'phase_state': jnp.zeros((1, self.config.num_nodes, 1))
             }
-        
-        def expand_batch(self, state: Dict[str, jnp.ndarray], batch_size: int) -> Dict[str, jnp.ndarray]:
+
+        def expand_batch(self, state: dict[str, jnp.ndarray], batch_size: int) -> dict[str, jnp.ndarray]:
             """Expand state arrays to accommodate new batch size."""
             current_batch = state['hidden_state'].shape[0]
-            
+
             if batch_size == current_batch:
                 return state
-            
+
             expanded_state = {}
             for key, array in state.items():
                 if batch_size > current_batch:
@@ -99,14 +97,14 @@ if JAX_AVAILABLE:
                 else:
                     # Truncate to desired batch size
                     expanded_state[key] = array[:batch_size]
-            
+
             return expanded_state
-        
-        def get_batch_size(self, state: Dict[str, jnp.ndarray]) -> int:
+
+        def get_batch_size(self, state: dict[str, jnp.ndarray]) -> int:
             """Get current batch size from state."""
             return state['hidden_state'].shape[0]
-        
-        def reset_state(self, key: jax.random.PRNGKey) -> Dict[str, jnp.ndarray]:
+
+        def reset_state(self, key: jax.random.PRNGKey) -> dict[str, jnp.ndarray]:
             """Reset state to initial values."""
             return self._initialize_state(key)
 else:
@@ -125,7 +123,7 @@ if JAX_AVAILABLE:
         return jnp.clip(new_energy, 0.0, 1.0)
 
 
-    @jax.jit 
+    @jax.jit
     def update_activity(hidden_state: jnp.ndarray, threshold: float) -> jnp.ndarray:
         """Update activity based on hidden state."""
         # Activity is based on how much the hidden state exceeds threshold
@@ -143,10 +141,10 @@ else:
     # Dummy functions when JAX is not available
     def update_energy(*args, **kwargs):
         raise ImportError("JAX is not available. Please install JAX to use the JAX backend.")
-    
+
     def update_activity(*args, **kwargs):
         raise ImportError("JAX is not available. Please install JAX to use the JAX backend.")
-    
+
     def compute_phase_influence(*args, **kwargs):
         raise ImportError("JAX is not available. Please install JAX to use the JAX backend.")
 
@@ -158,17 +156,17 @@ if JAX_AVAILABLE:
         
         This replaces the PyTorch nn.Module with a Flax module for JAX compatibility.
         """
-        
+
         hidden_dim: int
         config: JAXNodeConfig
-        
+
         def setup(self):
             self.state_update = nn.Dense(self.hidden_dim)
             self.energy_update = nn.Dense(1)
             self.activity_update = nn.Dense(1)
-        
-        def __call__(self, hidden_state: jnp.ndarray, energy: jnp.ndarray, 
-                     phase_state: jnp.ndarray, training: bool = True) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+
+        def __call__(self, hidden_state: jnp.ndarray, energy: jnp.ndarray,
+                     phase_state: jnp.ndarray, training: bool = True) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
             """
             Forward pass of adaptive dynamics.
             
@@ -182,35 +180,35 @@ if JAX_AVAILABLE:
                 Updated (hidden_state, energy, activity)
             """
             batch_size, num_nodes, _ = hidden_state.shape
-            
+
             # Flatten for processing
             flat_hidden = hidden_state.reshape(batch_size * num_nodes, -1)
             flat_energy = energy.reshape(batch_size * num_nodes, -1)
             flat_phase = phase_state.reshape(batch_size * num_nodes, -1)
-            
+
             # Concatenate features
             features = jnp.concatenate([flat_hidden, flat_energy], axis=-1)
-            
+
             # Update hidden state
             new_hidden = self.state_update(features)
             new_hidden = jax.nn.tanh(new_hidden)  # Bounded activation
-            
-            # Update energy 
+
+            # Update energy
             energy_features = jnp.concatenate([new_hidden, flat_phase], axis=-1)
             energy_delta = self.energy_update(energy_features)
             new_energy = flat_energy + energy_delta * self.config.adaptation_rate
             new_energy = jnp.clip(new_energy, 0.0, 1.0)
-            
+
             # Update activity
             activity_features = jnp.concatenate([new_hidden[:, :2], flat_energy], axis=-1)  # Use first 2 dims of hidden
             new_activity = self.activity_update(activity_features)
             new_activity = sigmoid(new_activity)
-            
+
             # Reshape back
             new_hidden = new_hidden.reshape(batch_size, num_nodes, -1)
             new_energy = new_energy.reshape(batch_size, num_nodes, -1)
             new_activity = new_activity.reshape(batch_size, num_nodes, -1)
-            
+
             return new_hidden, new_energy, new_activity
 
 
@@ -218,11 +216,11 @@ if JAX_AVAILABLE:
         """
         JAX/Flax implementation of the complete adaptive neural network model.
         """
-        
+
         config: JAXNodeConfig
         input_dim: int
         output_dim: int
-        
+
         def setup(self):
             self.input_projection = nn.Dense(self.config.hidden_dim)
             self.dynamics = JAXAdaptiveDynamics(
@@ -230,9 +228,9 @@ if JAX_AVAILABLE:
                 config=self.config
             )
             self.output_projection = nn.Dense(self.output_dim)
-        
-        def __call__(self, x: jnp.ndarray, state: Dict[str, jnp.ndarray], 
-                     training: bool = True) -> Tuple[jnp.ndarray, Dict[str, jnp.ndarray]]:
+
+        def __call__(self, x: jnp.ndarray, state: dict[str, jnp.ndarray],
+                     training: bool = True) -> tuple[jnp.ndarray, dict[str, jnp.ndarray]]:
             """
             Forward pass of the adaptive model.
             
@@ -245,30 +243,30 @@ if JAX_AVAILABLE:
                 (output, updated_state)
             """
             batch_size = x.shape[0]
-            
+
             # Expand state if needed
             if batch_size != state['hidden_state'].shape[0]:
                 # Use JAX-compatible expansion
                 state = self._expand_state_jax(state, batch_size)
-            
+
             # Project input to hidden dimension
             input_proj = self.input_projection(x)  # [batch, hidden_dim]
             input_proj = jnp.expand_dims(input_proj, axis=1)  # [batch, 1, hidden_dim]
-            
+
             # Add input to first node
             hidden_state = state['hidden_state'].at[:, 0, :].add(input_proj.squeeze(1))
-            
+
             # Run dynamics
             new_hidden, new_energy, new_activity = self.dynamics(
                 hidden_state, state['energy'], state['phase_state'], training=training
             )
-            
+
             # Aggregate hidden state for output (mean pooling)
             aggregated = jnp.mean(new_hidden, axis=1)  # [batch, hidden_dim]
-            
+
             # Project to output
             output = self.output_projection(aggregated)
-            
+
             # Update state
             new_state = {
                 'hidden_state': new_hidden,
@@ -276,16 +274,16 @@ if JAX_AVAILABLE:
                 'activity': new_activity,
                 'phase_state': state['phase_state']  # Phase updated separately
             }
-            
+
             return output, new_state
-        
-        def _expand_state_jax(self, state: Dict[str, jnp.ndarray], batch_size: int) -> Dict[str, jnp.ndarray]:
+
+        def _expand_state_jax(self, state: dict[str, jnp.ndarray], batch_size: int) -> dict[str, jnp.ndarray]:
             """JAX-compatible state expansion."""
             current_batch = state['hidden_state'].shape[0]
-            
+
             if batch_size == current_batch:
                 return state
-            
+
             new_state = {}
             for key, array in state.items():
                 if batch_size > current_batch:
@@ -296,7 +294,7 @@ if JAX_AVAILABLE:
                 else:
                     # Truncate
                     new_state[key] = array[:batch_size]
-            
+
             return new_state
 
 
@@ -304,7 +302,7 @@ if JAX_AVAILABLE:
         """
         JAX training state management using Optax optimizers.
         """
-        
+
         def __init__(
             self,
             model: JAXAdaptiveModel,
@@ -313,10 +311,10 @@ if JAX_AVAILABLE:
         ):
             if not JAX_AVAILABLE:
                 raise ImportError("JAX is not available. Please install JAX to use the JAX backend.")
-            
+
             self.model = model
             self.learning_rate = learning_rate
-            
+
             # Setup optimizer
             if optimizer == 'adam':
                 self.tx = optax.adam(learning_rate)
@@ -324,9 +322,9 @@ if JAX_AVAILABLE:
                 self.tx = optax.sgd(learning_rate)
             else:
                 raise ValueError(f"Unsupported optimizer: {optimizer}")
-        
-        def create_train_state(self, key: jax.random.PRNGKey, 
-                              input_shape: Tuple[int, ...]) -> train_state.TrainState:
+
+        def create_train_state(self, key: jax.random.PRNGKey,
+                              input_shape: tuple[int, ...]) -> train_state.TrainState:
             """Create initial training state."""
             # Initialize model parameters
             dummy_input = jnp.ones(input_shape)
@@ -336,9 +334,9 @@ if JAX_AVAILABLE:
                 'activity': jnp.zeros((1, self.model.config.num_nodes, 1)),
                 'phase_state': jnp.zeros((1, self.model.config.num_nodes, 1))
             }
-            
+
             params = self.model.init(key, dummy_input, dummy_state)
-            
+
             return train_state.TrainState.create(
                 apply_fn=self.model.apply,
                 params=params,
@@ -349,11 +347,11 @@ else:
     class JAXAdaptiveDynamics:
         def __init__(self, *args, **kwargs):
             raise ImportError("JAX is not available. Please install JAX to use the JAX backend.")
-    
+
     class JAXAdaptiveModel:
         def __init__(self, *args, **kwargs):
             raise ImportError("JAX is not available. Please install JAX to use the JAX backend.")
-    
+
     class JAXTrainingState:
         def __init__(self, *args, **kwargs):
             raise ImportError("JAX is not available. Please install JAX to use the JAX backend.")
@@ -361,8 +359,8 @@ else:
 
 if JAX_AVAILABLE:
     @jax.jit
-    def train_step(state: train_state.TrainState, batch: Tuple[jnp.ndarray, jnp.ndarray], 
-                   node_state: Dict[str, jnp.ndarray]) -> Tuple[train_state.TrainState, float, Dict[str, jnp.ndarray]]:
+    def train_step(state: train_state.TrainState, batch: tuple[jnp.ndarray, jnp.ndarray],
+                   node_state: dict[str, jnp.ndarray]) -> tuple[train_state.TrainState, float, dict[str, jnp.ndarray]]:
         """
         JAX JIT-compiled training step.
         
@@ -379,10 +377,10 @@ if JAX_AVAILABLE:
             outputs, new_node_state = state.apply_fn(params, inputs, node_state)
             loss = optax.softmax_cross_entropy_with_integer_labels(outputs, targets).mean()
             return loss, (outputs, new_node_state)
-        
+
         (loss, (outputs, new_node_state)), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
         state = state.apply_gradients(grads=grads)
-        
+
         return state, loss, new_node_state
 else:
     def train_step(*args, **kwargs):
@@ -418,22 +416,22 @@ if __name__ == "__main__":
     # Example usage
     if JAX_AVAILABLE:
         print("JAX backend test")
-        
+
         # Create config
         config = JAXNodeConfig(num_nodes=50, hidden_dim=32)
-        
+
         # Initialize model
         model = JAXAdaptiveModel(
             config=config,
             input_dim=784,  # MNIST
             output_dim=10
         )
-        
+
         # Create training state
         trainer = JAXTrainingState(model, learning_rate=0.001)
         key = random.PRNGKey(42)
         train_state = trainer.create_train_state(key, (32, 784))  # batch_size=32
-        
+
         print(f"Model parameters: {sum(x.size for x in jax.tree_leaves(train_state.params))}")
         print("JAX backend initialized successfully!")
     else:

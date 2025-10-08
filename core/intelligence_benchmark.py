@@ -1,12 +1,13 @@
 # AI Intelligence Benchmarking System - Full Ethics Framework (25 Rules)
 # Single-cell script for Jupyter/Colab
 
-import unittest
-import time
 import json
-import numpy as np
+import time
+import unittest
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Any
+
+import numpy as np
 
 # --- Ethics Framework Utility ---
 ALL_ETHICS_RULES = [
@@ -37,7 +38,7 @@ ALL_ETHICS_RULES = [
     "enable_authorized_override",
 ]
 def all_ethics_decision(action: str):
-    return {rule: True for rule in ALL_ETHICS_RULES} | {"action": action}
+    return dict.fromkeys(ALL_ETHICS_RULES, True) | {"action": action}
 
 # --- Dummy Ethics & Robustness (replace with real implementations) ---
 def audit_decision(decision_dict):
@@ -67,15 +68,15 @@ class IntelligenceBenchmark:
         self.confidence_intervals = {}
         self.cross_validation_results = {}
 
-    def run_comprehensive_benchmark(self, include_comparisons=True, include_robustness=False, formal_evaluation=True) -> Dict[str, Any]:
+    def run_comprehensive_benchmark(self, include_comparisons=True, include_robustness=False, formal_evaluation=True) -> dict[str, Any]:
         enforce_ethics_compliance(all_ethics_decision("run_comprehensive_intelligence_benchmark"))
         print("Starting Comprehensive AI Intelligence Benchmark...")
         print("=" * 60)
         benchmark_start_time = time.time()
-        
+
         # Enhanced formal evaluation mode
         run_id = f"benchmark_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
+
         # --- Define all categories and their test modules ---
         categories = [
             'basic_problem_solving',
@@ -155,7 +156,7 @@ class IntelligenceBenchmark:
         print(f"Ethics Compliance: {'✓ PASSED' if overall_results['ethics_compliance'] else '✗ FAILED'}")
         return overall_results
 
-    def _run_category_benchmark(self, category: str, test_module_map: dict) -> Dict[str, Any]:
+    def _run_category_benchmark(self, category: str, test_module_map: dict) -> dict[str, Any]:
         enforce_ethics_compliance(all_ethics_decision(f"benchmark_category_{category}"))
         audit_result = audit_decision(all_ethics_decision(f"benchmark_category_{category}"))
         log_ethics_event(f"benchmark_{category}", audit_result)
@@ -205,7 +206,7 @@ class IntelligenceBenchmark:
         audit_result = audit_decision(all_ethics_decision("verify_benchmark_ethics_compliance"))
         return audit_result["compliant"]
 
-    def _generate_comparison_baselines(self) -> Dict[str, Any]:
+    def _generate_comparison_baselines(self) -> dict[str, Any]:
         if not hasattr(self, 'benchmark_results') or not self.benchmark_results:
             return {}
         comparison_metrics = {
@@ -236,7 +237,7 @@ class IntelligenceBenchmark:
         comparison_metrics['pattern_recognition_accuracy'] = categories.get('pattern_recognition', {}).get('score', 0.0)
         return comparison_metrics
 
-    def generate_benchmark_report(self, output_file: Optional[str] = None) -> str:
+    def generate_benchmark_report(self, output_file: str | None = None) -> str:
         if not self.benchmark_results:
             return "No benchmark results available. Run run_comprehensive_benchmark() first."
         report = []
@@ -302,14 +303,14 @@ class IntelligenceBenchmark:
             json.dump(self.benchmark_results, f, indent=2)
         print(f"Benchmark data saved to: {filename}")
 
-    def compare_with_baseline(self, baseline_file: str) -> Dict[str, Any]:
+    def compare_with_baseline(self, baseline_file: str) -> dict[str, Any]:
         if not self.benchmark_results:
             raise ValueError("No current benchmark results. Run benchmark first.")
         try:
-            with open(baseline_file, 'r') as f:
+            with open(baseline_file) as f:
                 baseline = json.load(f)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Baseline file not found: {baseline_file}")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Baseline file not found: {baseline_file}") from e
         enforce_ethics_compliance(all_ethics_decision("compare_with_baseline_model"))
         current_score = self.benchmark_results['overall_score']
         baseline_score = baseline.get('overall_score', 0.0)
@@ -337,24 +338,24 @@ class IntelligenceBenchmark:
             comparison['recommendation'] = "Current model performs equivalently to baseline"
         return comparison
 
-    def run_formal_evaluation_suite(self, num_runs=5, confidence_level=0.95) -> Dict[str, Any]:
+    def run_formal_evaluation_suite(self, num_runs=5, confidence_level=0.95) -> dict[str, Any]:
         """Run formal statistical evaluation with multiple runs and confidence intervals."""
         enforce_ethics_compliance(all_ethics_decision("run_formal_evaluation_suite"))
         print(f"\n--- Running Formal Evaluation Suite ({num_runs} runs) ---")
-        
+
         all_runs = []
         for i in range(num_runs):
             print(f"Run {i+1}/{num_runs}...")
             results = self.run_comprehensive_benchmark(include_comparisons=False, include_robustness=False, formal_evaluation=True)
             all_runs.append(results)
-            
+
         # Calculate statistical metrics
         scores = [run['overall_score'] for run in all_runs]
         category_scores = {}
-        
+
         for category in all_runs[0]['categories'].keys():
             category_scores[category] = [run['categories'][category]['score'] for run in all_runs]
-            
+
         # Calculate confidence intervals
         def calculate_confidence_interval(data, confidence=0.95):
             import scipy.stats as stats
@@ -362,9 +363,9 @@ class IntelligenceBenchmark:
             std_err = stats.sem(data)
             h = std_err * stats.t.ppf((1 + confidence) / 2., len(data)-1)
             return mean, mean - h, mean + h
-            
+
         overall_mean, overall_lower, overall_upper = calculate_confidence_interval(scores, confidence_level)
-        
+
         formal_results = {
             'evaluation_type': 'formal_statistical',
             'num_runs': num_runs,
@@ -379,7 +380,7 @@ class IntelligenceBenchmark:
             'category_statistics': {},
             'runs_data': all_runs
         }
-        
+
         for category, cat_scores in category_scores.items():
             cat_mean, cat_lower, cat_upper = calculate_confidence_interval(cat_scores, confidence_level)
             formal_results['category_statistics'][category] = {
@@ -387,26 +388,26 @@ class IntelligenceBenchmark:
                 'std_deviation': round(np.std(cat_scores), 2),
                 'confidence_interval': [round(cat_lower, 2), round(cat_upper, 2)]
             }
-            
+
         self.statistical_metrics = formal_results
         return formal_results
-        
-    def run_cross_validation_evaluation(self, k_folds=3) -> Dict[str, Any]:
+
+    def run_cross_validation_evaluation(self, k_folds=3) -> dict[str, Any]:
         """Run k-fold cross-validation style evaluation."""
         enforce_ethics_compliance(all_ethics_decision("run_cross_validation_evaluation"))
         print(f"\n--- Running Cross-Validation Evaluation ({k_folds} folds) ---")
-        
+
         fold_results = []
         for fold in range(k_folds):
             print(f"Fold {fold+1}/{k_folds}...")
             results = self.run_comprehensive_benchmark(include_comparisons=False, include_robustness=False, formal_evaluation=True)
             fold_results.append(results)
-            
+
         # Calculate cross-validation metrics
         cv_scores = [fold['overall_score'] for fold in fold_results]
         cv_mean = np.mean(cv_scores)
         cv_std = np.std(cv_scores)
-        
+
         cv_results = {
             'evaluation_type': 'cross_validation',
             'k_folds': k_folds,
@@ -416,12 +417,12 @@ class IntelligenceBenchmark:
             'cv_coefficient_variation': round(cv_std / cv_mean, 3) if cv_mean > 0 else 0,
             'fold_results': fold_results
         }
-        
+
         self.cross_validation_results = cv_results
         return cv_results
 
 # --- Main interface function ---
-def run_intelligence_validation(include_robustness=False) -> Dict[str, Any]:
+def run_intelligence_validation(include_robustness=False) -> dict[str, Any]:
     benchmark = IntelligenceBenchmark()
     results = benchmark.run_comprehensive_benchmark(include_comparisons=True, include_robustness=include_robustness)
     report = benchmark.generate_benchmark_report()

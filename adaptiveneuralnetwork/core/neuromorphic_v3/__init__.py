@@ -10,52 +10,49 @@ This module provides advanced neuromorphic computing capabilities including:
 """
 
 from .advanced_neurons import (
-    MultiCompartmentNeuron,
     AdaptiveThresholdNeuron,
     BurstingNeuron,
-    StochasticNeuron
+    MultiCompartmentNeuron,
+    StochasticNeuron,
 )
-
-from .plasticity import (
-    STDPSynapse,
-    MetaplasticitySynapse,
-    HomeostaticScaling,
-    MultiTimescalePlasticity
-)
-
 from .network_topology import (
-    HierarchicalNetwork,
     DynamicConnectivity,
+    HierarchicalNetwork,
     PopulationLayer,
-    RealisticDelays
+    RealisticDelays,
 )
-
+from .plasticity import (
+    HomeostaticScaling,
+    MetaplasticitySynapse,
+    MultiTimescalePlasticity,
+    STDPSynapse,
+)
 from .temporal_coding import (
-    TemporalPatternEncoder,
-    PhaseEncoder,
     OscillatoryDynamics,
-    SparseDistributedRepresentation
+    PhaseEncoder,
+    SparseDistributedRepresentation,
+    TemporalPatternEncoder,
 )
 
 __all__ = [
     # Advanced neurons
     'MultiCompartmentNeuron',
-    'AdaptiveThresholdNeuron', 
+    'AdaptiveThresholdNeuron',
     'BurstingNeuron',
     'StochasticNeuron',
-    
+
     # Plasticity mechanisms
     'STDPSynapse',
     'MetaplasticitySynapse',
     'HomeostaticScaling',
     'MultiTimescalePlasticity',
-    
+
     # Network topology
     'HierarchicalNetwork',
-    'DynamicConnectivity', 
+    'DynamicConnectivity',
     'PopulationLayer',
     'RealisticDelays',
-    
+
     # Temporal coding
     'TemporalPatternEncoder',
     'PhaseEncoder',
