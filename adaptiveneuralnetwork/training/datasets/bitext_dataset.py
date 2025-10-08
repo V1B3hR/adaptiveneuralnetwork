@@ -66,7 +66,7 @@ class BitextDatasetLoader:
         self.has_sklearn = self._try_import('sklearn')
         
         if not self.has_pandas:
-            warnings.warn("pandas not available. Install with: pip install 'adaptiveneuralnetwork[nlp]'")
+            warnings.warn("pandas not available. Install with: pip install 'adaptiveneuralnetwork[nlp]'", stacklevel=2)
     
     def _try_import(self, module_name: str) -> bool:
         """Try to import a module and return True if successful."""

@@ -347,7 +347,7 @@ class UnifiedConsolidationManager:
     ) -> None:
         """Register a consolidation mechanism."""
         if mechanism.name in self.mechanisms:
-            warnings.warn(f"Mechanism '{mechanism.name}' already registered. Replacing.")
+            warnings.warn(f"Mechanism '{mechanism.name}' already registered. Replacing.", stacklevel=2)
         
         self.mechanisms[mechanism.name] = mechanism
         
@@ -357,7 +357,7 @@ class UnifiedConsolidationManager:
     def activate_mechanism(self, mechanism_name: str) -> bool:
         """Activate a consolidation mechanism."""
         if mechanism_name not in self.mechanisms:
-            warnings.warn(f"Mechanism '{mechanism_name}' not registered")
+            warnings.warn(f"Mechanism '{mechanism_name}' not registered", stacklevel=2)
             return False
             
         mechanism = self.mechanisms[mechanism_name]
@@ -403,7 +403,7 @@ class UnifiedConsolidationManager:
                     results["summary"]["total_modifications"] += len(mechanism_results["modifications"])
                     
             except Exception as e:
-                warnings.warn(f"Mechanism '{mechanism_name}' failed: {e}")
+                warnings.warn(f"Mechanism '{mechanism_name}' failed: {e}", stacklevel=2)
                 results["mechanisms"][mechanism_name] = {"error": str(e)}
         
         # Store in history

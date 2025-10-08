@@ -18,7 +18,7 @@ try:
     from sklearn.preprocessing import PolynomialFeatures
     HAS_SKLEARN = True
 except ImportError:
-    warnings.warn("scikit-learn not available. Some feature engineering will be limited.")
+    warnings.warn("scikit-learn not available. Some feature engineering will be limited.", stacklevel=2)
     HAS_SKLEARN = False
 
 from .config import FeatureEngineeringConfig

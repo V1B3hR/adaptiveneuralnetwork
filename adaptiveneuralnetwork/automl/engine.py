@@ -25,7 +25,7 @@ try:
     from ..core.nodes import NodeState
     from ..api.model import AdaptiveModel
 except ImportError:
-    warnings.warn("Neuromorphic components not available. Some features will be disabled.")
+    warnings.warn("Neuromorphic components not available. Some features will be disabled.", stacklevel=2)
     AdaptiveDynamics = None
     NodeState = None
     AdaptiveModel = None

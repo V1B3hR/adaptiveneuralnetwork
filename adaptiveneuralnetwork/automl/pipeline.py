@@ -20,7 +20,7 @@ try:
     from sklearn.base import BaseEstimator, TransformerMixin
     HAS_SKLEARN = True
 except ImportError:
-    warnings.warn("scikit-learn not available. Some pipeline features will be limited.")
+    warnings.warn("scikit-learn not available. Some pipeline features will be limited.", stacklevel=2)
     HAS_SKLEARN = False
     BaseEstimator = object
     TransformerMixin = object
@@ -61,15 +61,15 @@ class DataLeakagePreventionMixin:
             self.fit_data_signature = current_signature
         elif stage == "transform":
             if self.fit_data_signature is None:
-                warnings.warn("Transform called before fit - potential data leakage risk")
+                warnings.warn("Transform called before fit - potential data leakage risk", stacklevel=2)
                 return
             
             # Check for suspicious changes that might indicate leakage
             if current_signature['shape'][1] != self.fit_data_signature['shape'][1]:
-                warnings.warn("Column count changed between fit and transform - check for data leakage")
+                warnings.warn("Column count changed between fit and transform - check for data leakage", stacklevel=2)
             
             if set(current_signature['columns']) != set(self.fit_data_signature['columns']):
-                warnings.warn("Column names changed between fit and transform - check for data leakage")
+                warnings.warn("Column names changed between fit and transform - check for data leakage", stacklevel=2)
     
     def enable_leakage_prevention(self):
         """Enable data leakage prevention checks."""

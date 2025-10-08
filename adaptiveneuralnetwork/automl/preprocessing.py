@@ -21,7 +21,7 @@ try:
     from sklearn.ensemble import IsolationForest
     HAS_SKLEARN = True
 except ImportError:
-    warnings.warn("scikit-learn not available. Some preprocessing features will be limited.")
+    warnings.warn("scikit-learn not available. Some preprocessing features will be limited.", stacklevel=2)
     HAS_SKLEARN = False
 
 from .config import PreprocessingConfig

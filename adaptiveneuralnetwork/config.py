@@ -116,18 +116,18 @@ class AdaptiveNeuralNetworkConfig:
         """Validate and clamp all configuration values to safe ranges."""
         # Validate trend analysis
         if self.trend_analysis.window < 1:
-            warnings.warn("trend_analysis.window must be >= 1, clamping to 1")
+            warnings.warn("trend_analysis.window must be >= 1, clamping to 1", stacklevel=2)
             self.trend_analysis.window = 1
         elif self.trend_analysis.window > 100:
-            warnings.warn("trend_analysis.window > 100 may cause performance issues, clamping to 100")
+            warnings.warn("trend_analysis.window > 100 may cause performance issues, clamping to 100", stacklevel=2)
             self.trend_analysis.window = 100
             
         # Validate rolling history
         if self.rolling_history.max_len < 5:
-            warnings.warn("rolling_history.max_len should be >= 5 for meaningful trends, clamping to 5")
+            warnings.warn("rolling_history.max_len should be >= 5 for meaningful trends, clamping to 5", stacklevel=2)
             self.rolling_history.max_len = 5
         elif self.rolling_history.max_len > 1000:
-            warnings.warn("rolling_history.max_len > 1000 may cause memory issues, clamping to 1000")
+            warnings.warn("rolling_history.max_len > 1000 may cause memory issues, clamping to 1000", stacklevel=2)
             self.rolling_history.max_len = 1000
             
         # Validate attack resilience
@@ -137,7 +137,7 @@ class AdaptiveNeuralNetworkConfig:
         
         # Validate thresholds
         if self.proactive_interventions.anxiety_threshold <= 0:
-            warnings.warn("anxiety_threshold must be > 0, clamping to 1.0")
+            warnings.warn("anxiety_threshold must be > 0, clamping to 1.0", stacklevel=2)
             self.proactive_interventions.anxiety_threshold = 1.0
     
     def _log_applied_config(self):
@@ -234,7 +234,7 @@ class AdaptiveNeuralNetworkConfig:
                         config_dict[section][key] = converted_value
                         
                 except (ValueError, TypeError) as e:
-                    warnings.warn(f"Could not parse environment variable {env_var}={value}: {e}")
+                    warnings.warn(f"Could not parse environment variable {env_var}={value}: {e}", stacklevel=2)
         
         return cls._from_dict(config_dict)
     

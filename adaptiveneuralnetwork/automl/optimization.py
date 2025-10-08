@@ -18,7 +18,7 @@ try:
     from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
     HAS_SKLEARN = True
 except ImportError:
-    warnings.warn("scikit-learn not available. Some optimization features will be limited.")
+    warnings.warn("scikit-learn not available. Some optimization features will be limited.", stacklevel=2)
     HAS_SKLEARN = False
 
 from .config import OptimizationConfig

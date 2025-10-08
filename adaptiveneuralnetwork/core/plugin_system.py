@@ -230,7 +230,7 @@ class PluginManager:
         warnings_list = plugin.validate_config()
         if warnings_list:
             for warning in warnings_list:
-                warnings.warn(f"Plugin '{plugin.name}': {warning}")
+                warnings.warn(f"Plugin '{plugin.name}': {warning}", stacklevel=2)
         
         # Assign phase ID  
         if phase_id is None:
@@ -266,7 +266,7 @@ class PluginManager:
     def activate_plugin(self, plugin_name: str) -> bool:
         """Activate a registered plugin."""
         if plugin_name not in self.plugins:
-            warnings.warn(f"Plugin '{plugin_name}' not registered")
+            warnings.warn(f"Plugin '{plugin_name}' not registered", stacklevel=2)
             return False
         
         if plugin_name not in self.active_plugins:
@@ -313,7 +313,7 @@ class PluginManager:
                         all_results["summary"]["total_modifications"] += len(results["modifications"])
                         
                 except Exception as e:
-                    warnings.warn(f"Plugin '{plugin_name}' failed: {e}")
+                    warnings.warn(f"Plugin '{plugin_name}' failed: {e}", stacklevel=2)
                     all_results["plugins"][plugin_name] = {"error": str(e)}
         
         return all_results
@@ -370,7 +370,7 @@ class PluginManager:
         filepath = Path(filepath)
         
         if not filepath.exists():
-            warnings.warn(f"Plugin file not found: {filepath}")
+            warnings.warn(f"Plugin file not found: {filepath}", stacklevel=2)
             return False
         
         try:
@@ -388,7 +388,7 @@ class PluginManager:
                     plugin_classes.append(obj)
             
             if not plugin_classes:
-                warnings.warn(f"No plugin classes found in {filepath}")
+                warnings.warn(f"No plugin classes found in {filepath}", stacklevel=2)
                 return False
             
             # Register found plugins
@@ -399,7 +399,7 @@ class PluginManager:
             return True
             
         except Exception as e:
-            warnings.warn(f"Failed to load plugin from {filepath}: {e}")
+            warnings.warn(f"Failed to load plugin from {filepath}: {e}", stacklevel=2)
             return False
     
     def get_plugin_info(self) -> Dict[str, Any]:

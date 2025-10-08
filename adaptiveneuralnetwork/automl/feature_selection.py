@@ -20,7 +20,7 @@ try:
     from sklearn.metrics import mutual_info_score
     HAS_SKLEARN = True
 except ImportError:
-    warnings.warn("scikit-learn not available. Some feature selection will be limited.")
+    warnings.warn("scikit-learn not available. Some feature selection will be limited.", stacklevel=2)
     HAS_SKLEARN = False
 
 from .config import FeatureSelectionConfig

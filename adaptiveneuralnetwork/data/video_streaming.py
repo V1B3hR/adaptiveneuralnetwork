@@ -33,7 +33,7 @@ try:
 except ImportError:
     cv2 = None
     HAS_OPENCV = False
-    warnings.warn("OpenCV not available. Video streaming will be limited.")
+    warnings.warn("OpenCV not available. Video streaming will be limited.", stacklevel=2)
 
 try:
     import ffmpeg
@@ -41,7 +41,7 @@ try:
 except ImportError:
     ffmpeg = None
     HAS_FFMPEG = False
-    warnings.warn("ffmpeg-python not available. Network streaming may be limited.")
+    warnings.warn("ffmpeg-python not available. Network streaming may be limited.", stacklevel=2)
 
 logger = logging.getLogger(__name__)
 

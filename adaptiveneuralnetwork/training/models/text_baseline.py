@@ -74,7 +74,7 @@ class TextClassificationBaseline:
             self.has_sklearn = True
         except ImportError:
             self.has_sklearn = False
-            warnings.warn("scikit-learn not available. Install with: pip install 'adaptiveneuralnetwork[nlp]'")
+            warnings.warn("scikit-learn not available. Install with: pip install 'adaptiveneuralnetwork[nlp]'", stacklevel=2)
     
     def _create_vectorizer(self):
         """Create TF-IDF vectorizer."""
