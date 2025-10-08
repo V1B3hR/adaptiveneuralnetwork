@@ -151,6 +151,11 @@ class WorkflowConfig:
         yaml_path.parent.mkdir(parents=True, exist_ok=True)
         
         config_dict = self.to_dict()
+        
+        # Convert tuples to lists for YAML serialization
+        if isinstance(config_dict.get('optimizer', {}).get('betas'), tuple):
+            config_dict['optimizer']['betas'] = list(config_dict['optimizer']['betas'])
+        
         with open(yaml_path, "w") as f:
             yaml.dump(config_dict, f, default_flow_style=False, indent=2, sort_keys=False)
     
