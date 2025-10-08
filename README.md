@@ -54,6 +54,28 @@ python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode benc
 
 ---
 
+## 🛠️ Development
+
+**New to contributing?** Check out our standardized development workflow!
+
+```bash
+# Setup development environment
+make install-dev
+make pre-commit-install
+
+# Common development tasks
+make lint              # Check code style
+make format            # Format code
+make test              # Run tests
+make all-checks        # Run all quality checks
+```
+
+📖 **[Read the Development Workflow Guide](docs/development/WORKFLOW.md)** for complete development documentation.
+
+🔧 **[View Consolidation Plan Progress](CONSOLIDATION_PLAN.md)** to track standardization and tooling improvements.
+
+---
+
 ## Development Roadmap
 
 ### Refactor phases.
