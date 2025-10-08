@@ -2,13 +2,13 @@
 Developer ecosystem and community tools for adaptive neural networks.
 """
 
-from .plugins import PluginManager, PluginBase, PluginRegistry
 from .contrib import CommunityPlugin, ContributionValidator
+from .plugins import PluginBase, PluginManager, PluginRegistry
 
 # Base exports (always available)
 __all__ = [
     "PluginManager",
-    "PluginBase", 
+    "PluginBase",
     "PluginRegistry",
     "CommunityPlugin",
     "ContributionValidator",
@@ -37,11 +37,11 @@ def get_integrations():
     global _INTEGRATIONS_AVAILABLE
     if not _INTEGRATIONS_AVAILABLE:
         try:
-            from .integrations import PyTorchIntegration, TensorFlowIntegration, JAXIntegration
+            from .integrations import JAXIntegration, PyTorchIntegration, TensorFlowIntegration
             _INTEGRATIONS_AVAILABLE = True
             return PyTorchIntegration, TensorFlowIntegration, JAXIntegration
         except ImportError:
             return None, None, None
     else:
-        from .integrations import PyTorchIntegration, TensorFlowIntegration, JAXIntegration
+        from .integrations import JAXIntegration, PyTorchIntegration, TensorFlowIntegration
         return PyTorchIntegration, TensorFlowIntegration, JAXIntegration

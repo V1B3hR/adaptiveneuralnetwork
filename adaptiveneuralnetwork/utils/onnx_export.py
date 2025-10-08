@@ -7,10 +7,9 @@ perform comprehensive model introspection for debugging and optimization.
 
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import torch
-import torch.nn as nn
 
 from ..api.model import AdaptiveModel
 
@@ -22,7 +21,7 @@ class ModelIntrospection:
         self.model = model
         self.config = model.config
 
-    def get_model_summary(self) -> Dict[str, Any]:
+    def get_model_summary(self) -> dict[str, Any]:
         """Get comprehensive model summary including parameters, memory, and structure."""
         summary = {
             "architecture": {
@@ -38,7 +37,7 @@ class ModelIntrospection:
         }
         return summary
 
-    def _get_parameter_info(self) -> Dict[str, Any]:
+    def _get_parameter_info(self) -> dict[str, Any]:
         """Get detailed parameter information."""
         total_params = sum(p.numel() for p in self.model.parameters())
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -60,7 +59,7 @@ class ModelIntrospection:
 
         return param_info
 
-    def _get_memory_info(self) -> Dict[str, Any]:
+    def _get_memory_info(self) -> dict[str, Any]:
         """Get memory usage information."""
         memory_info = {
             "estimated_size_mb": self._estimate_model_size_mb(),
@@ -89,7 +88,7 @@ class ModelIntrospection:
             total_bytes += param.numel() * param.element_size()
         return total_bytes / (1024 * 1024)
 
-    def _get_structure_info(self) -> Dict[str, Any]:
+    def _get_structure_info(self) -> dict[str, Any]:
         """Get model structure information."""
         structure = {
             "modules": [],
@@ -114,7 +113,7 @@ class ModelIntrospection:
 
         return structure
 
-    def analyze_gradient_flow(self, loss: torch.Tensor) -> Dict[str, Any]:
+    def analyze_gradient_flow(self, loss: torch.Tensor) -> dict[str, Any]:
         """Analyze gradient flow through the model."""
         gradient_info = {
             "has_gradients": {},
@@ -148,9 +147,9 @@ class ONNXExporter:
 
     def export_to_onnx(
         self,
-        filepath: Union[str, Path],
-        input_shape: Optional[Tuple[int, ...]] = None,
-        dynamic_axes: Optional[Dict[str, Dict[int, str]]] = None,
+        filepath: str | Path,
+        input_shape: tuple[int, ...] | None = None,
+        dynamic_axes: dict[str, dict[int, str]] | None = None,
         opset_version: int = 11,
         **kwargs
     ) -> bool:
@@ -207,10 +206,10 @@ class ONNXExporter:
 
     def verify_onnx_export(
         self,
-        onnx_filepath: Union[str, Path],
-        test_input: Optional[torch.Tensor] = None,
+        onnx_filepath: str | Path,
+        test_input: torch.Tensor | None = None,
         tolerance: float = 1e-5
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Verify ONNX export by comparing outputs.
 
@@ -276,10 +275,10 @@ class ONNXExporter:
 
 def export_model_with_introspection(
     model: AdaptiveModel,
-    output_dir: Union[str, Path],
+    output_dir: str | Path,
     export_onnx: bool = True,
     create_summary: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Export model with full introspection report.
 

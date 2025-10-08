@@ -145,11 +145,11 @@ class AdaptiveModel(nn.Module):
             "mean_activity": self.node_state.activity.mean().item(),
             **phase_stats,
         }
-        
+
         # Add anxiety metrics if available
         if hasattr(self.phase_scheduler, 'get_anxiety_stats'):
             metrics.update(self.phase_scheduler.get_anxiety_stats())
-        
+
         # Add sparsity metrics
         if hasattr(self.phase_scheduler, 'get_sparsity_metrics'):
             sparsity_metrics = self.phase_scheduler.get_sparsity_metrics(

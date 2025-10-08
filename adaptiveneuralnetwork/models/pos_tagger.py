@@ -3,14 +3,12 @@ Part-of-Speech Tagging models with BiLSTM and optional Transformer architectures
 Supports variable-length sequences with padding and masking.
 """
 
-import math
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, Tuple, List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 @dataclass
@@ -19,13 +17,13 @@ class POSTaggerConfig:
     vocab_size: int
     num_tags: int
     embedding_dim: int = 128
-    hidden_dim: int = 256 
+    hidden_dim: int = 256
     num_layers: int = 2
     dropout: float = 0.3
     model_type: str = "bilstm"  # "bilstm" or "transformer"
     max_length: int = 512
     pad_token_id: int = 0
-    
+
     # Transformer-specific configs
     num_heads: int = 8
     feedforward_dim: int = 512
@@ -40,21 +38,21 @@ class POSTagger(nn.Module):
     - BiLSTM (default): Embedding -> BiLSTM -> Linear
     - Transformer: Embedding -> Transformer Encoder -> Linear
     """
-    
+
     def __init__(self, config: POSTaggerConfig):
         super().__init__()
         self.config = config
-        
+
         # Token embeddings
         self.embedding = nn.Embedding(
-            config.vocab_size, 
+            config.vocab_size,
             config.embedding_dim,
             padding_idx=config.pad_token_id
         )
-        
+
         # Dropout
         self.dropout = nn.Dropout(config.dropout)
-        
+
         # Model architecture
         if config.model_type.lower() == "transformer":
             self.encoder = self._build_transformer_encoder(config)
@@ -62,13 +60,13 @@ class POSTagger(nn.Module):
         else:  # BiLSTM
             self.encoder = self._build_bilstm_encoder(config)
             encoder_output_dim = config.hidden_dim * 2  # Bidirectional
-        
+
         # Classification head
         self.classifier = nn.Linear(encoder_output_dim, config.num_tags)
-        
+
         # Initialize weights
         self._init_weights()
-    
+
     def _build_bilstm_encoder(self, config: POSTaggerConfig) -> nn.Module:
         """Build BiLSTM encoder."""
         return nn.LSTM(
@@ -79,7 +77,7 @@ class POSTagger(nn.Module):
             bidirectional=True,
             dropout=config.dropout if config.num_layers > 1 else 0
         )
-    
+
     def _build_transformer_encoder(self, config: POSTaggerConfig) -> nn.Module:
         """Build Transformer encoder."""
         encoder_layer = nn.TransformerEncoderLayer(
@@ -92,9 +90,9 @@ class POSTagger(nn.Module):
             batch_first=True,
             norm_first=config.layer_norm
         )
-        
+
         return nn.TransformerEncoder(encoder_layer, config.num_layers)
-    
+
     def _init_weights(self):
         """Initialize model weights."""
         for name, param in self.named_parameters():
@@ -105,13 +103,13 @@ class POSTagger(nn.Module):
                     nn.init.uniform_(param, -0.1, 0.1)
             elif 'bias' in name:
                 nn.init.constant_(param, 0)
-    
+
     def forward(
-        self, 
+        self,
         input_ids: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-        lengths: Optional[torch.Tensor] = None
-    ) -> Dict[str, torch.Tensor]:
+        attention_mask: torch.Tensor | None = None,
+        lengths: torch.Tensor | None = None
+    ) -> dict[str, torch.Tensor]:
         """
         Forward pass.
         
@@ -126,21 +124,21 @@ class POSTagger(nn.Module):
                 - hidden_states: [batch_size, seq_len, hidden_dim] encoder outputs
         """
         batch_size, seq_len = input_ids.shape
-        
+
         # Create attention mask if not provided
         if attention_mask is None:
             attention_mask = (input_ids != self.config.pad_token_id).long()
-        
+
         # Token embeddings
         embeddings = self.embedding(input_ids)  # [batch_size, seq_len, embedding_dim]
         embeddings = self.dropout(embeddings)
-        
+
         # Encoder
         if self.config.model_type.lower() == "transformer":
             # For Transformer, create key padding mask
             key_padding_mask = (input_ids == self.config.pad_token_id)  # True for padding
             hidden_states = self.encoder(
-                embeddings, 
+                embeddings,
                 src_key_padding_mask=key_padding_mask
             )
         else:
@@ -156,22 +154,22 @@ class POSTagger(nn.Module):
                 )
             else:
                 hidden_states, _ = self.encoder(embeddings)
-        
+
         hidden_states = self.dropout(hidden_states)
-        
+
         # Token classification
         logits = self.classifier(hidden_states)  # [batch_size, seq_len, num_tags]
-        
+
         return {
             "logits": logits,
             "hidden_states": hidden_states
         }
-    
+
     def predict(
         self,
-        input_ids: torch.Tensor, 
-        attention_mask: Optional[torch.Tensor] = None,
-        lengths: Optional[torch.Tensor] = None
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
+        lengths: torch.Tensor | None = None
     ) -> torch.Tensor:
         """
         Generate predictions for input tokens.
@@ -264,10 +262,10 @@ def masked_cross_entropy_loss(logits: torch.Tensor, labels: torch.Tensor, mask: 
     logits_flat = logits.view(-1, logits.size(-1))  # [batch_size*seq_len, num_tags]
     labels_flat = labels.view(-1)  # [batch_size*seq_len]
     mask_flat = mask.view(-1).bool()  # [batch_size*seq_len]
-    
+
     # Compute loss only for non-padding tokens
     if mask_flat.sum() == 0:
         return torch.tensor(0.0, device=logits.device, requires_grad=True)
-    
+
     loss = F.cross_entropy(logits_flat[mask_flat], labels_flat[mask_flat])
     return loss

@@ -6,14 +6,14 @@ neuromorphic platforms including Intel Loihi 2, SpiNNaker2, and
 generic 3rd generation interfaces.
 """
 
+from .generic_v3_backend import GenericV3Backend
 from .hardware_backends import HardwareBackendV3
 from .loihi2_backend import Loihi2Backend
 from .spinnaker2_backend import SpiNNaker2Backend
-from .generic_v3_backend import GenericV3Backend
 
 __all__ = [
     'HardwareBackendV3',
-    'Loihi2Backend', 
+    'Loihi2Backend',
     'SpiNNaker2Backend',
     'GenericV3Backend'
 ]
