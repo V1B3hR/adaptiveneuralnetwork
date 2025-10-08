@@ -183,7 +183,7 @@ class TestModelBuilder:
         model2 = builder2.build_from_config(config)
         
         # Check that weights are identical
-        for p1, p2 in zip(model1.parameters(), model2.parameters()):
+        for p1, p2 in zip(model1.parameters(), model2.parameters(), strict=False):
             assert torch.allclose(p1, p2)
     
     def test_build_from_yaml_file(self):

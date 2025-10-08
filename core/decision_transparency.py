@@ -252,7 +252,7 @@ class MultiHeadAttentionTracker(AttentionMechanism):
         exp_values = np.exp(adjusted_values - np.max(adjusted_values))
         attention_weights = exp_values / np.sum(exp_values)
         
-        return dict(zip(feature_keys, attention_weights))
+        return dict(zip(feature_keys, attention_weights, strict=False))
     
     def _get_factor_name(self, factor_id: str, inputs: Dict[str, Any]) -> str:
         """Get human-readable name for a factor"""

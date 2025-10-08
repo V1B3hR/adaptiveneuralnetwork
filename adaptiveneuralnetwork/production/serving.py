@@ -296,7 +296,7 @@ class ModelServer:
             results = await self._predict_batch(batch_data)
             
             # Set results for each future
-            for future, result in zip(futures, results):
+            for future, result in zip(futures, results, strict=False):
                 if not future.done():
                     future.set_result(result)
                     

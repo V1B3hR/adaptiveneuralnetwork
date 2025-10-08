@@ -190,7 +190,7 @@ class LiveInferenceApp:
         
         # Show top predictions
         print("Top predictions:")
-        for i, (idx, value) in enumerate(zip(top_indices, top_values)):
+        for i, (idx, value) in enumerate(zip(top_indices, top_values, strict=False)):
             class_idx = idx.item()
             confidence = value.item()
             

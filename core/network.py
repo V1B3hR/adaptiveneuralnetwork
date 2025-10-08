@@ -523,7 +523,7 @@ class AdaptiveClockNetwork:
         anxieties = np.array([c.anxiety for c in self.cells], dtype=float)
         diffusivity = self.genome.get("diffusivity", 0.05)
         influences = diffusivity * (np.mean(anxieties) - anxieties)
-        for i, (cell, stim) in enumerate(zip(self.cells, stimuli)):
+        for i, (cell, stim) in enumerate(zip(self.cells, stimuli, strict=False)):
             influence = float(influences[i])
             cell.tick(external_stimulus=stim, capacitor=self.capacitor, influence=influence)
 

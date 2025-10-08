@@ -506,7 +506,7 @@ if __name__ == "__main__":
         predictions = baseline.predict(test_texts)
         probabilities = baseline.predict_proba(test_texts)
         
-        for text, pred, probs in zip(test_texts, predictions, probabilities):
+        for text, pred, probs in zip(test_texts, predictions, probabilities, strict=False):
             print(f"   Text: '{text[:30]}...'")
             print(f"   Prediction: {pred}")
             print(f"   Probabilities: {[f'{p:.3f}' for p in probs]}")

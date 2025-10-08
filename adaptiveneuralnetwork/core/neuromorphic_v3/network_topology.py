@@ -489,7 +489,7 @@ class HierarchicalNetwork(nn.Module):
         
         # Create population layers
         self.layers = nn.ModuleList()
-        for i, (size, layer_type) in enumerate(zip(config.layer_sizes, layer_types)):
+        for i, (size, layer_type) in enumerate(zip(config.layer_sizes, layer_types, strict=False)):
             neuron_config = neuron_configs[i] if neuron_configs else None
             layer = PopulationLayer(
                 population_size=size,

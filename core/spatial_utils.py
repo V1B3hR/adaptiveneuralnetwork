@@ -150,7 +150,7 @@ def validate_position_in_bounds(position: np.ndarray,
     if len(bounds) != position.shape[0]:
         raise ValueError(f"Bounds count {len(bounds)} doesn't match position dimensions {position.shape[0]}")
     
-    for i, ((min_val, max_val), coord) in enumerate(zip(bounds, position)):
+    for i, ((min_val, max_val), coord) in enumerate(zip(bounds, position, strict=False)):
         if not (min_val <= coord <= max_val):
             raise ValueError(f"Position component {i}={coord} outside bounds [{min_val}, {max_val}]")
 

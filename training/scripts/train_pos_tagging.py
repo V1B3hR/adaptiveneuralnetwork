@@ -181,8 +181,8 @@ def compute_metrics(predictions: List[List[str]], labels: List[List[str]], tag_v
         total_correct = 0
         total_tokens = 0
         
-        for pred_seq, true_seq in zip(predictions, labels):
-            for pred, true in zip(pred_seq, true_seq):
+        for pred_seq, true_seq in zip(predictions, labels, strict=False):
+            for pred, true in zip(pred_seq, true_seq, strict=False):
                 total_tokens += 1
                 if pred == true:
                     total_correct += 1

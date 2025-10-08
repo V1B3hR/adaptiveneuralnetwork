@@ -183,10 +183,10 @@ def run_integration_simulation(system, num_steps=20):
         # Adjust precision policy based on performance
         if step > 0 and step % 5 == 0:
             phase_feedback = {
-                Phase.ACTIVE: np.mean([p for p, ph in zip(performance_history[-5:], phase_history[-5:]) if ph == 'ACTIVE']) or 0.8,
-                Phase.SLEEP: np.mean([p for p, ph in zip(performance_history[-5:], phase_history[-5:]) if ph == 'SLEEP']) or 0.8,
-                Phase.INTERACTIVE: np.mean([p for p, ph in zip(performance_history[-5:], phase_history[-5:]) if ph == 'INTERACTIVE']) or 0.8,
-                Phase.INSPIRED: np.mean([p for p, ph in zip(performance_history[-5:], phase_history[-5:]) if ph == 'INSPIRED']) or 0.8,
+                Phase.ACTIVE: np.mean([p for p, ph in zip(performance_history[-5:], phase_history[-5:], strict=False) if ph == 'ACTIVE']) or 0.8,
+                Phase.SLEEP: np.mean([p for p, ph in zip(performance_history[-5:], phase_history[-5:], strict=False) if ph == 'SLEEP']) or 0.8,
+                Phase.INTERACTIVE: np.mean([p for p, ph in zip(performance_history[-5:], phase_history[-5:], strict=False) if ph == 'INTERACTIVE']) or 0.8,
+                Phase.INSPIRED: np.mean([p for p, ph in zip(performance_history[-5:], phase_history[-5:], strict=False) if ph == 'INSPIRED']) or 0.8,
             }
             precision_mgr.adapt_precision_policy(phase_feedback)
             print(f"Adapted policies based on recent performance")

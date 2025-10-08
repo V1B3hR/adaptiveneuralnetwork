@@ -208,7 +208,7 @@ def demonstrate_reproducibility():
     params1 = list(model1.parameters())
     params2 = list(model2.parameters())
     
-    all_close = all(torch.allclose(p1, p2) for p1, p2 in zip(params1, params2))
+    all_close = all(torch.allclose(p1, p2) for p1, p2 in zip(params1, params2, strict=False))
     
     print(f"  Weights identical: {all_close}")
     print(f"  First weight sum (model 1): {params1[0].sum().item():.6f}")

@@ -102,7 +102,7 @@ def demonstrate_rolling_history():
     metrics = ['anxiety', 'calm', 'energy']
     histories = [node.anxiety_history, node.calm_history, node.energy_history]
     
-    for metric, history in zip(metrics, histories):
+    for metric, history in zip(metrics, histories, strict=False):
         if len(history) > 0:
             trend_analysis = node.analyze_trend(history)
             print(f"\n{metric.upper()} TREND ANALYSIS:")

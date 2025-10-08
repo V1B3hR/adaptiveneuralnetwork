@@ -196,8 +196,8 @@ def compute_detailed_metrics(
         total_tokens = 0
         correct_tokens = 0
         
-        for pred_seq, true_seq in zip(predictions, labels):
-            for pred, true in zip(pred_seq, true_seq):
+        for pred_seq, true_seq in zip(predictions, labels, strict=False):
+            for pred, true in zip(pred_seq, true_seq, strict=False):
                 total_tokens += 1
                 if pred == true:
                     correct_tokens += 1
@@ -296,7 +296,7 @@ def print_evaluation_report(results: Dict[str, Any], tag_vocab: Dict[str, int]) 
         labels = results['labels'][i]
         
         print(f"\nSentence {i+1}:")
-        for token, pred, label in zip(tokens, preds, labels):
+        for token, pred, label in zip(tokens, preds, labels, strict=False):
             status = "✓" if pred == label else "✗"
             print(f"  {token:<15} {pred:<8} {label:<8} {status}")
 

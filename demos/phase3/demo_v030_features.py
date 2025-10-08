@@ -236,7 +236,7 @@ def demo_multimodal_learning(quick_mode=False):
         test_accs = results['test_accuracies']
         
         print(f"\n  📈 Learning Progress:")
-        for i, (train_acc, test_acc) in enumerate(zip(train_accs, test_accs)):
+        for i, (train_acc, test_acc) in enumerate(zip(train_accs, test_accs, strict=False)):
             print(f"     Epoch {i+1}: Train={train_acc:.3f}, Test={test_acc:.3f}")
         
         # Modality contribution analysis

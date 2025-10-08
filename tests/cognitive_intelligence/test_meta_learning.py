@@ -52,7 +52,7 @@ class TestMetaLearning(unittest.TestCase):
             
             for class_name, examples in support_set.items():
                 for example in examples:
-                    distance = sum((a - b) ** 2 for a, b in zip(test_features, example["features"]))
+                    distance = sum((a - b) ** 2 for a, b in zip(test_features, example["features"], strict=False))
                     if distance < min_distance:
                         min_distance = distance
                         predicted_label = example["label"]

@@ -198,7 +198,7 @@ class StreamingDatasetWrapper(UnifiedDatasetInterface, IterableDataset):
         
         # Stack into batch
         if items and isinstance(items[0], tuple):
-            xs, ys = zip(*items)
+            xs, ys = zip(*items, strict=False)
             if isinstance(xs[0], torch.Tensor):
                 x_batch = torch.stack(xs)
             else:
@@ -395,7 +395,7 @@ class HuggingFaceDatasetWrapper(UnifiedDatasetInterface):
         
         # Process batch similar to StreamingDatasetWrapper
         if items and isinstance(items[0], tuple):
-            xs, ys = zip(*items)
+            xs, ys = zip(*items, strict=False)
             return xs, ys
         
         return items

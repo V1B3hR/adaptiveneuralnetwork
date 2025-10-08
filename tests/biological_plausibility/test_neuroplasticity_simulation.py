@@ -283,7 +283,7 @@ class TestNeuroplasticitySimulation(unittest.TestCase):
         )
         
         self.assertGreater(scale_factor, 1.0, "Should upscale when activity is low")
-        for original, scaled in zip(low_activity_weights, scaled_weights):
+        for original, scaled in zip(low_activity_weights, scaled_weights, strict=False):
             self.assertGreater(scaled, original, "Individual weights should increase")
         
         # Test downscaling when activity is too high
@@ -295,7 +295,7 @@ class TestNeuroplasticitySimulation(unittest.TestCase):
         )
         
         self.assertLess(scale_factor_high, 1.0, "Should downscale when activity is high")
-        for original, scaled in zip(high_activity_weights, scaled_weights_high):
+        for original, scaled in zip(high_activity_weights, scaled_weights_high, strict=False):
             self.assertLess(scaled, original, "Individual weights should decrease")
         
     def test_metaplasticity_mechanisms(self):

@@ -103,7 +103,7 @@ def benchmark_model(model_name, config, test_data, num_runs=10):
         top_values, top_indices = torch.topk(probs, min(5, num_classes))
         
         print(f"  Top 5 predictions for first sample:")
-        for i, (idx, prob) in enumerate(zip(top_indices, top_values)):
+        for i, (idx, prob) in enumerate(zip(top_indices, top_values, strict=False)):
             print(f"    {i+1}. Class {idx.item()}: {prob.item():.4f}")
     
     return {

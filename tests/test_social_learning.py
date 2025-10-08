@@ -349,7 +349,7 @@ class TestMultiAgentSocialLearningEnvironment(unittest.TestCase):
         behaviors = ["efficient_pathfinding", "resource_optimization", "conflict_mediation"]
         outcomes = [0.9, 0.8, 0.85]
         
-        for behavior, outcome in zip(behaviors, outcomes):
+        for behavior, outcome in zip(behaviors, outcomes, strict=False):
             for observer_id in range(1, 4):
                 self.env.facilitate_observation(
                     observer_id=observer_id,

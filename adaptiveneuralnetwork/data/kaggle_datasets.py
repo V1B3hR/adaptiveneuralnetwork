@@ -435,7 +435,7 @@ def _load_pos_data(data_path: str) -> Tuple[List[List[str]], List[List[str]]]:
             # Filter out empty tokens
             filtered_tokens = []
             filtered_tags = []
-            for token, tag in zip(tokens, tags):
+            for token, tag in zip(tokens, tags, strict=False):
                 if token.strip() and token.lower() not in ['nan', 'none', '']:
                     filtered_tokens.append(token.strip())
                     filtered_tags.append(tag.strip())
@@ -482,11 +482,11 @@ def _filter_pos_tokens(
     filtered_sentences = []
     filtered_tags = []
     
-    for tokens, tags in zip(sentences, all_tags):
+    for tokens, tags in zip(sentences, all_tags, strict=False):
         filtered_tokens = []
         filtered_token_tags = []
         
-        for token, tag in zip(tokens, tags):
+        for token, tag in zip(tokens, tags, strict=False):
             # Length filter
             if len(token) < min_length:
                 continue

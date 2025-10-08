@@ -138,7 +138,6 @@ unfixable = []
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
-skip-source-first-line = false
 line-ending = "auto"
 
 [tool.ruff.lint.isort]

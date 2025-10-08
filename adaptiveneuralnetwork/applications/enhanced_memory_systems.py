@@ -226,7 +226,7 @@ class DynamicPriorityBuffer:
     
     def update_priorities(self, indices: np.ndarray, td_errors: torch.Tensor):
         """Update priorities based on temporal difference errors."""
-        for idx, td_error in zip(indices, td_errors):
+        for idx, td_error in zip(indices, td_errors, strict=False):
             # Add small epsilon to prevent zero priorities
             priority = (abs(td_error.item()) + 1e-6) ** self.config.priority_alpha
             self.priorities[idx] = priority

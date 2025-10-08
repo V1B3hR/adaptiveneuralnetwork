@@ -208,7 +208,7 @@ for model_name, model_type in models_to_compare.items():
         top_values, top_indices = torch.topk(probs, 3)
         
         print(f"{model_name}:")
-        for i, (idx, prob) in enumerate(zip(top_indices, top_values)):
+        for i, (idx, prob) in enumerate(zip(top_indices, top_values, strict=False)):
             print(f"  {i+1}. Class {idx.item()}: {prob.item():.4f}")
         print()
 

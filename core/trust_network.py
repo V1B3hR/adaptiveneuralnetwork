@@ -506,7 +506,7 @@ class TrustNetwork:
             return None
         
         # Calculate weighted consensus
-        weighted_sum = sum(trust * conf for trust, conf in zip(trust_votes, confidence_weights))
+        weighted_sum = sum(trust * conf for trust, conf in zip(trust_votes, confidence_weights, strict=False))
         total_weight = sum(confidence_weights)
         consensus_trust = weighted_sum / total_weight if total_weight > 0 else 0.5
         

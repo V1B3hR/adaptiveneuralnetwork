@@ -190,7 +190,7 @@ def vectorized_collate_fn(
         return torch.empty(0), torch.empty(0)
     
     # Separate data and targets - single list comprehension
-    data_list, target_list = zip(*batch)
+    data_list, target_list = zip(*batch, strict=False)
     
     # Stack using vectorized torch operations (not Python loops)
     batched_data = torch.stack(data_list)

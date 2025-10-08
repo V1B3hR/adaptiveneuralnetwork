@@ -446,7 +446,7 @@ class BatchPredictor:
             
             # Split results back to individual requests
             start_idx = 0
-            for i, (future, batch_size) in enumerate(zip(futures, batch_sizes)):
+            for i, (future, batch_size) in enumerate(zip(futures, batch_sizes, strict=False)):
                 end_idx = start_idx + batch_size
                 individual_result = {
                     **result,
