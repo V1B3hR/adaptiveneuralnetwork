@@ -5,8 +5,9 @@ This module provides helper functions for working with spatial dimensions
 in the adaptive neural network, supporting arbitrary dimensional spaces.
 """
 
+from collections.abc import Sequence
+
 import numpy as np
-from typing import Union, Sequence, Tuple, List
 
 
 def zero_vector(dim: int) -> np.ndarray:
@@ -23,7 +24,7 @@ def zero_vector(dim: int) -> np.ndarray:
     return np.zeros(dim, dtype=float)
 
 
-def rand_vector(dim: int, ranges: Union[Tuple[float, float], Sequence[Tuple[float, float]]]) -> np.ndarray:
+def rand_vector(dim: int, ranges: tuple[float, float] | Sequence[tuple[float, float]]) -> np.ndarray:
     """Create a random vector within specified ranges.
     
     Args:
@@ -36,20 +37,20 @@ def rand_vector(dim: int, ranges: Union[Tuple[float, float], Sequence[Tuple[floa
     """
     if dim < 1:
         raise ValueError(f"Dimension must be positive, got {dim}")
-    
+
     # Handle single range for all dimensions
     if isinstance(ranges, tuple) and len(ranges) == 2:
         min_val, max_val = ranges
         return np.random.uniform(min_val, max_val, size=dim)
-    
+
     # Handle per-dimension ranges
     if len(ranges) != dim:
         raise ValueError(f"Range count {len(ranges)} doesn't match dimension {dim}")
-    
+
     result = np.zeros(dim, dtype=float)
     for i, (min_val, max_val) in enumerate(ranges):
         result[i] = np.random.uniform(min_val, max_val)
-    
+
     return result
 
 
@@ -68,14 +69,14 @@ def distance(a: np.ndarray, b: np.ndarray) -> float:
     """
     a = np.asarray(a)
     b = np.asarray(b)
-    
+
     if a.shape != b.shape:
         raise ValueError(f"Point dimensions don't match: {a.shape} vs {b.shape}")
-    
+
     return float(np.linalg.norm(a - b))
 
 
-def validate_spatial_dimensions(arrays: List[np.ndarray], expected_dims: int) -> None:
+def validate_spatial_dimensions(arrays: list[np.ndarray], expected_dims: int) -> None:
     """Validate that all arrays have the expected spatial dimensions.
     
     Args:
@@ -87,7 +88,7 @@ def validate_spatial_dimensions(arrays: List[np.ndarray], expected_dims: int) ->
     """
     if expected_dims < 1:
         raise ValueError(f"Expected dimensions must be positive, got {expected_dims}")
-    
+
     for i, array in enumerate(arrays):
         array = np.asarray(array)
         if array.ndim != 1:
@@ -96,8 +97,8 @@ def validate_spatial_dimensions(arrays: List[np.ndarray], expected_dims: int) ->
             raise ValueError(f"Array {i} has {array.shape[0]} dimensions, expected {expected_dims}")
 
 
-def expand_bounds_to_dimensions(bounds: Union[Tuple[float, float], Sequence[Tuple[float, float]]], 
-                                 dim: int) -> List[Tuple[float, float]]:
+def expand_bounds_to_dimensions(bounds: tuple[float, float] | Sequence[tuple[float, float]],
+                                 dim: int) -> list[tuple[float, float]]:
     """Expand bounds specification to match spatial dimensions.
     
     Args:
@@ -110,29 +111,29 @@ def expand_bounds_to_dimensions(bounds: Union[Tuple[float, float], Sequence[Tupl
     """
     if dim < 1:
         raise ValueError(f"Dimension must be positive, got {dim}")
-    
+
     # Handle single bounds for all dimensions
     if isinstance(bounds, tuple) and len(bounds) == 2:
         min_val, max_val = bounds
         if min_val >= max_val:
             raise ValueError(f"Invalid bounds: min {min_val} >= max {max_val}")
         return [(min_val, max_val)] * dim
-    
+
     # Handle per-dimension bounds
     bounds_list = list(bounds)
     if len(bounds_list) != dim:
         raise ValueError(f"Bounds count {len(bounds_list)} doesn't match dimension {dim}")
-    
+
     # Validate each bound
     for i, (min_val, max_val) in enumerate(bounds_list):
         if min_val >= max_val:
             raise ValueError(f"Invalid bounds for dimension {i}: min {min_val} >= max {max_val}")
-    
+
     return bounds_list
 
 
-def validate_position_in_bounds(position: np.ndarray, 
-                                bounds: Sequence[Tuple[float, float]]) -> None:
+def validate_position_in_bounds(position: np.ndarray,
+                                bounds: Sequence[tuple[float, float]]) -> None:
     """Validate that a position is within specified bounds.
     
     Args:
@@ -143,20 +144,20 @@ def validate_position_in_bounds(position: np.ndarray,
         ValueError: If position is outside bounds
     """
     position = np.asarray(position)
-    
+
     if position.ndim != 1:
         raise ValueError(f"Position must be 1D, got shape {position.shape}")
-    
+
     if len(bounds) != position.shape[0]:
         raise ValueError(f"Bounds count {len(bounds)} doesn't match position dimensions {position.shape[0]}")
-    
-    for i, ((min_val, max_val), coord) in enumerate(zip(bounds, position)):
+
+    for i, ((min_val, max_val), coord) in enumerate(zip(bounds, position, strict=False)):
         if not (min_val <= coord <= max_val):
             raise ValueError(f"Position component {i}={coord} outside bounds [{min_val}, {max_val}]")
 
 
-def create_random_positions(count: int, dim: int, 
-                           bounds: Union[Tuple[float, float], Sequence[Tuple[float, float]]]) -> np.ndarray:
+def create_random_positions(count: int, dim: int,
+                           bounds: tuple[float, float] | Sequence[tuple[float, float]]) -> np.ndarray:
     """Create multiple random positions within bounds.
     
     Args:
@@ -169,11 +170,11 @@ def create_random_positions(count: int, dim: int,
     """
     if count < 0:
         raise ValueError(f"Count must be non-negative, got {count}")
-    
+
     expanded_bounds = expand_bounds_to_dimensions(bounds, dim)
     positions = np.zeros((count, dim), dtype=float)
-    
+
     for i in range(count):
         positions[i] = rand_vector(dim, expanded_bounds)
-    
+
     return positions

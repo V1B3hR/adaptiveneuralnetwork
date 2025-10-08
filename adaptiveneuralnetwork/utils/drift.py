@@ -5,8 +5,9 @@ This module provides utilities for creating synthetic concept drift and
 distribution shifts in data streams for testing continual learning systems.
 """
 
-import torch
 from typing import Literal
+
+import torch
 
 
 def apply_gaussian_drift(x: torch.Tensor, sigma: float = 0.3) -> torch.Tensor:
@@ -38,9 +39,9 @@ def apply_shift(x: torch.Tensor, delta: float = 0.5) -> torch.Tensor:
 
 
 def alternating_drift(
-    x: torch.Tensor, 
-    step: int, 
-    period: int = 5, 
+    x: torch.Tensor,
+    step: int,
+    period: int = 5,
     mode: Literal["gaussian", "shift"] = "gaussian",
     **kwargs
 ) -> torch.Tensor:
@@ -65,5 +66,5 @@ def alternating_drift(
         elif mode == "shift":
             delta = kwargs.get("delta", 0.5)
             return apply_shift(x, delta)
-    
+
     return x

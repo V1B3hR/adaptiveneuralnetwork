@@ -17,11 +17,11 @@ Usage:
 
 import argparse
 import json
-import time
 import sys
+import time
 from pathlib import Path
-from typing import Dict, Any, List
-import torch
+from typing import Any
+
 import numpy as np
 
 # Add project root to path
@@ -29,10 +29,11 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Direct imports to avoid circular dependencies
-from adaptiveneuralnetwork.training.datasets.datasets import SyntheticDataset
-
 # Import the optimized dataset module directly
 import importlib.util
+
+from adaptiveneuralnetwork.training.datasets.datasets import SyntheticDataset
+
 spec = importlib.util.spec_from_file_location(
     "optimized_datasets",
     project_root / "adaptiveneuralnetwork" / "data" / "optimized_datasets.py"
@@ -51,18 +52,18 @@ from torch.utils.data import DataLoader
 
 class BenchmarkTimer:
     """Simple timer for benchmarking."""
-    
+
     def __init__(self):
         self.start_time = None
         self.elapsed = 0
-    
+
     def start(self):
         self.start_time = time.perf_counter()
-    
+
     def stop(self) -> float:
         self.elapsed = time.perf_counter() - self.start_time
         return self.elapsed
-    
+
     def get_elapsed_ms(self) -> float:
         return self.elapsed * 1000
 
@@ -84,7 +85,7 @@ def benchmark_loader(
     num_batches: int = 100,
     warmup_batches: int = 10,
     name: str = "loader"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Benchmark a data loader.
     
@@ -100,55 +101,55 @@ def benchmark_loader(
     print(f"\n{'='*60}")
     print(f"Benchmarking: {name}")
     print(f"{'='*60}")
-    
+
     timer = BenchmarkTimer()
     batch_times = []
     total_samples = 0
-    
+
     # Warmup
     print(f"Warming up ({warmup_batches} batches)...")
     for i, batch in enumerate(loader):
         if i >= warmup_batches:
             break
-    
+
     # Actual benchmark
     print(f"Benchmarking ({num_batches} batches)...")
     iter_loader = iter(loader)
-    
+
     for i in range(num_batches):
         try:
             timer.start()
             batch = next(iter_loader)
             elapsed_ms = timer.stop() * 1000
-            
+
             batch_times.append(elapsed_ms)
-            
+
             if isinstance(batch, (tuple, list)) and len(batch) >= 2:
                 batch_size = len(batch[0])
             else:
                 batch_size = len(batch)
-            
+
             total_samples += batch_size
-            
+
             if (i + 1) % 20 == 0:
                 avg_time = np.mean(batch_times[-20:])
                 throughput = (20 * batch_size) / (avg_time / 1000 * 20)
                 print(f"  Batch {i+1}/{num_batches}: {avg_time:.3f}ms/batch, {throughput:.0f} samples/sec")
-        
+
         except StopIteration:
             print(f"  Loader exhausted after {i} batches")
             break
-    
+
     # Calculate statistics
     batch_times = np.array(batch_times)
     avg_batch_time_ms = np.mean(batch_times)
     min_batch_time_ms = np.min(batch_times)
     max_batch_time_ms = np.max(batch_times)
     std_batch_time_ms = np.std(batch_times)
-    
+
     total_time_sec = np.sum(batch_times) / 1000
     throughput_samples_per_sec = total_samples / total_time_sec
-    
+
     results = {
         'name': name,
         'num_batches_measured': len(batch_times),
@@ -161,13 +162,13 @@ def benchmark_loader(
         'throughput_samples_per_sec': float(throughput_samples_per_sec),
         'throughput_batches_per_sec': float(len(batch_times) / total_time_sec),
     }
-    
+
     print(f"\nResults for {name}:")
     print(f"  Average batch time: {avg_batch_time_ms:.3f} ± {std_batch_time_ms:.3f} ms")
     print(f"  Min/Max batch time: {min_batch_time_ms:.3f} / {max_batch_time_ms:.3f} ms")
     print(f"  Throughput: {throughput_samples_per_sec:.0f} samples/sec")
     print(f"  Batches/sec: {results['throughput_batches_per_sec']:.1f}")
-    
+
     return results
 
 
@@ -178,7 +179,7 @@ def run_comparison_benchmark(
     num_classes: int = 10,
     num_batches: int = 100,
     num_workers: int = 0
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Run comparison between baseline and optimized loaders.
     
@@ -194,23 +195,23 @@ def run_comparison_benchmark(
         Dictionary with all benchmark results
     """
     print(f"\n{'='*60}")
-    print(f"Phase 1 Data Loader Benchmark")
+    print("Phase 1 Data Loader Benchmark")
     print(f"{'='*60}")
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  Dataset size: {num_samples} samples")
     print(f"  Batch size: {batch_size}")
     print(f"  Input dim: {input_dim}")
     print(f"  Num classes: {num_classes}")
     print(f"  Num workers: {num_workers}")
     print(f"  Batches to measure: {num_batches}")
-    
+
     # Create base dataset
     base_dataset = SyntheticDataset(
         num_samples=num_samples,
         input_dim=input_dim,
         num_classes=num_classes
     )
-    
+
     # Benchmark 1: Baseline loader (no optimizations)
     baseline_loader = create_baseline_loader(base_dataset, batch_size, num_workers=num_workers)
     baseline_results = benchmark_loader(
@@ -219,7 +220,7 @@ def run_comparison_benchmark(
         warmup_batches=10,
         name="Baseline (no optimizations)"
     )
-    
+
     # Benchmark 2: Optimized loader with vectorized collation
     optimized_loader_1 = create_optimized_loader(
         base_dataset,
@@ -235,7 +236,7 @@ def run_comparison_benchmark(
         warmup_batches=10,
         name="Optimized (vectorized collation + pinned memory)"
     )
-    
+
     # Benchmark 3: Pre-loaded optimized dataset
     preloaded_dataset = optimize_dataset(base_dataset, preload=True, pin_memory=True)
     optimized_loader_2 = create_optimized_loader(
@@ -252,48 +253,48 @@ def run_comparison_benchmark(
         warmup_batches=10,
         name="Optimized (pre-loaded + vectorized)"
     )
-    
+
     # Calculate improvements
     print(f"\n{'='*60}")
-    print(f"Improvement Analysis")
+    print("Improvement Analysis")
     print(f"{'='*60}")
-    
+
     baseline_throughput = baseline_results['throughput_samples_per_sec']
     opt1_throughput = optimized_results_1['throughput_samples_per_sec']
     opt2_throughput = optimized_results_2['throughput_samples_per_sec']
-    
+
     improvement_1 = ((opt1_throughput - baseline_throughput) / baseline_throughput) * 100
     improvement_2 = ((opt2_throughput - baseline_throughput) / baseline_throughput) * 100
-    
+
     print(f"Baseline throughput: {baseline_throughput:.0f} samples/sec")
     print(f"Optimized (collation) throughput: {opt1_throughput:.0f} samples/sec ({improvement_1:+.1f}%)")
     print(f"Optimized (preloaded) throughput: {opt2_throughput:.0f} samples/sec ({improvement_2:+.1f}%)")
-    
+
     baseline_time = baseline_results['avg_batch_time_ms']
     opt1_time = optimized_results_1['avg_batch_time_ms']
     opt2_time = optimized_results_2['avg_batch_time_ms']
-    
+
     time_reduction_1 = ((baseline_time - opt1_time) / baseline_time) * 100
     time_reduction_2 = ((baseline_time - opt2_time) / baseline_time) * 100
-    
+
     print(f"\nBaseline batch time: {baseline_time:.3f} ms")
     print(f"Optimized (collation) batch time: {opt1_time:.3f} ms ({time_reduction_1:+.1f}%)")
     print(f"Optimized (preloaded) batch time: {opt2_time:.3f} ms ({time_reduction_2:+.1f}%)")
-    
+
     # Compare with Phase 0 baseline
     phase0_throughput = 20240.0  # From baseline.json
     phase0_data_time = 0.067  # ms
-    
+
     print(f"\n{'='*60}")
-    print(f"Comparison with Phase 0 Baseline")
+    print("Comparison with Phase 0 Baseline")
     print(f"{'='*60}")
     print(f"Phase 0 baseline throughput: {phase0_throughput:.0f} samples/sec")
     print(f"Phase 0 data loading time: {phase0_data_time:.3f} ms/batch")
-    
+
     phase1_improvement = ((opt2_throughput - phase0_throughput) / phase0_throughput) * 100
     print(f"Phase 1 best improvement: {phase1_improvement:+.1f}%")
     print(f"Phase 1 target (+30%): {'✓ ACHIEVED' if phase1_improvement >= 30 else '✗ NOT YET'}")
-    
+
     # Compile results
     results = {
         'configuration': {
@@ -318,7 +319,7 @@ def run_comparison_benchmark(
             'data_loading_time_ms': phase0_data_time
         }
     }
-    
+
     return results
 
 
@@ -330,11 +331,11 @@ def main():
     parser.add_argument('--num-classes', type=int, default=10, help='Number of classes')
     parser.add_argument('--num-batches', type=int, default=100, help='Batches to benchmark')
     parser.add_argument('--num-workers', type=int, default=0, help='Number of worker processes')
-    parser.add_argument('--output', type=str, default='benchmarks/phase1_metrics.json', 
+    parser.add_argument('--output', type=str, default='benchmarks/phase1_metrics.json',
                         help='Output file for results')
-    
+
     args = parser.parse_args()
-    
+
     # Run benchmark
     results = run_comparison_benchmark(
         num_samples=args.samples,
@@ -344,14 +345,14 @@ def main():
         num_batches=args.num_batches,
         num_workers=args.num_workers
     )
-    
+
     # Save results
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     with open(output_path, 'w') as f:
         json.dump(results, f, indent=2)
-    
+
     print(f"\n{'='*60}")
     print(f"Results saved to: {output_path}")
     print(f"{'='*60}")

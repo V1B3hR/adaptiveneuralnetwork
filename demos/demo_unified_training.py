@@ -11,7 +11,7 @@ This script shows the key features of the consolidated training system:
 
 import subprocess
 import sys
-from pathlib import Path
+
 
 def run_command(cmd, description):
     """Run a command and display results."""
@@ -37,21 +37,21 @@ def main():
 """)
 
     demos = [
-        ("python train.py --help", 
+        ("python train.py --help",
          "Show help message and available options"),
-        
-        ("python train.py --list-datasets", 
+
+        ("python train.py --list-datasets",
          "List all available datasets"),
-        
+
         ("python train.py --config config/training/quick_test.yaml --save-config /tmp/demo_config.yaml",
          "Load config from file and save resolved config"),
-        
+
         ("cat /tmp/demo_config.yaml",
          "Display the saved configuration file"),
-        
+
         ("python train.py --dataset mnist --epochs 5 --batch-size 32 --device cpu",
          "Train with CLI arguments (dry run)"),
-        
+
         ("python eval.py --help",
          "Show evaluation script help"),
     ]
@@ -66,16 +66,16 @@ def main():
             failed += 1
 
     print(f"\n{'='*70}")
-    print(f"Demo Summary")
+    print("Demo Summary")
     print(f"{'='*70}")
     print(f"Successful demos: {successful}/{len(demos)}")
     print(f"Failed demos: {failed}/{len(demos)}")
-    
+
     if failed == 0:
         print("\n✅ All demos completed successfully!")
     else:
         print(f"\n⚠️  {failed} demo(s) failed")
-    
+
     print("\n" + "="*70)
     print("Next Steps:")
     print("="*70)

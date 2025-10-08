@@ -3,10 +3,17 @@ Enhanced AI signal API using the new signal adapter system.
 Provides AI system monitoring and integration capabilities.
 """
 
-import requests
 import logging
-from typing import Dict, Any, Optional
-from .signal_adapter import SignalAdapter, SignalSource, SignalType, StateVariable, SignalMapping, ApiCredentials
+
+import requests
+
+from .signal_adapter import (
+    SignalAdapter,
+    SignalMapping,
+    SignalSource,
+    SignalType,
+    StateVariable,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,14 +39,14 @@ def fetch_ai_signal(api_url, params=None):
 
 class AISignalManager:
     """Enhanced AI signal manager for AI system monitoring and integration"""
-    
+
     def __init__(self, security_enabled: bool = True):
         self.adapter = SignalAdapter(security_enabled=security_enabled)
         self._setup_default_sources()
-        
+
     def _setup_default_sources(self):
         """Setup common AI signal sources"""
-        
+
         # ML model performance source
         model_source = SignalSource(
             name="ml_model_metrics",
@@ -55,7 +62,7 @@ class AISignalManager:
             update_interval=60,
             data_retention_hours=24
         )
-        
+
         # System health source
         system_source = SignalSource(
             name="ai_system_health",
@@ -72,12 +79,12 @@ class AISignalManager:
             update_interval=30,
             data_retention_hours=48
         )
-        
+
         self.adapter.register_source(model_source)
         self.adapter.register_source(system_source)
-        
-    def fetch_ai_state_changes(self, source_name: str = None, 
-                              system_params: Optional[Dict] = None) -> Dict[StateVariable, float]:
+
+    def fetch_ai_state_changes(self, source_name: str = None,
+                              system_params: dict | None = None) -> dict[StateVariable, float]:
         """
         Fetch AI signal data and return mapped state variable changes.
         
@@ -89,14 +96,14 @@ class AISignalManager:
             Dictionary mapping state variables to their new values
         """
         params = system_params or {}
-        
+
         if source_name:
             return self.adapter.fetch_signals(source_name, params)
         else:
             # Fetch from all AI sources and combine
             all_signals = self.adapter.fetch_all_signals(params)
             combined = {}
-            
+
             for source_name, signals in all_signals.items():
                 source = self.adapter.sources[source_name]
                 if source.signal_type == SignalType.AI:
@@ -107,5 +114,5 @@ class AISignalManager:
                             combined[var] = combined[var] * (1 - weight) + value * weight
                         else:
                             combined[var] = value
-                            
+
             return combined

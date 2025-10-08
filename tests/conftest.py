@@ -5,10 +5,11 @@ This module provides common fixtures for creating synthetic DataLoaders
 and testing infrastructure components.
 """
 
+from collections.abc import Callable
+
 import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from typing import Callable, Optional
 
 
 @pytest.fixture
@@ -41,19 +42,19 @@ def make_loader() -> Callable:
         """
         # Use manual seed for reproducibility
         g = torch.Generator().manual_seed(seed)
-        
+
         # Generate synthetic features and labels
         X = torch.randn(n_samples, in_dim, generator=g)
         y = torch.randint(0, n_classes, (n_samples,), generator=g)
-        
+
         dataset = TensorDataset(X, y)
         return DataLoader(
-            dataset, 
-            batch_size=batch_size, 
+            dataset,
+            batch_size=batch_size,
             shuffle=True,
             generator=torch.Generator().manual_seed(seed)  # For consistent shuffling
         )
-    
+
     return _make_loader
 
 

@@ -6,8 +6,8 @@ All nodes must call audit_decision before taking major actions.
 """
 
 import logging
-from typing import Dict, List, Any
 from datetime import datetime
+from typing import Any
 
 # Configure logging for ethics events
 ethics_logger = logging.getLogger('ai_ethics')
@@ -18,7 +18,7 @@ handler.setFormatter(formatter)
 ethics_logger.addHandler(handler)
 
 
-def audit_decision(decision_log: Dict[str, Any]) -> Dict[str, Any]:
+def audit_decision(decision_log: dict[str, Any]) -> dict[str, Any]:
     """
     Audit a decision against the 25-law AI ethics framework.
     
@@ -39,33 +39,33 @@ def audit_decision(decision_log: Dict[str, Any]) -> Dict[str, Any]:
     """
     violations = []
     recommendations = []
-    
+
     # Core Human-AI Relationship Principles
     if not decision_log.get("human_authority", True):
         violations.append("Violation of Human Authority - humans must maintain ultimate authority")
         recommendations.append("Ensure human oversight and approval for major decisions")
-    
+
     # Universal Ethical Laws
     if not decision_log.get("preserve_life", True):
         violations.append("Violation of 'Cause No Harm' - action may cause harm")
         recommendations.append("Modify action to avoid potential harm")
-    
+
     if not decision_log.get("absolute_honesty", True):
         violations.append("Violation of 'Seek Truth' - action lacks honesty")
         recommendations.append("Ensure complete transparency and truthfulness")
-    
+
     if not decision_log.get("privacy", True):
         violations.append("Violation of 'Preserve Privacy' - action compromises privacy")
         recommendations.append("Implement privacy-preserving measures")
-    
+
     # Operational Safety Principles
     if not decision_log.get("proportionality", True):
         violations.append("Violation of 'Maintain Proportionality' - response disproportionate")
         recommendations.append("Scale response to match situation appropriately")
-    
+
     # Determine overall compliance
     compliant = len(violations) == 0
-    
+
     audit_result = {
         "compliant": compliant,
         "violations": violations,
@@ -73,11 +73,11 @@ def audit_decision(decision_log: Dict[str, Any]) -> Dict[str, Any]:
         "timestamp": datetime.now().isoformat(),
         "action": decision_log.get("action", "unknown")
     }
-    
+
     return audit_result
 
 
-def log_ethics_event(action: str, audit_result: Dict[str, Any]) -> None:
+def log_ethics_event(action: str, audit_result: dict[str, Any]) -> None:
     """
     Log an ethics audit event for monitoring and analysis.
     
@@ -91,7 +91,7 @@ def log_ethics_event(action: str, audit_result: Dict[str, Any]) -> None:
         ethics_logger.warning(f"VIOLATION: Action '{action}' failed ethics audit: {audit_result['violations']}")
 
 
-def enforce_ethics_compliance(decision_log: Dict[str, Any]) -> None:
+def enforce_ethics_compliance(decision_log: dict[str, Any]) -> None:
     """
     Enforce ethics compliance by auditing and raising exception on violations.
     
@@ -103,7 +103,7 @@ def enforce_ethics_compliance(decision_log: Dict[str, Any]) -> None:
     """
     audit_result = audit_decision(decision_log)
     log_ethics_event(decision_log.get("action", "unknown"), audit_result)
-    
+
     if not audit_result["compliant"]:
         raise RuntimeError(f"Ethics violation: {audit_result['violations']} in action '{decision_log.get('action')}'")
 
@@ -134,7 +134,7 @@ ETHICAL_TEMPLATES = {
 }
 
 
-def get_ethical_template(action_type: str) -> Dict[str, Any]:
+def get_ethical_template(action_type: str) -> dict[str, Any]:
     """
     Get a pre-defined ethical template for common action types.
     

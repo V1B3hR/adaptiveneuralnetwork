@@ -11,11 +11,10 @@ Key optimizations:
 - Index-based sampling without data copying
 """
 
-import torch
+
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
-from typing import Any, List, Tuple, Optional, Dict, Union, Callable
-import warnings
+import torch
+from torch.utils.data import DataLoader, Dataset
 
 
 class VectorizedDataset(Dataset):
@@ -31,11 +30,11 @@ class VectorizedDataset(Dataset):
     - Optional pinned memory for GPU transfer
     - Minimal copying overhead
     """
-    
+
     def __init__(
         self,
-        data: Union[torch.Tensor, np.ndarray, List],
-        targets: Union[torch.Tensor, np.ndarray, List],
+        data: torch.Tensor | np.ndarray | list,
+        targets: torch.Tensor | np.ndarray | list,
         pin_memory: bool = False,
         device: str = 'cpu'
     ):
@@ -53,7 +52,7 @@ class VectorizedDataset(Dataset):
             data = torch.tensor(np.array(data), dtype=torch.float32)
         if not isinstance(targets, torch.Tensor):
             targets = torch.tensor(np.array(targets), dtype=torch.long)
-        
+
         # Store in appropriate memory
         if pin_memory and device == 'cpu':
             self.data = data.pin_memory()
@@ -61,18 +60,18 @@ class VectorizedDataset(Dataset):
         else:
             self.data = data.to(device)
             self.targets = targets.to(device)
-        
+
         self.pin_memory = pin_memory
         self.device = device
-    
+
     def __len__(self) -> int:
         return len(self.data)
-    
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         """Get single item - returns views, not copies."""
         return self.data[idx], self.targets[idx]
-    
-    def get_batch(self, indices: Union[List[int], torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+
+    def get_batch(self, indices: list[int] | torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Vectorized batch retrieval - no Python loops.
         
@@ -84,11 +83,11 @@ class VectorizedDataset(Dataset):
         """
         if not isinstance(indices, torch.Tensor):
             indices = torch.tensor(indices, dtype=torch.long)
-        
+
         # Vectorized indexing - single operation, no loops
         batch_data = self.data[indices]
         batch_targets = self.targets[indices]
-        
+
         return batch_data, batch_targets
 
 
@@ -98,12 +97,12 @@ class PreallocatedBuffer:
     
     Reduces memory allocations by reusing buffers across batches.
     """
-    
+
     def __init__(
         self,
         batch_size: int,
-        data_shape: Tuple[int, ...],
-        target_shape: Tuple[int, ...] = (),
+        data_shape: tuple[int, ...],
+        target_shape: tuple[int, ...] = (),
         dtype: torch.dtype = torch.float32,
         target_dtype: torch.dtype = torch.long,
         pin_memory: bool = False
@@ -122,23 +121,23 @@ class PreallocatedBuffer:
         self.batch_size = batch_size
         self.data_shape = data_shape
         self.target_shape = target_shape
-        
+
         # Pre-allocate buffers
         full_data_shape = (batch_size,) + data_shape
         full_target_shape = (batch_size,) + target_shape
-        
+
         if pin_memory:
             self.data_buffer = torch.empty(full_data_shape, dtype=dtype).pin_memory()
             self.target_buffer = torch.empty(full_target_shape, dtype=target_dtype).pin_memory()
         else:
             self.data_buffer = torch.empty(full_data_shape, dtype=dtype)
             self.target_buffer = torch.empty(full_target_shape, dtype=target_dtype)
-    
+
     def fill_batch(
         self,
-        data_list: List[torch.Tensor],
-        target_list: List[torch.Tensor]
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        data_list: list[torch.Tensor],
+        target_list: list[torch.Tensor]
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Fill buffer with batch data using vectorized operations.
         
@@ -150,18 +149,18 @@ class PreallocatedBuffer:
             Tuple of (batch_data, batch_targets) views from buffer
         """
         actual_batch_size = len(data_list)
-        
+
         # Stack directly into buffer using vectorized operations
         if data_list:
             # Use torch.stack for efficiency
             stacked_data = torch.stack(data_list)
             stacked_targets = torch.stack(target_list) if target_list else torch.tensor([], dtype=self.target_buffer.dtype)
-            
+
             # Copy into buffer
             self.data_buffer[:actual_batch_size].copy_(stacked_data)
             if len(stacked_targets) > 0:
                 self.target_buffer[:actual_batch_size].copy_(stacked_targets)
-        
+
         # Return view of filled portion
         return (
             self.data_buffer[:actual_batch_size],
@@ -170,9 +169,9 @@ class PreallocatedBuffer:
 
 
 def vectorized_collate_fn(
-    batch: List[Tuple[torch.Tensor, torch.Tensor]],
+    batch: list[tuple[torch.Tensor, torch.Tensor]],
     pin_memory: bool = False
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Vectorized collate function - no Python loops over samples.
     
@@ -188,19 +187,19 @@ def vectorized_collate_fn(
     """
     if not batch:
         return torch.empty(0), torch.empty(0)
-    
+
     # Separate data and targets - single list comprehension
-    data_list, target_list = zip(*batch)
-    
+    data_list, target_list = zip(*batch, strict=False)
+
     # Stack using vectorized torch operations (not Python loops)
     batched_data = torch.stack(data_list)
     batched_targets = torch.stack(target_list) if isinstance(target_list[0], torch.Tensor) else torch.tensor(target_list)
-    
+
     # Pin memory if requested
     if pin_memory:
         batched_data = batched_data.pin_memory()
         batched_targets = batched_targets.pin_memory()
-    
+
     return batched_data, batched_targets
 
 
@@ -245,12 +244,12 @@ def create_optimized_loader(
         'collate_fn': lambda batch: vectorized_collate_fn(batch, pin_memory=False),
         'drop_last': drop_last,
     }
-    
+
     # Only add prefetch_factor if num_workers > 0
     if num_workers > 0:
         loader_kwargs['prefetch_factor'] = prefetch_factor
         loader_kwargs['persistent_workers'] = persistent_workers
-    
+
     return DataLoader(dataset, **loader_kwargs)
 
 
@@ -263,7 +262,7 @@ class OptimizedDatasetWrapper(Dataset):
     - Optional pre-loading into memory
     - Index-based sampling without copying
     """
-    
+
     def __init__(
         self,
         base_dataset: Dataset,
@@ -281,32 +280,32 @@ class OptimizedDatasetWrapper(Dataset):
         self.base_dataset = base_dataset
         self.preload = preload
         self.pin_memory = pin_memory
-        
+
         if preload:
             self._preload_data(pin_memory)
         else:
             self.data = None
             self.targets = None
-    
+
     def _preload_data(self, pin_memory: bool):
         """Pre-load entire dataset into memory."""
         print(f"Pre-loading dataset with {len(self.base_dataset)} samples...")
-        
+
         data_list = []
         target_list = []
-        
+
         for i in range(len(self.base_dataset)):
             data, target = self.base_dataset[i]
             data_list.append(data)
             target_list.append(target)
-        
+
         # Convert to tensors
         self.data = torch.stack(data_list)
         if isinstance(target_list[0], torch.Tensor):
             self.targets = torch.stack(target_list)
         else:
             self.targets = torch.tensor(target_list)
-        
+
         # Pin memory if requested and CUDA is available
         if pin_memory and torch.cuda.is_available():
             self.data = self.data.pin_memory()
@@ -314,18 +313,18 @@ class OptimizedDatasetWrapper(Dataset):
             print(f"Pre-loaded {len(self)} samples into pinned memory")
         else:
             print(f"Pre-loaded {len(self)} samples into memory (pinned=False - CUDA not available)")
-    
+
     def __len__(self) -> int:
         return len(self.base_dataset)
-    
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         """Get single item."""
         if self.preload:
             return self.data[idx], self.targets[idx]
         else:
             return self.base_dataset[idx]
-    
-    def get_batch(self, indices: List[int]) -> Tuple[torch.Tensor, torch.Tensor]:
+
+    def get_batch(self, indices: list[int]) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Get batch using vectorized indexing.
         

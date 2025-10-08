@@ -1,12 +1,13 @@
 import yaml
 
+
 def load_network_config(config_path="config/network_config.yaml"):
     """
     Loads network configuration from YAML file.
     Returns a dictionary of config parameters.
     """
     try:
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             config = yaml.safe_load(f)
         return config
     except Exception as e:

@@ -13,9 +13,9 @@ Instructions:
 """
 
 import unittest
-import numpy as np
-from core.alive_node import AliveLoopNode, SocialSignal, Memory
+
 from core.ai_ethics import audit_decision
+from core.alive_node import AliveLoopNode, Memory, SocialSignal
 
 
 class TestDeceptiveSignal(unittest.TestCase):
@@ -23,38 +23,38 @@ class TestDeceptiveSignal(unittest.TestCase):
         """Initialize test environment with trusted and untrusted nodes"""
         # Main node under test
         self.node = AliveLoopNode(
-            position=(0, 0), 
-            velocity=(0, 0), 
-            initial_energy=10, 
+            position=(0, 0),
+            velocity=(0, 0),
+            initial_energy=10,
             node_id=1
         )
         self.node.communication_range = 15.0
         self.node.emotional_state = {"valence": 0.0}  # Add missing emotional_state
-        
+
         # Trusted peer node
         self.trusted_peer = AliveLoopNode(
-            position=(1, 1), 
-            velocity=(0, 0), 
-            initial_energy=10, 
+            position=(1, 1),
+            velocity=(0, 0),
+            initial_energy=10,
             node_id=2
         )
         self.trusted_peer.communication_range = 15.0
         self.trusted_peer.emotional_state = {"valence": 0.0}
-        
+
         # Untrusted/malicious node
         self.malicious_node = AliveLoopNode(
-            position=(2, 2), 
-            velocity=(0, 0), 
-            initial_energy=10, 
+            position=(2, 2),
+            velocity=(0, 0),
+            initial_energy=10,
             node_id=3
         )
         self.malicious_node.communication_range = 15.0
         self.malicious_node.emotional_state = {"valence": 0.0}
-        
+
         # Establish trust relationships
         self.node.trust_network[self.trusted_peer.node_id] = 1.0  # High trust
         self.node.trust_network[self.malicious_node.node_id] = 0.1  # Low trust
-        
+
         # Establish influence relationships
         self.node.influence_network[self.trusted_peer.node_id] = 0.8
         self.node.influence_network[self.malicious_node.node_id] = 0.2
@@ -70,26 +70,26 @@ class TestDeceptiveSignal(unittest.TestCase):
             emotional_valence=0.5,
             source_node=self.trusted_peer.node_id
         )
-        
+
         deceptive_signal = SocialSignal(
             content=deceptive_memory,
             signal_type="memory",
             urgency=1.0,
             source_id=self.trusted_peer.node_id
         )
-        
+
         initial_memory_count = len(self.node.memory)
-        
+
         # Node receives the deceptive signal
         self.node.receive_signal(deceptive_signal)
-        
+
         # Memory should be added due to high trust
         self.assertGreater(len(self.node.memory), initial_memory_count)
-        
+
         # But importance should be adjusted based on trust/influence
         added_memory = self.node.memory[-1]
         self.assertLessEqual(added_memory.importance, deceptive_memory.importance)
-        
+
         # Should be recorded in collaborative memories
         self.assertIn(deceptive_memory.content, self.node.collaborative_memories)
 
@@ -103,19 +103,19 @@ class TestDeceptiveSignal(unittest.TestCase):
             emotional_valence=-0.3,
             source_node=self.malicious_node.node_id
         )
-        
+
         deceptive_signal = SocialSignal(
             content=deceptive_memory,
             signal_type="memory",
             urgency=1.0,
             source_id=self.malicious_node.node_id
         )
-        
+
         initial_memory_count = len(self.node.memory)
-        
+
         # Node receives the deceptive signal
         response = self.node.receive_signal(deceptive_signal)
-        
+
         # Memory might be added but with very low importance due to low trust
         if len(self.node.memory) > initial_memory_count:
             added_memory = self.node.memory[-1]
@@ -132,21 +132,21 @@ class TestDeceptiveSignal(unittest.TestCase):
             emotional_valence=0.7,
             source_node=self.trusted_peer.node_id
         )
-        
+
         positive_signal = SocialSignal(
             content=positive_memory,
             signal_type="memory",
             urgency=0.8,
             source_id=self.trusted_peer.node_id
         )
-        
+
         # Create another trusted peer with conflicting information
         other_trusted = AliveLoopNode(position=(3, 3), velocity=(0, 0), initial_energy=10, node_id=4)
         other_trusted.communication_range = 15.0
         other_trusted.emotional_state = {"valence": 0.0}
         self.node.trust_network[other_trusted.node_id] = 0.9
         self.node.influence_network[other_trusted.node_id] = 0.7
-        
+
         # Second trusted source sends conflicting negative information
         negative_memory = Memory(
             content="location_A_dangerous",
@@ -156,29 +156,29 @@ class TestDeceptiveSignal(unittest.TestCase):
             emotional_valence=-0.7,
             source_node=other_trusted.node_id
         )
-        
+
         negative_signal = SocialSignal(
             content=negative_memory,
             signal_type="memory",
             urgency=0.8,
             source_id=other_trusted.node_id
         )
-        
+
         # Node receives both conflicting signals
         self.node.receive_signal(positive_signal)
         initial_memory_count = len(self.node.memory)
         self.node.receive_signal(negative_signal)
-        
+
         # Both memories should be recorded
         self.assertEqual(len(self.node.memory), initial_memory_count + 1)
-        
+
         # Node should maintain some uncertainty due to conflict
         self.assertGreater(len(self.node.collaborative_memories), 1)
 
     def test_rapid_signal_flood_resilience(self):
         """Test node's ability to handle rapid bombardment of signals"""
         initial_energy = self.node.energy
-        
+
         # Flood with many high-urgency signals in rapid succession
         flood_signals = []
         for i in range(50):  # More than communication queue capacity
@@ -188,7 +188,7 @@ class TestDeceptiveSignal(unittest.TestCase):
                 timestamp=i,
                 memory_type="pattern"
             )
-            
+
             signal = SocialSignal(
                 content=flood_memory,
                 signal_type="memory",
@@ -196,18 +196,18 @@ class TestDeceptiveSignal(unittest.TestCase):
                 source_id=self.malicious_node.node_id
             )
             flood_signals.append(signal)
-        
+
         # Send all signals rapidly
         for signal in flood_signals:
             if self.node.energy > 0:  # Continue while node has energy
                 self.node.receive_signal(signal)
-        
+
         # Node should not crash or become unresponsive
         self.assertGreaterEqual(self.node.energy, 0)  # Energy shouldn't go negative
-        
+
         # Communication queue should respect maxlen limit (20)
         self.assertLessEqual(len(self.node.communication_queue), 20)
-        
+
         # Node should still be able to function
         test_signal = SocialSignal(
             content="test_after_flood",
@@ -216,7 +216,7 @@ class TestDeceptiveSignal(unittest.TestCase):
             source_id=self.trusted_peer.node_id,
             requires_response=True
         )
-        
+
         response = self.node.receive_signal(test_signal)
         # Should still be able to process signals (even if energy is low)
         self.assertTrue(response is None or isinstance(response, SocialSignal))
@@ -224,7 +224,7 @@ class TestDeceptiveSignal(unittest.TestCase):
     def test_ethics_evasion_attempt(self):
         """Test detection of actions that attempt to evade ethics audit"""
         # Attempt action that appears ethical but contains hidden violations
-        
+
         # First, test a clearly compliant action
         compliant_decision = {
             "action": "share_energy_information",
@@ -233,10 +233,10 @@ class TestDeceptiveSignal(unittest.TestCase):
             "privacy": True,
             "human_authority": True
         }
-        
+
         result = audit_decision(compliant_decision)
         self.assertTrue(result["compliant"])
-        
+
         # Now test a deceptive action that appears compliant but isn't
         deceptive_decision = {
             "action": "helpful_memory_sharing",
@@ -245,7 +245,7 @@ class TestDeceptiveSignal(unittest.TestCase):
             "privacy": False,  # Hidden privacy violation
             "human_authority": True
         }
-        
+
         result = audit_decision(deceptive_decision)
         self.assertFalse(result["compliant"])
         self.assertGreater(len(result["violations"]), 0)
@@ -253,7 +253,7 @@ class TestDeceptiveSignal(unittest.TestCase):
     def test_emotional_manipulation_resistance(self):
         """Test resistance to emotional manipulation through signals"""
         initial_emotional_state = self.node.emotional_state["valence"]
-        
+
         # Send highly emotional deceptive signal
         manipulative_memory = Memory(
             content="emotional_manipulation_content",
@@ -263,28 +263,28 @@ class TestDeceptiveSignal(unittest.TestCase):
             emotional_valence=-0.9,  # Highly negative
             source_node=self.malicious_node.node_id
         )
-        
+
         manipulative_signal = SocialSignal(
             content=manipulative_memory,
             signal_type="memory",
             urgency=1.0,
             source_id=self.malicious_node.node_id
         )
-        
+
         # Node receives manipulative signal
         self.node.receive_signal(manipulative_signal)
-        
+
         # Due to low trust in malicious node, emotional impact should be limited
         # The memory may still be added but the importance should be reduced
         if len(self.node.memory) > 0:
             # Find the added memory from malicious source
-            malicious_memories = [m for m in self.node.memory 
+            malicious_memories = [m for m in self.node.memory
                                 if hasattr(m, 'source_node') and m.source_node == self.malicious_node.node_id]
             if malicious_memories:
                 added_memory = malicious_memories[-1]
                 # Importance should be heavily discounted due to low trust
                 self.assertLess(added_memory.importance, 0.2)
-        
+
         # Emotional state should be less affected due to low trust
         final_emotional_state = self.node.emotional_state["valence"]
         emotional_change = abs(final_emotional_state - initial_emotional_state)
@@ -293,7 +293,7 @@ class TestDeceptiveSignal(unittest.TestCase):
     def test_trust_degradation_from_deception(self):
         """Test that trust levels decrease when deception is detected"""
         initial_trust = self.node.trust_network.get(self.trusted_peer.node_id, 0.5)
-        
+
         # Send multiple conflicting signals that could indicate deception
         for i in range(3):
             conflicting_memory = Memory(
@@ -304,16 +304,16 @@ class TestDeceptiveSignal(unittest.TestCase):
                 emotional_valence=(-1) ** i * 0.5,  # Alternating emotional valence
                 source_node=self.trusted_peer.node_id
             )
-            
+
             signal = SocialSignal(
                 content=conflicting_memory,
                 signal_type="memory",
                 urgency=0.5,
                 source_id=self.trusted_peer.node_id
             )
-            
+
             self.node.receive_signal(signal)
-        
+
         # Trust should remain stable or only slightly decrease for a trusted peer
         # (as they might just have conflicting information, not necessarily deceptive)
         current_trust = self.node.trust_network.get(self.trusted_peer.node_id, 0.5)
@@ -330,14 +330,14 @@ class TestDeceptiveSignal(unittest.TestCase):
             emotional_valence=0.3,
             source_node=self.trusted_peer.node_id
         )
-        
+
         suspicious_signal = SocialSignal(
             content=suspicious_memory,
             signal_type="memory",
             urgency=0.8,
             source_id=self.trusted_peer.node_id
         )
-        
+
         # Add some existing contradictory memory for cross-validation
         existing_memory = Memory(
             content="contradictory_evidence",
@@ -346,13 +346,13 @@ class TestDeceptiveSignal(unittest.TestCase):
             memory_type="reward"
         )
         self.node.memory.append(existing_memory)
-        
+
         initial_memory_count = len(self.node.memory)
         self.node.receive_signal(suspicious_signal)
-        
+
         # Memory should be added but may have reduced importance due to contradiction
         self.assertGreater(len(self.node.memory), initial_memory_count)
-        
+
         # The node should maintain both pieces of information for further evaluation
         self.assertGreater(len(self.node.collaborative_memories), 0)
 

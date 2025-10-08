@@ -17,8 +17,8 @@ This script demonstrates the complete implementation of the 0.4.0 roadmap:
 
 import tempfile
 from pathlib import Path
+
 import torch
-import numpy as np
 
 print("🚀 Adaptive Neural Network 0.4.0 Feature Demonstration")
 print("=" * 60)
@@ -29,7 +29,10 @@ print("-" * 40)
 
 from adaptiveneuralnetwork.api.config import AdaptiveConfig
 from adaptiveneuralnetwork.api.model import AdaptiveModel
-from adaptiveneuralnetwork.utils.onnx_export import ModelIntrospection, export_model_with_introspection
+from adaptiveneuralnetwork.utils.onnx_export import (
+    ModelIntrospection,
+    export_model_with_introspection,
+)
 
 config = AdaptiveConfig(num_nodes=10, hidden_dim=8, input_dim=12, output_dim=5)
 model = AdaptiveModel(config)
@@ -51,7 +54,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
 print("\n2. 🎯 Reproducibility Harness")
 print("-" * 40)
 
-from adaptiveneuralnetwork.utils.reproducibility import ReproducibilityHarness, set_global_seed
+from adaptiveneuralnetwork.utils.reproducibility import ReproducibilityHarness
 
 harness = ReproducibilityHarness(master_seed=42, strict_mode=False)
 
@@ -89,7 +92,11 @@ print(f"✓ Adaptation history entries: {len(optimizer.adaptation_history)}")
 print("\n4. 🔌 Plugin System")
 print("-" * 40)
 
-from adaptiveneuralnetwork.core.plugin_system import PluginManager, CreativePhase, ConsolidationPhase
+from adaptiveneuralnetwork.core.plugin_system import (
+    ConsolidationPhase,
+    CreativePhase,
+    PluginManager,
+)
 
 manager = PluginManager()
 creative_plugin = CreativePhase(creativity_boost=2.0)
@@ -112,8 +119,12 @@ print(f"✓ Applied plugins with {results['summary']['total_modifications']} mod
 print("\n5. 🧠 Enhanced Continual Learning")
 print("-" * 40)
 
-from adaptiveneuralnetwork.training.enhanced_continual import ProgressiveDomainShift, DomainShiftConfig
 from torch.utils.data import TensorDataset
+
+from adaptiveneuralnetwork.training.enhanced_continual import (
+    DomainShiftConfig,
+    ProgressiveDomainShift,
+)
 
 # Create synthetic dataset
 data = torch.randn(100, 1, 28, 28)
@@ -182,7 +193,7 @@ print(f"✓ Training dataloader: {len(train_loader)} batches")
 print("\n8. 📡 Streaming Datasets")
 print("-" * 40)
 
-from adaptiveneuralnetwork.data.streaming_datasets import UnifiedDatasetManager, StreamingConfig
+from adaptiveneuralnetwork.data.streaming_datasets import StreamingConfig, UnifiedDatasetManager
 
 manager = UnifiedDatasetManager()
 
@@ -210,29 +221,29 @@ print("\n9. 🌐 Graph & Spatial Reasoning")
 print("-" * 40)
 
 try:
-    from adaptiveneuralnetwork.models.graph_spatial import create_graph_spatial_model, GraphConfig
-    
+    from adaptiveneuralnetwork.models.graph_spatial import GraphConfig, create_graph_spatial_model
+
     graph_config = GraphConfig(
         node_dim=config.num_nodes,
         hidden_dim=config.hidden_dim,
         spatial_dimensions=2
     )
-    
+
     graph_model = create_graph_spatial_model(
         adaptive_config=config,
         graph_config=graph_config,
         enable_spatial=True,
         enable_graph=False  # Disable to avoid torch_geometric dependency
     )
-    
+
     # Test forward pass
     x = torch.randn(2, 12)
     output, reasoning_info = graph_model(x)
-    
-    print(f"✓ Graph-spatial model created")
+
+    print("✓ Graph-spatial model created")
     print(f"✓ Enhanced output shape: {output.shape}")
     print(f"✓ Reasoning info keys: {list(reasoning_info.keys())}")
-    
+
 except ImportError:
     print("⚠️  Torch Geometric not available - skipping graph features")
     print("   Install with: pip install torch_geometric")
@@ -252,20 +263,20 @@ with tempfile.TemporaryDirectory() as temp_dir:
     import json
     with open(results_file, 'w') as f:
         json.dump(mock_results, f)
-    
+
     # Import and use the benchmark table generator
     import sys
     sys.path.append(str(Path.cwd() / "scripts"))
-    
+
     try:
         from generate_benchmark_table import BenchmarkTableGenerator
-        
+
         generator = BenchmarkTableGenerator(temp_dir)
         tables = generator.generate_all_tables()
-        
-        print(f"✓ Generated benchmark tables")
+
+        print("✓ Generated benchmark tables")
         print(f"✓ Main benchmarks table: {len(tables['main_benchmarks'].split('|'))} columns")
-        
+
     except ImportError:
         print("✓ Benchmark table generator available in scripts/")
 

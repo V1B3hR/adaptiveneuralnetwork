@@ -6,22 +6,24 @@ benchmarks including MNIST, with domain randomization for cross-domain
 generalization as required by Phase 2.1.
 """
 
+import random
+from collections.abc import Callable
+from typing import Any
+
+import numpy as np
 import torch
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset
-import numpy as np
-from typing import Optional, Callable, Union, List, Dict, Any
-import random
 
 
 class DomainRandomizedDataset(Dataset):
     """Dataset with domain randomization for cross-domain generalization."""
-    
+
     def __init__(
         self,
         base_dataset: Dataset,
-        domain_configs: List[Dict[str, Any]],
+        domain_configs: list[dict[str, Any]],
         randomization_prob: float = 0.5
     ):
         """
@@ -35,37 +37,37 @@ class DomainRandomizedDataset(Dataset):
         self.base_dataset = base_dataset
         self.domain_configs = domain_configs
         self.randomization_prob = randomization_prob
-        
+
     def __len__(self) -> int:
         return len(self.base_dataset)
-        
+
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         data, target = self.base_dataset[idx]
-        
+
         # Apply domain randomization with probability
         if random.random() < self.randomization_prob and self.domain_configs:
             domain_config = random.choice(self.domain_configs)
             data = self._apply_domain_transform(data, domain_config)
-            
+
         return data, target
-        
-    def _apply_domain_transform(self, data: torch.Tensor, config: Dict[str, Any]) -> torch.Tensor:
+
+    def _apply_domain_transform(self, data: torch.Tensor, config: dict[str, Any]) -> torch.Tensor:
         """Apply domain-specific transformations to data."""
         transformed_data = data.clone()
-        
+
         # Noise injection
         if 'noise_level' in config:
             noise = torch.randn_like(transformed_data) * config['noise_level']
             transformed_data += noise
-            
+
         # Brightness/contrast adjustment
         if 'brightness_factor' in config:
             transformed_data *= config['brightness_factor']
-            
+
         if 'contrast_factor' in config:
             mean = transformed_data.mean()
             transformed_data = (transformed_data - mean) * config['contrast_factor'] + mean
-            
+
         # Blur simulation
         if 'blur_kernel_size' in config and config['blur_kernel_size'] > 1:
             # Simple blur approximation
@@ -74,21 +76,21 @@ class DomainRandomizedDataset(Dataset):
                 kernel_size += 1  # Ensure odd kernel size
             # Apply simple averaging filter as blur approximation
             if len(transformed_data.shape) >= 2:
-                padded = torch.nn.functional.pad(transformed_data, 
-                                               (kernel_size//2, kernel_size//2, kernel_size//2, kernel_size//2), 
+                padded = torch.nn.functional.pad(transformed_data,
+                                               (kernel_size//2, kernel_size//2, kernel_size//2, kernel_size//2),
                                                mode='reflect')
                 # Simple box filter
                 blurred = torch.nn.functional.avg_pool2d(
-                    padded.unsqueeze(0).unsqueeze(0), 
-                    kernel_size, 
+                    padded.unsqueeze(0).unsqueeze(0),
+                    kernel_size,
                     stride=1,
                     padding=0
                 ).squeeze()
                 transformed_data = blurred
-        
+
         # Clamp values to valid range
         transformed_data = torch.clamp(transformed_data, 0.0, 1.0)
-        
+
         return transformed_data
 
 
@@ -96,7 +98,7 @@ def create_cross_domain_loaders(
     base_dataset: Dataset,
     batch_size: int = 64,
     num_domains: int = 3
-) -> List[DataLoader]:
+) -> list[DataLoader]:
     """
     Create data loaders with different domain configurations for cross-domain generalization.
     
@@ -122,10 +124,10 @@ def create_cross_domain_loaders(
         # High noise domain
         {'noise_level': 0.2, 'brightness_factor': 0.9, 'contrast_factor': 0.8}
     ]
-    
+
     # Select configurations for requested number of domains
     selected_configs = domain_configs[:num_domains] if num_domains <= len(domain_configs) else domain_configs
-    
+
     loaders = []
     for i, config in enumerate(selected_configs):
         if config:  # If config is not empty, apply domain randomization
@@ -136,7 +138,7 @@ def create_cross_domain_loaders(
             )
         else:
             domain_dataset = base_dataset
-            
+
         loader = DataLoader(
             domain_dataset,
             batch_size=batch_size,
@@ -144,7 +146,7 @@ def create_cross_domain_loaders(
             num_workers=0
         )
         loaders.append(loader)
-        
+
     return loaders
 
 
@@ -346,7 +348,7 @@ def load_cifar10(
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
     ])
-    
+
     transform_test = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
@@ -387,7 +389,7 @@ class CIFAR10Corrupted(Dataset):
     
     Supports various corruption types like noise, blur, weather effects, etc.
     """
-    
+
     CORRUPTION_TYPES = [
         'gaussian_noise', 'shot_noise', 'impulse_noise',
         'defocus_blur', 'glass_blur', 'motion_blur', 'zoom_blur',
@@ -395,14 +397,14 @@ class CIFAR10Corrupted(Dataset):
         'contrast', 'elastic_transform', 'pixelate', 'jpeg_compression',
         'speckle_noise', 'gaussian_blur', 'spatter', 'saturate'
     ]
-    
+
     def __init__(
-        self, 
+        self,
         root: str = "./data",
         train: bool = True,
         corruption_type: str = 'gaussian_noise',
         severity: int = 1,
-        transform: Optional[Callable] = None,
+        transform: Callable | None = None,
         download: bool = True
     ):
         """
@@ -421,31 +423,31 @@ class CIFAR10Corrupted(Dataset):
         self.corruption_type = corruption_type
         self.severity = max(1, min(5, severity))  # Clamp to [1, 5]
         self.transform = transform
-        
+
         if corruption_type not in self.CORRUPTION_TYPES:
             raise ValueError(f"Corruption type {corruption_type} not supported. "
                            f"Choose from: {self.CORRUPTION_TYPES}")
-        
+
         # Load base CIFAR-10 dataset
         self.base_dataset = torchvision.datasets.CIFAR10(
             root=root, train=train, download=download, transform=None
         )
-        
+
     def __len__(self) -> int:
         return len(self.base_dataset)
-    
+
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         image, target = self.base_dataset[idx]
-        
+
         # Apply corruption
         corrupted_image = self._apply_corruption(image)
-        
+
         # Apply additional transforms if provided
         if self.transform:
             corrupted_image = self.transform(corrupted_image)
-        
+
         return corrupted_image, target
-    
+
     def _apply_corruption(self, image) -> torch.Tensor:
         """Apply the specified corruption to an image."""
         # Convert PIL Image to numpy array
@@ -453,26 +455,26 @@ class CIFAR10Corrupted(Dataset):
             image = np.array(image.convert('RGB'))
         else:
             image = np.array(image)
-            
+
         # Normalize to [0, 1]
         image = image.astype(np.float32) / 255.0
-        
+
         # Apply corruption based on type
         if self.corruption_type == 'gaussian_noise':
             noise_std = 0.08 + (self.severity - 1) * 0.04
             noise = np.random.normal(0, noise_std, image.shape).astype(np.float32)
             corrupted = image + noise
-            
+
         elif self.corruption_type == 'shot_noise':
             lambda_param = 60.0 - (self.severity - 1) * 12.0
             corrupted = np.random.poisson(image * lambda_param) / lambda_param
-            
+
         elif self.corruption_type == 'impulse_noise':
             prob = 0.03 + (self.severity - 1) * 0.02
             mask = np.random.random(image.shape) < prob
             corrupted = image.copy()
             corrupted[mask] = np.random.random(np.sum(mask))
-            
+
         elif self.corruption_type in ['defocus_blur', 'gaussian_blur']:
             # Simple blur implementation without scipy dependency for now
             kernel_size = 1 + (self.severity - 1) * 2
@@ -487,36 +489,36 @@ class CIFAR10Corrupted(Dataset):
                 for c in range(3):
                     blurred[:, c:c+1] = conv2d(img_tensor[:, c:c+1], kernel, padding=kernel_size//2)
                 corrupted = blurred.squeeze(0).permute(1, 2, 0).numpy()
-                
+
         elif self.corruption_type == 'brightness':
             factor = 0.1 + (self.severity - 1) * 0.3
             corrupted = image + factor
-            
+
         elif self.corruption_type == 'contrast':
             factor = 0.75 + (self.severity - 1) * 0.1
             mean = np.mean(image)
             corrupted = (image - mean) * factor + mean
-            
+
         elif self.corruption_type == 'pixelate':
             # Simple pixelation by downsampling and upsampling
             corrupted = image.copy()
             step = max(1, 6 - self.severity)
             corrupted[::step, ::step] = corrupted[::step, ::step]
-            
+
         elif self.corruption_type == 'saturate':
             factor = 1.0 + (self.severity - 1) * 0.5
             corrupted = image * factor
-            
+
         else:
             # Fallback to gaussian noise for unsupported types
             noise_std = 0.08 + (self.severity - 1) * 0.04
             noise = np.random.normal(0, noise_std, image.shape).astype(np.float32)
             corrupted = image + noise
-        
+
         # Clip to valid range and convert back to tensor
         corrupted = np.clip(corrupted, 0, 1)
         corrupted = torch.from_numpy(corrupted).permute(2, 0, 1)  # HWC to CHW
-        
+
         return corrupted
 
 
@@ -547,12 +549,12 @@ def load_cifar10_corrupted(
         root=root, train=True, corruption_type=corruption_type,
         severity=severity, download=download
     )
-    
+
     test_dataset = CIFAR10Corrupted(
         root=root, train=False, corruption_type=corruption_type,
         severity=severity, download=download
     )
-    
+
     # Create data loaders
     train_loader = DataLoader(
         train_dataset,

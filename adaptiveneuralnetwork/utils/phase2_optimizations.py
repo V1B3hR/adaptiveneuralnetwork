@@ -6,9 +6,11 @@ and torch.compile optimizations for adaptive neural networks.
 """
 
 import functools
+from collections.abc import Callable
+from typing import Any
+
 import torch
 import torch.nn as nn
-from typing import Optional, Callable, Any
 
 
 def supports_amp(device: str) -> bool:
@@ -22,7 +24,7 @@ def supports_amp(device: str) -> bool:
     return False
 
 
-def get_amp_dtype(device: str) -> Optional[torch.dtype]:
+def get_amp_dtype(device: str) -> torch.dtype | None:
     """Get appropriate AMP dtype for device."""
     if device == "cpu":
         # Use bfloat16 for CPU if available
@@ -35,20 +37,20 @@ def get_amp_dtype(device: str) -> Optional[torch.dtype]:
 
 class AMPContext:
     """Context manager for Automatic Mixed Precision."""
-    
+
     def __init__(self, enabled: bool = True, device: str = "cpu"):
         self.enabled = enabled and supports_amp(device)
         self.device = device
         self.dtype = get_amp_dtype(device) if self.enabled else None
-        
+
     def __enter__(self):
         if self.enabled and self.dtype:
             return torch.autocast(device_type=self.device.split(':')[0], dtype=self.dtype)
         return torch.no_grad() if not torch.is_grad_enabled() else self._dummy_context()
-    
+
     def __exit__(self, *args):
         pass
-    
+
     class _dummy_context:
         def __enter__(self): return self
         def __exit__(self, *args): pass
@@ -71,7 +73,7 @@ def try_compile(model: nn.Module, mode: str = "default") -> nn.Module:
     if not hasattr(torch, 'compile'):
         print("torch.compile not available (requires PyTorch 2.0+)")
         return model
-    
+
     try:
         print(f"Attempting to compile model with mode='{mode}'...")
         compiled_model = torch.compile(model, mode=mode)
@@ -101,15 +103,15 @@ def mixed_precision_wrapper(
     """
     if not enabled or not supports_amp(device):
         return forward_fn
-    
+
     dtype = get_amp_dtype(device)
     device_type = device.split(':')[0]
-    
+
     @functools.wraps(forward_fn)
     def wrapped(*args, **kwargs):
         with torch.autocast(device_type=device_type, dtype=dtype):
             return forward_fn(*args, **kwargs)
-    
+
     return wrapped
 
 
@@ -122,7 +124,7 @@ class Phase2OptimizedModel(nn.Module):
     - Optional mixed precision (AMP)
     - Optimized tensor operations
     """
-    
+
     def __init__(
         self,
         base_model: nn.Module,
@@ -131,20 +133,20 @@ class Phase2OptimizedModel(nn.Module):
         compile_mode: str = "default"
     ):
         super().__init__()
-        
+
         self.base_model = base_model
         self.enable_amp = enable_amp
         self.device = str(base_model.config.device) if hasattr(base_model, 'config') else 'cpu'
-        
+
         # Apply torch.compile if requested
         if enable_compile:
             self.base_model = try_compile(self.base_model, mode=compile_mode)
-        
+
         # Check AMP support
         self.amp_enabled = enable_amp and supports_amp(self.device)
         if enable_amp and not self.amp_enabled:
             print(f"AMP not supported on device {self.device}, disabling")
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass with optional mixed precision."""
         if self.amp_enabled:
@@ -153,7 +155,7 @@ class Phase2OptimizedModel(nn.Module):
             with torch.autocast(device_type=device_type, dtype=dtype):
                 return self.base_model(x)
         return self.base_model(x)
-    
+
     def __getattr__(self, name: str) -> Any:
         """Delegate attribute access to base model."""
         try:

@@ -95,10 +95,10 @@ class AdaptiveConfig:
             with open(yaml_path) as f:
                 config_dict = yaml.safe_load(f)
             return cls(**config_dict)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Configuration file not found: {yaml_path}")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Configuration file not found: {yaml_path}") from e
         except yaml.YAMLError as e:
-            raise ValueError(f"Error parsing YAML file: {e}")
+            raise ValueError(f"Error parsing YAML file: {e}") from e
 
     def to_yaml(self, yaml_path: str) -> None:
         """Save configuration to YAML file."""

@@ -12,9 +12,8 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
-import warnings
 import numpy as np
 
 # Set up logging
@@ -40,7 +39,7 @@ def convert_numpy_types(obj):
     return obj
 
 
-def check_dependencies() -> Dict[str, bool]:
+def check_dependencies() -> dict[str, bool]:
     """Check which optional dependencies are available."""
     deps = {}
 
@@ -90,11 +89,11 @@ def print_dependency_status():
 
 
 def run_smoke_test(
-    dataset_name: Optional[str] = None,
-    local_path: Optional[str] = None,
+    dataset_name: str | None = None,
+    local_path: str | None = None,
     subset_size: int = 100,
     output_dir: str = "outputs"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Run a smoke test with minimal data and quick training.
 
@@ -110,7 +109,7 @@ def run_smoke_test(
     try:
         from adaptiveneuralnetwork.training.datasets.bitext_dataset import (
             BitextDatasetLoader,
-            create_synthetic_bitext_data
+            create_synthetic_bitext_data,
         )
         from adaptiveneuralnetwork.training.models.text_baseline import TextClassificationBaseline
 
@@ -129,7 +128,7 @@ def run_smoke_test(
             # For Kaggle datasets, use sampling fraction
             use_sampling = dataset_name is not None
             sampling_frac = min(subset_size / 10000, 1.0) if use_sampling else None
-            
+
             loader = BitextDatasetLoader(
                 dataset_name=dataset_name,
                 local_path=local_path,
@@ -258,12 +257,12 @@ def run_smoke_test(
 
 
 def run_benchmark(
-    dataset_name: Optional[str] = None,
-    local_path: Optional[str] = None,
-    subset_size: Optional[int] = None,
+    dataset_name: str | None = None,
+    local_path: str | None = None,
+    subset_size: int | None = None,
     epochs: int = 1,
     output_dir: str = "outputs"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Run a benchmark with full data and detailed evaluation.
 
@@ -280,7 +279,7 @@ def run_benchmark(
     try:
         from adaptiveneuralnetwork.training.datasets.bitext_dataset import (
             BitextDatasetLoader,
-            create_synthetic_bitext_data
+            create_synthetic_bitext_data,
         )
         from adaptiveneuralnetwork.training.models.text_baseline import TextClassificationBaseline
 

@@ -31,10 +31,9 @@ import logging
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import yaml
-
 
 # Configure logging
 logging.basicConfig(
@@ -49,7 +48,7 @@ logger = logging.getLogger(__name__)
 class DatasetConfig:
     """Configuration for dataset loading and preprocessing."""
     name: str = "mnist"
-    data_path: Optional[str] = None
+    data_path: str | None = None
     batch_size: int = 64
     num_workers: int = 4
     shuffle: bool = True
@@ -58,7 +57,7 @@ class DatasetConfig:
     test_split: float = 0.1
     seed: int = 42
     augmentation: bool = False
-    augmentation_params: Dict[str, Any] = field(default_factory=dict)
+    augmentation_params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -71,7 +70,7 @@ class ModelConfig:
     num_nodes: int = 64
     dropout: float = 0.1
     activation: str = "relu"
-    model_params: Dict[str, Any] = field(default_factory=dict)
+    model_params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -83,15 +82,15 @@ class OptimizerConfig:
     momentum: float = 0.9
     betas: tuple = (0.9, 0.999)
     eps: float = 1e-8
-    scheduler: Optional[str] = None
-    scheduler_params: Dict[str, Any] = field(default_factory=dict)
+    scheduler: str | None = None
+    scheduler_params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class TrainingConfig:
     """Configuration for training process."""
     epochs: int = 10
-    max_steps: Optional[int] = None
+    max_steps: int | None = None
     gradient_accumulation_steps: int = 1
     max_grad_norm: float = 1.0
     use_amp: bool = False
@@ -111,7 +110,7 @@ class TrainingConfig:
 @dataclass
 class EvaluationConfig:
     """Configuration for model evaluation."""
-    metrics: List[str] = field(default_factory=lambda: ["accuracy", "loss"])
+    metrics: list[str] = field(default_factory=lambda: ["accuracy", "loss"])
     batch_size: int = 128
     save_predictions: bool = False
     output_dir: str = "outputs"
@@ -125,32 +124,32 @@ class WorkflowConfig:
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
-    
+
     @classmethod
-    def from_yaml(cls, yaml_path: Union[str, Path]) -> "WorkflowConfig":
+    def from_yaml(cls, yaml_path: str | Path) -> "WorkflowConfig":
         """Load configuration from YAML file."""
         yaml_path = Path(yaml_path)
-        with open(yaml_path, "r") as f:
+        with open(yaml_path) as f:
             config_dict = yaml.safe_load(f)
         return cls.from_dict(config_dict)
-    
+
     @classmethod
-    def from_json(cls, json_path: Union[str, Path]) -> "WorkflowConfig":
+    def from_json(cls, json_path: str | Path) -> "WorkflowConfig":
         """Load configuration from JSON file."""
         json_path = Path(json_path)
-        with open(json_path, "r") as f:
+        with open(json_path) as f:
             config_dict = json.load(f)
         return cls.from_dict(config_dict)
-    
+
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "WorkflowConfig":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "WorkflowConfig":
         """Create configuration from dictionary."""
         dataset_config = DatasetConfig(**config_dict.get("dataset", {}))
         model_config = ModelConfig(**config_dict.get("model", {}))
         optimizer_config = OptimizerConfig(**config_dict.get("optimizer", {}))
         training_config = TrainingConfig(**config_dict.get("training", {}))
         evaluation_config = EvaluationConfig(**config_dict.get("evaluation", {}))
-        
+
         return cls(
             dataset=dataset_config,
             model=model_config,
@@ -158,21 +157,21 @@ class WorkflowConfig:
             training=training_config,
             evaluation=evaluation_config
         )
-    
-    def to_yaml(self, yaml_path: Union[str, Path]) -> None:
+
+    def to_yaml(self, yaml_path: str | Path) -> None:
         """Save configuration to YAML file."""
         yaml_path = Path(yaml_path)
         yaml_path.parent.mkdir(parents=True, exist_ok=True)
         config_dict = self.to_dict()
-        
+
         # Convert tuples to lists for YAML serialization
         if isinstance(config_dict.get('optimizer', {}).get('betas'), tuple):
             config_dict['optimizer']['betas'] = list(config_dict['optimizer']['betas'])
-        
+
         with open(yaml_path, "w") as f:
             yaml.dump(config_dict, f, default_flow_style=False, indent=2, sort_keys=False)
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert configuration to dictionary."""
         return {
             "dataset": asdict(self.dataset),
@@ -219,7 +218,7 @@ Examples:
   %(prog)s --list-datasets
         """
     )
-    
+
     # Configuration file or dataset selection
     config_group = parser.add_mutually_exclusive_group()
     config_group.add_argument(
@@ -233,41 +232,41 @@ Examples:
         choices=list(AVAILABLE_DATASETS.keys()),
         help="Dataset name (will use default configuration)"
     )
-    
+
     # List datasets
     parser.add_argument(
         "--list-datasets",
         action="store_true",
         help="List available datasets and exit"
     )
-    
+
     # Dataset parameters
     parser.add_argument("--data-path", type=str, help="Path to dataset")
     parser.add_argument("--batch-size", type=int, help="Training batch size")
     parser.add_argument("--num-workers", type=int, help="Number of data loader workers")
-    
+
     # Model parameters
     parser.add_argument("--model", type=str, help="Model name")
     parser.add_argument("--hidden-dim", type=int, help="Hidden dimension size")
     parser.add_argument("--num-nodes", type=int, help="Number of nodes")
-    
+
     # Training parameters
     parser.add_argument("--epochs", type=int, help="Number of training epochs")
     parser.add_argument("--learning-rate", "--lr", type=float, help="Learning rate")
     parser.add_argument("--weight-decay", type=float, help="Weight decay")
     parser.add_argument("--device", type=str, help="Device (cuda/cpu)")
     parser.add_argument("--seed", type=int, help="Random seed")
-    
+
     # Advanced options
     parser.add_argument("--use-amp", action="store_true", help="Use automatic mixed precision")
     parser.add_argument("--checkpoint-dir", type=str, help="Checkpoint directory")
     parser.add_argument("--log-dir", type=str, help="Log directory")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
-    
+
     # Output
     parser.add_argument("--output-dir", type=str, help="Output directory for results")
     parser.add_argument("--save-config", type=str, help="Save resolved configuration to file")
-    
+
     return parser
 
 
@@ -290,7 +289,7 @@ def load_config(args: argparse.Namespace) -> WorkflowConfig:
         config.dataset.name = args.dataset
     else:
         raise ValueError("Either --config or --dataset must be specified")
-    
+
     # Override with CLI arguments
     if args.data_path is not None:
         config.dataset.data_path = args.data_path
@@ -298,14 +297,14 @@ def load_config(args: argparse.Namespace) -> WorkflowConfig:
         config.dataset.batch_size = args.batch_size
     if args.num_workers is not None:
         config.dataset.num_workers = args.num_workers
-    
+
     if args.model is not None:
         config.model.name = args.model
     if args.hidden_dim is not None:
         config.model.hidden_dim = args.hidden_dim
     if args.num_nodes is not None:
         config.model.num_nodes = args.num_nodes
-    
+
     if args.epochs is not None:
         config.training.epochs = args.epochs
     if args.learning_rate is not None:
@@ -317,7 +316,7 @@ def load_config(args: argparse.Namespace) -> WorkflowConfig:
     if args.seed is not None:
         config.training.seed = args.seed
         config.dataset.seed = args.seed
-    
+
     if args.use_amp:
         config.training.use_amp = True
     if args.checkpoint_dir is not None:
@@ -326,10 +325,10 @@ def load_config(args: argparse.Namespace) -> WorkflowConfig:
         config.training.log_dir = args.log_dir
     if args.verbose:
         config.training.verbose = True
-    
+
     if args.output_dir is not None:
         config.evaluation.output_dir = args.output_dir
-    
+
     return config
 
 
@@ -367,11 +366,11 @@ def train_with_config(config: WorkflowConfig):
     """
     logger.info("Starting training...")
     logger.info(f"Dataset: {config.dataset.name}")
-    
+
     # Note: This is a minimal implementation
     # The actual training logic should be extracted from existing scripts
     # and placed in adaptiveneuralnetwork.training.trainer or similar
-    
+
     try:
         # Import training components based on dataset type
         if config.dataset.name in ["mnist", "cifar10"]:
@@ -389,10 +388,10 @@ def train_with_config(config: WorkflowConfig):
             logger.warning("Kaggle dataset training not yet fully integrated - placeholder")
         else:
             logger.warning(f"Unknown dataset type: {config.dataset.name}")
-            
+
         logger.info("Training completed successfully!")
         logger.info(f"Results saved to: {config.evaluation.output_dir}")
-        
+
     except Exception as e:
         logger.error(f"Training failed: {e}", exc_info=True)
         raise
@@ -402,39 +401,39 @@ def main():
     """Main entry point."""
     parser = create_parser()
     args = parser.parse_args()
-    
+
     # Handle list datasets
     if args.list_datasets:
         list_datasets()
         return 0
-    
+
     # Validate arguments
     if not args.config and not args.dataset:
         parser.print_help()
         print("\nError: Either --config or --dataset must be specified")
         return 1
-    
+
     try:
         # Load configuration
         config = load_config(args)
-        
+
         # Set logging level
         if config.training.verbose:
             logging.getLogger().setLevel(logging.DEBUG)
-        
+
         # Print configuration
         print_config(config)
-        
+
         # Save configuration if requested
         if args.save_config:
             config.to_yaml(args.save_config)
             logger.info(f"Configuration saved to: {args.save_config}")
-        
+
         # Execute training
         train_with_config(config)
-        
+
         return 0
-        
+
     except Exception as e:
         logger.error(f"Training failed: {e}", exc_info=True)
         return 1

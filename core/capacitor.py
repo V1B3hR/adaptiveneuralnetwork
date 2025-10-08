@@ -1,7 +1,9 @@
-import numpy as np
 import logging
 import threading
-from typing import Any, Optional, Tuple, Sequence, Dict
+from collections.abc import Sequence
+from typing import Any
+
+import numpy as np
 
 # Default module logger (can be overridden per-instance)
 _module_logger = logging.getLogger(__name__)
@@ -24,11 +26,11 @@ class CapacitorInSpace:
         capacity: float = 5.0,
         initial_energy: float = 0.0,
         *,
-        logger: Optional[logging.Logger] = None,
-        verbosity: Optional[int] = None,
+        logger: logging.Logger | None = None,
+        verbosity: int | None = None,
         allow_external_level_override: bool = True,
-        expected_dims: Optional[int] = None,
-        bounds: Optional[Tuple[Tuple[float, float], ...]] = None,
+        expected_dims: int | None = None,
+        bounds: tuple[tuple[float, float], ...] | None = None,
         fixed_position: bool = False,
         thread_safe: bool = False,
     ):
@@ -177,7 +179,7 @@ class CapacitorInSpace:
         if self._logger is _module_logger or override_external:
             self._logger.setLevel(level)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "position": self.position.tolist(),
             "capacity": self.capacity,

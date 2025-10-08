@@ -17,12 +17,14 @@ import logging
 import sqlite3
 import threading
 from collections import defaultdict, deque
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Any, Optional, Tuple, Union
-import numpy as np
-import matplotlib.pyplot as plt
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from typing import Any
+
 import matplotlib.dates as mdates
-from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
+import numpy as np
+
 from core.time_manager import get_timestamp
 
 logger = logging.getLogger(__name__)
@@ -35,9 +37,9 @@ class TimeSeriesDataPoint:
     node_id: int
     variable_name: str
     value: float
-    metadata: Optional[Dict[str, Any]] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    metadata: dict[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return asdict(self)
 
@@ -45,14 +47,14 @@ class TimeSeriesDataPoint:
 @dataclass
 class TimeSeriesQuery:
     """Query specification for time series data"""
-    node_ids: Optional[List[int]] = None  # None means all nodes
-    variables: Optional[List[str]] = None  # None means all variables
-    start_time: Optional[float] = None
-    end_time: Optional[float] = None
-    max_points: Optional[int] = None
+    node_ids: list[int] | None = None  # None means all nodes
+    variables: list[str] | None = None  # None means all variables
+    start_time: float | None = None
+    end_time: float | None = None
+    max_points: int | None = None
     aggregation: str = "none"  # "none", "mean", "max", "min", "median"
     aggregation_window: float = 1.0  # Time window for aggregation
-    
+
     def matches_point(self, point: TimeSeriesDataPoint) -> bool:
         """Check if a data point matches this query"""
         if self.node_ids is not None and point.node_id not in self.node_ids:
@@ -68,32 +70,32 @@ class TimeSeriesQuery:
 
 class TimeSeriesTracker:
     """Comprehensive time series tracking system for node state variables"""
-    
+
     # Key variables to track by default
     DEFAULT_VARIABLES = [
-        "energy", "anxiety", "calm", "trust", "phase", 
+        "energy", "anxiety", "calm", "trust", "phase",
         "emotional_valence", "arousal", "communication_count"
     ]
-    
+
     # Security allowlist for variable names (prevent SQL injection via column names)
     ALLOWED_VARIABLES = set(DEFAULT_VARIABLES + [
         "trust_network_size", "memory_count", "avg_trust", "phase",
         "temperature", "pressure", "humidity", "light_level", "noise_level"
     ])
-    
-    def __init__(self, 
+
+    def __init__(self,
                  max_memory_points: int = 10000,
                  persist_to_disk: bool = True,
                  db_path: str = "node_timeseries.db"):
-        
+
         self.max_memory_points = max_memory_points
         self.persist_to_disk = persist_to_disk
         self.db_path = db_path
-        
+
         # In-memory storage for fast access
-        self._memory_store: Dict[int, Dict[str, deque]] = defaultdict(lambda: defaultdict(lambda: deque(maxlen=1000)))
+        self._memory_store: dict[int, dict[str, deque]] = defaultdict(lambda: defaultdict(lambda: deque(maxlen=1000)))
         self._lock = threading.Lock()
-        
+
         # Statistics tracking
         self._stats = {
             "total_points": 0,
@@ -102,11 +104,11 @@ class TimeSeriesTracker:
             "first_timestamp": None,
             "last_timestamp": None
         }
-        
+
         # Initialize database if persistent storage is enabled
         if self.persist_to_disk:
             self._init_database()
-            
+
     def _init_database(self):
         """
         Initialize SQLite database for persistent storage.
@@ -128,7 +130,7 @@ class TimeSeriesTracker:
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
-                
+
                 # Create indices for faster queries
                 cursor.execute("""
                     CREATE INDEX IF NOT EXISTS idx_timestamp 
@@ -142,15 +144,15 @@ class TimeSeriesTracker:
                     CREATE INDEX IF NOT EXISTS idx_node_time 
                     ON time_series(node_id, timestamp)
                 """)
-                
+
                 conn.commit()
                 logger.info(f"Initialized time series database: {self.db_path}")
-                
+
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
             self.persist_to_disk = False
-            
-    def record_node_state(self, node_id: int, state_data: Dict[str, Any], timestamp: Optional[float] = None):
+
+    def record_node_state(self, node_id: int, state_data: dict[str, Any], timestamp: float | None = None):
         """
         Record the current state of a node.
         
@@ -163,12 +165,12 @@ class TimeSeriesTracker:
         if not isinstance(node_id, int):
             try:
                 node_id = int(node_id)
-            except (ValueError, TypeError):
-                raise ValueError(f"node_id must be integer, got {type(node_id)}")
-        
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"node_id must be integer, got {type(node_id)}") from e
+
         if timestamp is None:
             timestamp = get_timestamp()
-            
+
         with self._lock:
             for variable_name, value in state_data.items():
                 # Validate variable name (allow new variables but log warnings for unknown ones)
@@ -177,7 +179,7 @@ class TimeSeriesTracker:
                     continue
                 if variable_name not in self.ALLOWED_VARIABLES:
                     logger.warning(f"Variable '{variable_name}' not in standard allowlist. Consider adding to ALLOWED_VARIABLES.")
-                
+
                 if isinstance(value, (int, float)):
                     point = TimeSeriesDataPoint(
                         timestamp=timestamp,
@@ -185,44 +187,44 @@ class TimeSeriesTracker:
                         variable_name=variable_name,
                         value=float(value)
                     )
-                    
+
                     # Add to memory store
                     self._memory_store[node_id][variable_name].append(point)
-                    
+
                     # Update statistics
                     self._stats["total_points"] += 1
                     self._stats["unique_nodes"].add(node_id)
                     self._stats["unique_variables"].add(variable_name)
-                    
+
                     if self._stats["first_timestamp"] is None or timestamp < self._stats["first_timestamp"]:
                         self._stats["first_timestamp"] = timestamp
                     if self._stats["last_timestamp"] is None or timestamp > self._stats["last_timestamp"]:
                         self._stats["last_timestamp"] = timestamp
-                    
+
                     # Persist to database if enabled
                     if self.persist_to_disk:
                         self._persist_point(point)
-                        
+
     def _persist_point(self, point: TimeSeriesDataPoint):
         """Persist a single data point to database"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 metadata_json = json.dumps(point.metadata) if point.metadata else None
-                
+
                 cursor.execute("""
                     INSERT INTO time_series 
                     (timestamp, node_id, variable_name, value, metadata)
                     VALUES (?, ?, ?, ?, ?)
-                """, (point.timestamp, point.node_id, point.variable_name, 
+                """, (point.timestamp, point.node_id, point.variable_name,
                      point.value, metadata_json))
-                
+
                 conn.commit()
-                
+
         except Exception as e:
             logger.error(f"Failed to persist data point: {e}")
-            
-    def query(self, query: TimeSeriesQuery) -> List[TimeSeriesDataPoint]:
+
+    def query(self, query: TimeSeriesQuery) -> list[TimeSeriesDataPoint]:
         """
         Query time series data based on specified criteria.
         
@@ -234,10 +236,10 @@ class TimeSeriesTracker:
         """
         # Validate and sanitize query parameters for security
         self._validate_query_parameters(query)
-        
+
         results = []
         result_keys = set()  # Track unique results to avoid duplicates
-        
+
         with self._lock:
             # Query from memory store first (fastest)
             for node_id, variables in self._memory_store.items():
@@ -251,30 +253,30 @@ class TimeSeriesTracker:
                                     if key not in result_keys:
                                         results.append(point)
                                         result_keys.add(key)
-            
+
             # If not enough results and we have persistent storage, query database
-            if (len(results) < (query.max_points or 1000) and 
-                self.persist_to_disk and 
+            if (len(results) < (query.max_points or 1000) and
+                self.persist_to_disk and
                 (query.start_time is not None or query.end_time is not None)):
-                
+
                 db_results = self._query_database(query)
                 for point in db_results:
                     key = (point.timestamp, point.node_id, point.variable_name)
                     if key not in result_keys:
                         results.append(point)
                         result_keys.add(key)
-                
+
         # Sort by timestamp
         results.sort(key=lambda p: p.timestamp)
-        
+
         # Apply max_points limit
         if query.max_points and len(results) > query.max_points:
             # Take evenly spaced points
             step = len(results) // query.max_points
             results = results[::max(1, step)][:query.max_points]
-            
+
         return results
-        
+
     def _validate_query_parameters(self, query: TimeSeriesQuery):
         """
         Validate and coerce query parameters for security and type safety.
@@ -294,9 +296,9 @@ class TimeSeriesTracker:
                         raise ValueError(f"Node ID {node_id} cannot be safely converted to integer")
                     validated_node_ids.append(validated_id)
                 except (ValueError, TypeError) as e:
-                    raise ValueError(f"Invalid node_id '{node_id}': {e}")
+                    raise ValueError(f"Invalid node_id '{node_id}': {e}") from e
             query.node_ids = validated_node_ids
-            
+
         # Validate variable names against allowlist
         if query.variables is not None:
             for var_name in query.variables:
@@ -304,7 +306,7 @@ class TimeSeriesTracker:
                     raise ValueError(f"Variable name must be string, got {type(var_name)}")
                 if var_name not in self.ALLOWED_VARIABLES:
                     raise ValueError(f"Variable '{var_name}' not in allowed list: {sorted(self.ALLOWED_VARIABLES)}")
-                    
+
         # Validate time parameters
         for time_param in ['start_time', 'end_time']:
             time_value = getattr(query, time_param, None)
@@ -313,9 +315,9 @@ class TimeSeriesTracker:
                     raise ValueError(f"{time_param} must be numeric, got string")
                 try:
                     float(time_value)  # Ensure it's convertible to float
-                except (ValueError, TypeError):
-                    raise ValueError(f"Invalid {time_param}: {time_value}")
-                    
+                except (ValueError, TypeError) as e:
+                    raise ValueError(f"Invalid {time_param}: {time_value}") from e
+
         # Validate max_points
         if query.max_points is not None:
             if isinstance(query.max_points, str):
@@ -324,54 +326,54 @@ class TimeSeriesTracker:
                 query.max_points = int(query.max_points)
                 if query.max_points <= 0:
                     raise ValueError("max_points must be positive")
-            except (ValueError, TypeError):
-                raise ValueError(f"Invalid max_points: {query.max_points}")
-                
-    def _query_database(self, query: TimeSeriesQuery) -> List[TimeSeriesDataPoint]:
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"Invalid max_points: {query.max_points}") from e
+
+    def _query_database(self, query: TimeSeriesQuery) -> list[TimeSeriesDataPoint]:
         """Query data from persistent database"""
         results = []
-        
+
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                
+
                 # Build SQL query
                 sql_parts = ["SELECT timestamp, node_id, variable_name, value, metadata FROM time_series WHERE 1=1"]
                 params = []
-                
+
                 if query.node_ids:
                     placeholders = ",".join("?" * len(query.node_ids))
                     sql_parts.append(f"AND node_id IN ({placeholders})")
                     params.extend(query.node_ids)
-                    
+
                 if query.variables:
                     placeholders = ",".join("?" * len(query.variables))
                     sql_parts.append(f"AND variable_name IN ({placeholders})")
                     params.extend(query.variables)
-                    
+
                 if query.start_time:
                     sql_parts.append("AND timestamp >= ?")
                     params.append(query.start_time)
-                    
+
                 if query.end_time:
                     sql_parts.append("AND timestamp <= ?")
                     params.append(query.end_time)
-                    
+
                 sql_parts.append("ORDER BY timestamp")
-                
+
                 if query.max_points:
                     sql_parts.append("LIMIT ?")
                     params.append(query.max_points)
-                    
+
                 sql = " ".join(sql_parts)
-                
+
                 cursor.execute(sql, params)
                 rows = cursor.fetchall()
-                
+
                 for row in rows:
                     timestamp, node_id, variable_name, value, metadata_json = row
                     metadata = json.loads(metadata_json) if metadata_json else None
-                    
+
                     point = TimeSeriesDataPoint(
                         timestamp=timestamp,
                         node_id=node_id,
@@ -380,12 +382,12 @@ class TimeSeriesTracker:
                         metadata=metadata
                     )
                     results.append(point)
-                    
+
         except Exception as e:
             logger.error(f"Failed to query database: {e}")
-            
+
         return results
-        
+
     def explain_query(self, query: TimeSeriesQuery) -> str:
         """
         Analyze query performance using EXPLAIN QUERY PLAN.
@@ -399,97 +401,97 @@ class TimeSeriesTracker:
         """
         # Validate parameters first
         self._validate_query_parameters(query)
-        
+
         if not self.persist_to_disk:
             return "EXPLAIN not available - database persistence disabled"
-            
+
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                
+
                 # Build the same SQL query as _query_database
                 sql_parts = ["SELECT timestamp, node_id, variable_name, value, metadata FROM time_series WHERE 1=1"]
                 params = []
-                
+
                 if query.node_ids:
                     placeholders = ",".join("?" * len(query.node_ids))
                     sql_parts.append(f"AND node_id IN ({placeholders})")
                     params.extend(query.node_ids)
-                    
+
                 if query.variables:
                     placeholders = ",".join("?" * len(query.variables))
                     sql_parts.append(f"AND variable_name IN ({placeholders})")
                     params.extend(query.variables)
-                    
+
                 if query.start_time:
                     sql_parts.append("AND timestamp >= ?")
                     params.append(query.start_time)
-                    
+
                 if query.end_time:
                     sql_parts.append("AND timestamp <= ?")
                     params.append(query.end_time)
-                    
+
                 sql_parts.append("ORDER BY timestamp")
-                
+
                 if query.max_points:
                     sql_parts.append("LIMIT ?")
                     params.append(query.max_points)
-                    
+
                 sql = " ".join(sql_parts)
-                
+
                 # Execute EXPLAIN QUERY PLAN
                 cursor.execute(f"EXPLAIN QUERY PLAN {sql}", params)
                 explain_results = cursor.fetchall()
-                
+
                 # Format the results
                 result_lines = ["Query Execution Plan:"]
                 for row in explain_results:
                     result_lines.append(f"  {' | '.join(str(col) for col in row)}")
-                    
+
                 return "\n".join(result_lines)
-                
+
         except Exception as e:
             logger.error(f"Failed to explain query: {e}")
             return f"EXPLAIN failed: {e}"
-        
-    def get_latest_values(self, node_id: int, variables: Optional[List[str]] = None) -> Dict[str, float]:
+
+    def get_latest_values(self, node_id: int, variables: list[str] | None = None) -> dict[str, float]:
         """Get the latest values for specified variables of a node"""
         latest_values = {}
-        
+
         with self._lock:
             if node_id in self._memory_store:
                 variables_to_check = variables or self._memory_store[node_id].keys()
-                
+
                 for variable_name in variables_to_check:
                     if variable_name in self._memory_store[node_id]:
                         points = self._memory_store[node_id][variable_name]
                         if points:
                             latest_values[variable_name] = points[-1].value
-                            
+
         return latest_values
-        
-    def get_statistics(self) -> Dict[str, Any]:
+
+    def get_statistics(self) -> dict[str, Any]:
         """Get overall statistics about the tracked data"""
         stats = self._stats.copy()
         stats["unique_nodes"] = list(stats["unique_nodes"])
         stats["unique_variables"] = list(stats["unique_variables"])
-        
+
         if stats["first_timestamp"]:
             stats["first_timestamp_formatted"] = datetime.fromtimestamp(stats["first_timestamp"]).isoformat()
         if stats["last_timestamp"]:
             stats["last_timestamp_formatted"] = datetime.fromtimestamp(stats["last_timestamp"]).isoformat()
-            
+
         # Calculate time range
         if stats["first_timestamp"] and stats["last_timestamp"]:
             stats["time_range_seconds"] = stats["last_timestamp"] - stats["first_timestamp"]
-            
+
         return stats
-        
-    def visualize_node_variables(self, 
-                                node_id: int, 
-                                variables: Optional[List[str]] = None,
+
+    def visualize_node_variables(self,
+                                node_id: int,
+                                variables: list[str] | None = None,
                                 time_range_hours: float = 24,
-                                save_path: Optional[str] = None) -> plt.Figure:
+                                save_path: str | None = None) -> plt.Figure:
         """
         Create visualization of node variables over time.
         
@@ -504,10 +506,10 @@ class TimeSeriesTracker:
         """
         if variables is None:
             variables = self.DEFAULT_VARIABLES
-            
+
         end_time = get_timestamp()
         start_time = end_time - (time_range_hours * 3600)
-        
+
         query = TimeSeriesQuery(
             node_ids=[node_id],
             variables=variables,
@@ -515,65 +517,65 @@ class TimeSeriesTracker:
             end_time=end_time,
             max_points=1000
         )
-        
+
         data_points = self.query(query)
-        
+
         # Organize data by variable
         variable_data = defaultdict(lambda: {"times": [], "values": []})
-        
+
         for point in data_points:
             dt = datetime.fromtimestamp(point.timestamp)
             variable_data[point.variable_name]["times"].append(dt)
             variable_data[point.variable_name]["values"].append(point.value)
-            
+
         # Create subplots
         n_vars = len(variables)
         fig, axes = plt.subplots(n_vars, 1, figsize=(12, 2 * n_vars), sharex=True)
-        
+
         if n_vars == 1:
             axes = [axes]
-            
+
         for i, variable in enumerate(variables):
             ax = axes[i]
             data = variable_data[variable]
-            
+
             if data["times"]:
                 ax.plot(data["times"], data["values"], marker='o', markersize=2, linewidth=1)
                 ax.set_ylabel(variable.replace('_', ' ').title())
                 ax.grid(True, alpha=0.3)
-                
+
                 # Add trend line if enough data
                 if len(data["values"]) > 10:
                     timestamps = [t.timestamp() for t in data["times"]]
                     z = np.polyfit(timestamps, data["values"], 1)
                     p = np.poly1d(z)
-                    ax.plot(data["times"], p([t.timestamp() for t in data["times"]]), 
+                    ax.plot(data["times"], p([t.timestamp() for t in data["times"]]),
                            "r--", alpha=0.7, linewidth=2, label=f'Trend (slope: {z[0]:.4f})')
                     ax.legend()
             else:
-                ax.text(0.5, 0.5, f'No data for {variable}', 
+                ax.text(0.5, 0.5, f'No data for {variable}',
                        transform=ax.transAxes, ha='center', va='center')
                 ax.set_ylabel(variable.replace('_', ' ').title())
-                
+
         # Format x-axis
         axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
         axes[-1].xaxis.set_major_locator(mdates.HourLocator(interval=max(1, int(time_range_hours/12))))
         plt.xticks(rotation=45)
-        
+
         plt.tight_layout()
         plt.suptitle(f'Node {node_id} - State Variables Over Time', y=1.02, fontsize=14)
-        
+
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             logger.info(f"Saved visualization to {save_path}")
-            
+
         return fig
-        
-    def compare_nodes(self, 
-                     node_ids: List[int], 
+
+    def compare_nodes(self,
+                     node_ids: list[int],
                      variable: str,
                      time_range_hours: float = 24,
-                     save_path: Optional[str] = None) -> plt.Figure:
+                     save_path: str | None = None) -> plt.Figure:
         """
         Compare a single variable across multiple nodes.
         
@@ -588,7 +590,7 @@ class TimeSeriesTracker:
         """
         end_time = get_timestamp()
         start_time = end_time - (time_range_hours * 3600)
-        
+
         query = TimeSeriesQuery(
             node_ids=node_ids,
             variables=[variable],
@@ -596,48 +598,48 @@ class TimeSeriesTracker:
             end_time=end_time,
             max_points=1000
         )
-        
+
         data_points = self.query(query)
-        
+
         # Organize data by node
         node_data = defaultdict(lambda: {"times": [], "values": []})
-        
+
         for point in data_points:
             dt = datetime.fromtimestamp(point.timestamp)
             node_data[point.node_id]["times"].append(dt)
             node_data[point.node_id]["values"].append(point.value)
-            
+
         # Create plot
         fig, ax = plt.subplots(figsize=(12, 6))
-        
+
         for node_id in node_ids:
             data = node_data[node_id]
             if data["times"]:
-                ax.plot(data["times"], data["values"], 
-                       marker='o', markersize=3, linewidth=2, 
+                ax.plot(data["times"], data["values"],
+                       marker='o', markersize=3, linewidth=2,
                        label=f'Node {node_id}', alpha=0.8)
-                
+
         ax.set_ylabel(variable.replace('_', ' ').title())
         ax.set_xlabel('Time')
         ax.grid(True, alpha=0.3)
         ax.legend()
-        
+
         # Format x-axis
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(mdates.HourLocator(interval=max(1, int(time_range_hours/12))))
         plt.xticks(rotation=45)
-        
+
         plt.tight_layout()
         plt.title(f'{variable.replace("_", " ").title()} - Node Comparison', fontsize=14)
-        
+
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             logger.info(f"Saved comparison plot to {save_path}")
-            
+
         return fig
-        
-    def export_data(self, 
-                   query: TimeSeriesQuery, 
+
+    def export_data(self,
+                   query: TimeSeriesQuery,
                    format: str = "json",
                    output_path: str = "timeseries_export") -> str:
         """
@@ -652,7 +654,7 @@ class TimeSeriesTracker:
             Path to the created file
         """
         data_points = self.query(query)
-        
+
         if format.lower() == "json":
             file_path = f"{output_path}.json"
             export_data = {
@@ -660,18 +662,18 @@ class TimeSeriesTracker:
                 "statistics": self.get_statistics(),
                 "data_points": [point.to_dict() for point in data_points]
             }
-            
+
             with open(file_path, 'w') as f:
                 json.dump(export_data, f, indent=2, default=str)
-                
+
         elif format.lower() == "csv":
             import csv
             file_path = f"{output_path}.csv"
-            
+
             with open(file_path, 'w', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow(["timestamp", "node_id", "variable_name", "value", "metadata"])
-                
+
                 for point in data_points:
                     writer.writerow([
                         point.timestamp,
@@ -682,24 +684,24 @@ class TimeSeriesTracker:
                     ])
         else:
             raise ValueError(f"Unsupported export format: {format}")
-            
+
         logger.info(f"Exported {len(data_points)} data points to {file_path}")
         return file_path
-        
+
     def cleanup_old_data(self, keep_hours: float = 168):  # Default: keep 1 week
         """Remove old data to manage storage size"""
         cutoff_time = get_timestamp() - (keep_hours * 3600)
-        
+
         # Clean memory store
         with self._lock:
             for node_id in list(self._memory_store.keys()):
                 for variable_name in list(self._memory_store[node_id].keys()):
                     points = self._memory_store[node_id][variable_name]
                     # Filter out old points
-                    new_points = deque([p for p in points if p.timestamp >= cutoff_time], 
+                    new_points = deque([p for p in points if p.timestamp >= cutoff_time],
                                      maxlen=points.maxlen)
                     self._memory_store[node_id][variable_name] = new_points
-                    
+
         # Clean database
         if self.persist_to_disk:
             try:
@@ -709,13 +711,13 @@ class TimeSeriesTracker:
                     deleted_count = cursor.rowcount
                     conn.commit()
                     logger.info(f"Cleaned up {deleted_count} old database records")
-                    
+
             except Exception as e:
                 logger.error(f"Failed to cleanup database: {e}")
 
 
 # Convenience function for integrating with AliveLoopNode
-def track_node_automatically(tracker: TimeSeriesTracker, node, timestamp: Optional[float] = None):
+def track_node_automatically(tracker: TimeSeriesTracker, node, timestamp: float | None = None):
     """
     Automatically extract and track key state variables from an AliveLoopNode.
     
@@ -732,7 +734,7 @@ def track_node_automatically(tracker: TimeSeriesTracker, node, timestamp: Option
         "trust_network_size": len(node.trust_network),
         "memory_count": len(node.memory)
     }
-    
+
     # Add optional attributes if they exist
     if hasattr(node, 'calm'):
         state_data["calm"] = node.calm
@@ -741,5 +743,5 @@ def track_node_automatically(tracker: TimeSeriesTracker, node, timestamp: Option
         state_data["arousal"] = node.emotional_state.get("arousal", 0.0)
     if hasattr(node, 'trust_network') and node.trust_network:
         state_data["avg_trust"] = np.mean(list(node.trust_network.values()))
-        
+
     tracker.record_node_state(node.node_id, state_data, timestamp)

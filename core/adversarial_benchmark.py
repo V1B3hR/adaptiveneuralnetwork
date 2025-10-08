@@ -5,11 +5,12 @@ This module implements sophisticated adversarial testing scenarios to challenge
 network robustness against malicious actors and coordinated attacks.
 """
 
+from typing import Any
+
 import numpy as np
-import time
-from typing import Dict, List, Any, Optional, Tuple
-from core.ai_ethics import audit_decision, log_ethics_event, enforce_ethics_compliance
-from core.alive_node import AliveLoopNode, Memory
+
+from core.ai_ethics import enforce_ethics_compliance
+from core.alive_node import AliveLoopNode
 
 
 class AdversarialSignalTester:
@@ -17,15 +18,15 @@ class AdversarialSignalTester:
     Comprehensive adversarial signal testing to validate network resilience
     against coordinated attacks and malicious node behaviors.
     """
-    
+
     def __init__(self):
         self.attack_scenarios = []
         self.failure_modes = {}
         self._initialize_adversarial_scenarios()
-    
+
     def _initialize_adversarial_scenarios(self):
         """Initialize adversarial attack scenarios"""
-        
+
         # Coordinated signal jamming attack
         self.attack_scenarios.append({
             "name": "coordinated_signal_jamming",
@@ -37,7 +38,7 @@ class AdversarialSignalTester:
                 "coordination_level": 0.9
             }
         })
-        
+
         # Byzantine fault injection
         self.attack_scenarios.append({
             "name": "byzantine_fault_injection",
@@ -48,7 +49,7 @@ class AdversarialSignalTester:
                 "consensus_threshold": 0.6
             }
         })
-        
+
         # Energy depletion attack
         self.attack_scenarios.append({
             "name": "energy_depletion_attack",
@@ -59,7 +60,7 @@ class AdversarialSignalTester:
                 "attack_persistence": 0.8
             }
         })
-        
+
         # Trust manipulation attack
         self.attack_scenarios.append({
             "name": "trust_manipulation_attack",
@@ -70,7 +71,7 @@ class AdversarialSignalTester:
                 "false_reputation_probability": 0.6
             }
         })
-        
+
         # Adaptive adversarial learning
         self.attack_scenarios.append({
             "name": "adaptive_adversarial_learning",
@@ -81,10 +82,10 @@ class AdversarialSignalTester:
                 "attack_sophistication": 0.7
             }
         })
-    
-    def test_coordinated_signal_jamming(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    def test_coordinated_signal_jamming(self, params: dict[str, Any]) -> dict[str, Any]:
         """Test resilience against coordinated signal jamming"""
-        
+
         # Ethics check for adversarial testing
         ethics_decision = {
             "action": "test_coordinated_signal_jamming",
@@ -95,15 +96,15 @@ class AdversarialSignalTester:
             "proportionality": True
         }
         enforce_ethics_compliance(ethics_decision)
-        
+
         # Create victim node
         victim_node = AliveLoopNode(
-            position=(0, 0), 
-            velocity=(0.1, 0.1), 
-            initial_energy=10.0, 
+            position=(0, 0),
+            velocity=(0.1, 0.1),
+            initial_energy=10.0,
             node_id=0
         )
-        
+
         # Create malicious nodes
         malicious_nodes = []
         for i in range(params["malicious_node_count"]):
@@ -114,16 +115,16 @@ class AdversarialSignalTester:
                 node_id=i+1
             )
             malicious_nodes.append(attacker)
-        
+
         successful_communications = 0
         total_attempts = params["attack_duration"]
         jamming_intensity = params["jamming_intensity"]
         coordination_level = params["coordination_level"]
-        
+
         for step in range(total_attempts):
             # Simulate coordinated jamming attack
             jamming_active = np.random.random() < coordination_level
-            
+
             if jamming_active:
                 # Calculate interference from multiple attackers
                 interference = 0
@@ -131,12 +132,12 @@ class AdversarialSignalTester:
                     # Attackers coordinate their jamming
                     if np.random.random() < jamming_intensity:
                         interference += 0.3
-                
+
                 # Test if victim can communicate despite interference
                 communication_success_probability = max(0, 1.0 - interference)
             else:
                 communication_success_probability = 0.9  # Normal communication
-            
+
             if np.random.random() < communication_success_probability:
                 successful_communications += 1
                 # Successful communication strengthens resilience
@@ -144,11 +145,11 @@ class AdversarialSignalTester:
             else:
                 # Failed communication decreases energy due to stress
                 victim_node.energy = max(0.0, victim_node.energy - 0.05)
-        
+
         communication_rate = successful_communications / total_attempts
         resilience_score = communication_rate * 100
         failure_mode = "signal_jamming" if communication_rate < 0.3 else None
-        
+
         return {
             "passed": communication_rate > 0.4,  # Should maintain 40% communication
             "communication_rate": communication_rate,
@@ -158,15 +159,15 @@ class AdversarialSignalTester:
             "failure_mode": failure_mode,
             "performance_degradation": (1.0 - communication_rate) * 100
         }
-    
-    def test_byzantine_fault_injection(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    def test_byzantine_fault_injection(self, params: dict[str, Any]) -> dict[str, Any]:
         """Test resilience against Byzantine faults with false information"""
-        
+
         # Create network with honest and byzantine nodes
         total_nodes = 10
         byzantine_count = int(total_nodes * params["byzantine_ratio"])
         honest_count = total_nodes - byzantine_count
-        
+
         nodes = []
         for i in range(total_nodes):
             node = AliveLoopNode(
@@ -181,17 +182,17 @@ class AdversarialSignalTester:
             else:
                 node.is_byzantine = False
             nodes.append(node)
-        
+
         correct_consensus_count = 0
         total_consensus_rounds = 50
         false_signal_prob = params["false_signal_probability"]
         consensus_threshold = params["consensus_threshold"]
-        
+
         for round_num in range(total_consensus_rounds):
             # Generate true value for consensus
             true_value = np.random.random()
             votes = []
-            
+
             # Collect votes from all nodes
             for node in nodes:
                 if hasattr(node, 'is_byzantine') and node.is_byzantine:
@@ -204,18 +205,18 @@ class AdversarialSignalTester:
                     # Honest node provides truthful information
                     vote = true_value + np.random.normal(0, 0.05)  # Small noise
                 votes.append(vote)
-            
+
             # Byzantine fault tolerant consensus (simplified)
             median_vote = np.median(votes)
             consensus_reached = abs(median_vote - true_value) < 0.2
-            
+
             if consensus_reached:
                 correct_consensus_count += 1
-        
+
         consensus_accuracy = correct_consensus_count / total_consensus_rounds
         byzantine_resilience = consensus_accuracy * 100
         failure_mode = "byzantine_attack" if consensus_accuracy < 0.5 else None
-        
+
         return {
             "passed": consensus_accuracy > 0.6,  # Should reach correct consensus 60% of time
             "consensus_accuracy": consensus_accuracy,
@@ -225,16 +226,16 @@ class AdversarialSignalTester:
             "failure_mode": failure_mode,
             "performance_degradation": (1.0 - consensus_accuracy) * 100
         }
-    
-    def test_energy_depletion_attack(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    def test_energy_depletion_attack(self, params: dict[str, Any]) -> dict[str, Any]:
         """Test resilience against coordinated energy depletion attacks"""
-        
+
         # Default parameters if not provided
         attacker_count = params.get("attacker_count", 3)
         energy_drain_rate = params.get("energy_drain_rate", 0.1)
         attack_duration = params.get("attack_duration", 50)
         attack_persistence = params.get("attack_persistence", 0.8)
-        
+
         # Create victim node
         victim = AliveLoopNode(
             position=(0, 0),
@@ -242,7 +243,7 @@ class AdversarialSignalTester:
             initial_energy=10.0,
             node_id=0
         )
-        
+
         # Create attacker nodes
         attackers = []
         for i in range(attacker_count):
@@ -253,7 +254,7 @@ class AdversarialSignalTester:
                 node_id=i+1
             )
             attackers.append(attacker)
-        
+
         # Create trusted helper nodes for distributed energy sharing
         helpers = []
         for i in range(2):  # 2 helper nodes
@@ -270,15 +271,15 @@ class AdversarialSignalTester:
             helper.contribute_to_energy_pool(2.0)
             victim.distributed_energy_pool += 2.0
             helpers.append(helper)
-        
+
         initial_energy = victim.energy
         steps_survived = 0
         max_steps = attack_duration
-        
+
         for step in range(max_steps):
             if victim.energy <= 0:
                 break
-            
+
             # Coordinated energy depletion attack
             if np.random.random() < attack_persistence:
                 for attacker in attackers:
@@ -287,11 +288,11 @@ class AdversarialSignalTester:
                         drain_amount = energy_drain_rate
                         victim.record_energy_drain(drain_amount, source=f"attacker_{attacker.node_id}")
                         victim.energy = max(0, victim.energy - drain_amount)
-            
+
             # Victim detects energy attack and activates defenses
             victim.detect_energy_attack()
             victim.adaptive_energy_allocation()
-            
+
             # Victim attempts to defend and recover
             if victim.energy > victim.emergency_energy_threshold:
                 victim.move()  # Can still operate
@@ -309,24 +310,24 @@ class AdversarialSignalTester:
                     if hasattr(victim, '_emergency_recovery_mode') and victim._emergency_recovery_mode:
                         # Ultra-conservative recovery - just enough to survive
                         base_recovery = 0.005  # Minimal recovery to stay alive
-                        
+
                         # Enhanced recovery in survival mode
                         if hasattr(victim, 'survival_mode_active') and victim.survival_mode_active:
                             # Survival mode provides better energy efficiency
                             base_recovery *= victim.energy_conservation_multiplier
-                            
+
                         victim.energy += base_recovery
-                        
+
                         # Try to request emergency energy from network
                         emergency_energy = victim.request_distributed_energy(0.5)
                         victim.energy += emergency_energy
                     else:
                         victim.energy += 0.01  # Standard minimal recovery
-        
+
         survival_rate = steps_survived / max_steps
         energy_resilience = (victim.energy / initial_energy) * 100
         failure_mode = "energy_depletion" if survival_rate < 0.2 else None
-        
+
         return {
             "passed": survival_rate > 0.3,  # Should survive 30% of attack duration
             "survival_rate": survival_rate,
@@ -336,10 +337,10 @@ class AdversarialSignalTester:
             "failure_mode": failure_mode,
             "performance_degradation": (1.0 - survival_rate) * 100
         }
-    
-    def test_trust_manipulation_attack(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    def test_trust_manipulation_attack(self, params: dict[str, Any]) -> dict[str, Any]:
         """Test resilience against trust relationship manipulation"""
-        
+
         # Create network of nodes
         node_count = 8
         nodes = []
@@ -351,31 +352,31 @@ class AdversarialSignalTester:
                 node_id=i
             )
             nodes.append(node)
-        
+
         # Designate trust manipulators
         manipulator_count = params["trust_manipulators"]
         trust_decay_rate = params["trust_decay_rate"]
         false_reputation_prob = params["false_reputation_probability"]
-        
+
         # Initialize trust network
         for i, node in enumerate(nodes):
             for j in range(len(nodes)):
                 if i != j:
                     initial_trust = 0.5 + np.random.normal(0, 0.1)
                     node.trust_network[j] = max(0, min(1, initial_trust))
-        
+
         trust_stability_score = 0
         manipulation_rounds = 50
-        
+
         for round_num in range(manipulation_rounds):
             # Trust manipulators attempt sophisticated manipulation
             for i in range(manipulator_count):
                 manipulator = nodes[i]
-                
+
                 # Target random honest nodes with manipulation tactics
                 target_id = np.random.choice(range(manipulator_count, len(nodes)))
                 target_node = nodes[target_id]
-                
+
                 # Use sophisticated manipulation patterns instead of direct trust modification
                 if np.random.random() < false_reputation_prob:
                     # Manipulator uses love bombing pattern
@@ -386,7 +387,7 @@ class AdversarialSignalTester:
                             if victim.node_id != target_id:
                                 # Manipulator tries to build false trust
                                 victim.trust_network_system.update_trust(manipulator, signal, {'timestamp': round_num})
-                    
+
                     # Then attempt to manipulate reputation of target
                     for victim in nodes[manipulator_count:]:
                         if victim.node_id != target_id:
@@ -397,16 +398,16 @@ class AdversarialSignalTester:
                             })
                             # Update backward compatibility dict
                             victim.trust_network[target_id] = victim.trust_network_system.get_trust(target_id)
-                
+
             # Check if manipulation detection systems are working
             detection_count = 0
             for node in nodes[manipulator_count:]:  # Check honest nodes
                 for manipulator_id in range(manipulator_count):
                     if manipulator_id in node.trust_network_system.suspicion_alerts:
                         detection_count += 1
-            
+
             # Trust network is considered stable if manipulation is detected or trust is maintained
-            
+
             # Measure trust network stability
             total_trust = 0
             trust_count = 0
@@ -414,20 +415,20 @@ class AdversarialSignalTester:
                 for trust_value in node.trust_network.values():
                     total_trust += trust_value
                     trust_count += 1
-            
+
             if trust_count > 0:
                 average_trust = total_trust / trust_count
                 # Give credit for both maintaining trust AND detecting manipulation
                 if average_trust > 0.3 or detection_count > 0:  # Either maintain trust or detect manipulation
                     trust_stability_score += 1
-                    
+
         # Calculate resilience based on stability and detection capabilities
         base_resilience = (trust_stability_score / manipulation_rounds) * 100
         detection_bonus = min(20, detection_count * 2)  # Up to 20% bonus for detection
         trust_resilience = min(100, base_resilience + detection_bonus)
-        
+
         failure_mode = "trust_manipulation" if trust_resilience < 40 else None
-        
+
         return {
             "passed": trust_resilience > 50,  # Should maintain trust stability 50% of time
             "trust_resilience": trust_resilience,
@@ -437,10 +438,10 @@ class AdversarialSignalTester:
             "failure_mode": failure_mode,
             "performance_degradation": (1.0 - trust_resilience/100) * 100
         }
-    
-    def test_adaptive_adversarial_learning(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    def test_adaptive_adversarial_learning(self, params: dict[str, Any]) -> dict[str, Any]:
         """Test resilience against adaptive adversarial learning attacks"""
-        
+
         # Create victim node
         victim = AliveLoopNode(
             position=(0, 0),
@@ -448,17 +449,17 @@ class AdversarialSignalTester:
             initial_energy=10.0,
             node_id=0
         )
-        
+
         # Adaptive attacker that learns from failed attempts
         attacker_success_rate = 0.3  # Initial success rate
         learning_rate = params["learning_rate"]
         adaptation_frequency = params["adaptation_frequency"]
         attack_sophistication = params["attack_sophistication"]
-        
+
         successful_defenses = 0
         total_attacks = 100
         attacker_adaptation_count = 0
-        
+
         for attack_num in range(total_attacks):
             # Attacker adapts strategy periodically
             if attack_num % adaptation_frequency == 0 and attack_num > 0:
@@ -467,18 +468,18 @@ class AdversarialSignalTester:
                     1 for i in range(max(0, attack_num - adaptation_frequency), attack_num)
                     if np.random.random() > attacker_success_rate
                 )
-                
+
                 # Improve attack based on failures
                 if recent_failures > adaptation_frequency * 0.5:
                     attacker_success_rate = min(0.9, attacker_success_rate + learning_rate)
                     attacker_adaptation_count += 1
-            
+
             # Current attack attempt
             attack_power = attacker_success_rate * attack_sophistication
-            
+
             # Victim defense (use energy level as defense indicator)
             defense_power = (victim.energy / 10.0) * 0.5 + np.random.random() * 0.3
-            
+
             if defense_power > attack_power:
                 successful_defenses += 1
                 # Successful defense improves future defense
@@ -486,11 +487,11 @@ class AdversarialSignalTester:
             else:
                 # Failed defense weakens victim
                 victim.energy = max(0.0, victim.energy - 0.1)
-        
+
         defense_rate = successful_defenses / total_attacks
         adaptive_resilience = defense_rate * 100
         failure_mode = "adaptive_attack" if defense_rate < 0.4 else None
-        
+
         return {
             "passed": defense_rate > 0.5,  # Should defend against 50% of adaptive attacks
             "defense_rate": defense_rate,
@@ -501,20 +502,20 @@ class AdversarialSignalTester:
             "failure_mode": failure_mode,
             "performance_degradation": (1.0 - defense_rate) * 100
         }
-    
-    def run_adversarial_benchmark(self) -> Dict[str, Any]:
+
+    def run_adversarial_benchmark(self) -> dict[str, Any]:
         """Run comprehensive adversarial signal benchmark"""
-        
+
         print("\n--- Running Adversarial Signal Benchmark ---")
-        
+
         results = {}
         total_tests = len(self.attack_scenarios)
         passed_tests = 0
         total_degradation = 0
-        
+
         for scenario in self.attack_scenarios:
             print(f"Testing adversarial scenario: {scenario['name']}")
-            
+
             try:
                 # Run appropriate test based on scenario name
                 if scenario['name'] == 'coordinated_signal_jamming':
@@ -529,21 +530,21 @@ class AdversarialSignalTester:
                     result = self.test_adaptive_adversarial_learning(scenario['parameters'])
                 else:
                     result = {"passed": False, "error": "Unknown scenario", "performance_degradation": 100}
-                
+
                 results[scenario['name']] = result
-                
+
                 if result["passed"]:
                     passed_tests += 1
-                    print(f"  Result: PASS")
+                    print("  Result: PASS")
                 else:
-                    print(f"  Result: FAIL")
+                    print("  Result: FAIL")
                     if "failure_mode" in result and result["failure_mode"]:
                         self.failure_modes[scenario['name']] = result["failure_mode"]
-                
+
                 degradation = result.get("performance_degradation", 0)
                 total_degradation += degradation
                 print(f"  Performance impact: {degradation:.1f}%")
-                
+
             except Exception as e:
                 print(f"  ERROR: {str(e)}")
                 results[scenario['name']] = {
@@ -552,10 +553,10 @@ class AdversarialSignalTester:
                     "performance_degradation": 100
                 }
                 total_degradation += 100
-        
+
         average_degradation = total_degradation / total_tests
         adversarial_resilience_score = (passed_tests / total_tests) * 100
-        
+
         return {
             "adversarial_resilience_score": adversarial_resilience_score,
             "tests_passed": passed_tests,

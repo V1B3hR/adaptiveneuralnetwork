@@ -2,30 +2,30 @@
 Core modules for adaptive neural networks.
 """
 
-from .dynamics import AdaptiveDynamics
-from .nodes import NodeConfig, NodeState
-from .phases import Phase, PhaseScheduler
 from .consolidation import (
-    UnifiedConsolidationManager,
     ConsolidationType,
+    MemoryConsolidation,
     PhaseBasedConsolidation,
     SynapticConsolidation,
-    MemoryConsolidation,
-    create_default_consolidation_manager
+    UnifiedConsolidationManager,
+    create_default_consolidation_manager,
 )
+from .dynamics import AdaptiveDynamics
 from .layer_registry import LayerRegistry, layer_registry
 from .model_builder import ModelBuilder, register_builtin_layers
+from .nodes import NodeConfig, NodeState
+from .phases import Phase, PhaseScheduler
 
 # Optional video inference components
 try:
     from .video_inference import (
+        AdaptiveProcessor,
         InferenceConfig,
         InferenceResult,
         PerformanceMonitor,
-        AdaptiveProcessor,
         RealTimeInferenceEngine,
         VideoStreamInference,
-        create_stream_inference
+        create_stream_inference,
     )
     _video_inference_available = True
 except ImportError:
@@ -39,7 +39,7 @@ __all__ = [
     "AdaptiveDynamics",
     "UnifiedConsolidationManager",
     "ConsolidationType",
-    "PhaseBasedConsolidation", 
+    "PhaseBasedConsolidation",
     "SynapticConsolidation",
     "MemoryConsolidation",
     "create_default_consolidation_manager",

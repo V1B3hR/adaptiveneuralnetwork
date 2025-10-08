@@ -13,15 +13,15 @@ Usage:
 
 """
 
+import argparse
 import copy
 import logging
 import random
-import time
-import argparse
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+
 from core.time_manager import get_time_manager
 
 # Set up logging
@@ -66,15 +66,15 @@ class Cell:
         self.trust = trust
         self.phase = phase
         self.calm = calm
-        self.memory: List[Dict[str, Any]] = []
-        self.long_term_memory: List[Dict[str, Any]] = []
+        self.memory: list[dict[str, Any]] = []
+        self.long_term_memory: list[dict[str, Any]] = []
         self.anxiety_sensitivity = anxiety_sensitivity
         self.personality = personality
         self.runtime_adapt = runtime_adapt
         self.stress_ticks = 0
         self.relief_ticks = 0
 
-    def tick(self, external_stimulus=0.0, capacitor: Optional[Capacitor] = None, influence=0.0):
+    def tick(self, external_stimulus=0.0, capacitor: Capacitor | None = None, influence=0.0):
         effective_stim = external_stimulus * self.anxiety_sensitivity + influence
         self.anxiety += effective_stim
         self.energy -= effective_stim * 0.7
@@ -134,7 +134,7 @@ class Cell:
         calm_effect = min(self.calm, self.anxiety * 0.35)
         self.anxiety = max(0.0, self.anxiety - calm_effect)
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         return {
             "energy": self.energy,
             "anxiety": self.anxiety,
@@ -149,43 +149,43 @@ class Cell:
 
 class TunedAdaptiveFieldNetwork:
     """Enhanced network that manages AliveLoopNode objects with comprehensive external API integration"""
-    
+
     def __init__(self, nodes, capacitors, api_endpoints=None, enable_time_series=True, enable_security=True):
         self.nodes = nodes
         self.capacitors = capacitors
         self.api_endpoints = api_endpoints or {}
         self.time = 0
-        
+
         # Initialize signal adapters for external data integration
         self.enable_security = enable_security
-        
+
         # Import signal managers (delayed import to avoid circular dependencies)
-        from api_integration.signal_adapter import SignalAdapter
-        from api_integration.human_api import HumanSignalManager
-        from api_integration.world_api import EnvironmentalSignalManager
         from api_integration.ai_api import AISignalManager
-        
+        from api_integration.human_api import HumanSignalManager
+        from api_integration.signal_adapter import SignalAdapter
+        from api_integration.world_api import EnvironmentalSignalManager
+
         # Import time series tracking function
         try:
             from core.time_series_tracker import TimeSeriesTracker, track_node_automatically
         except ImportError:
             logger.warning("Could not import time series tracker")
             enable_time_series = False
-        
+
         self.signal_adapter = SignalAdapter(security_enabled=enable_security)
         self.human_signals = HumanSignalManager(security_enabled=enable_security)
         self.environmental_signals = EnvironmentalSignalManager(security_enabled=enable_security)
         self.ai_signals = AISignalManager(security_enabled=enable_security)
-        
+
         # Initialize time series tracking
         self.enable_time_series = enable_time_series
         if enable_time_series:
             self.time_series_tracker = TimeSeriesTracker()
-        
+
         # Network-level anxiety monitoring
         self.network_anxiety_threshold = 6.0  # Average anxiety threshold for network alerts
         self.anxiety_alert_history = []
-        
+
         # Performance metrics
         self.performance_metrics = {
             "total_help_signals": 0,
@@ -193,37 +193,37 @@ class TunedAdaptiveFieldNetwork:
             "average_network_anxiety": 0.0,
             "network_stability_score": 1.0
         }
-        
+
     def step(self, external_streams=None, location_params=None):
         """Enhanced step function with comprehensive external signal integration"""
         self.time += 1
-        
+
         # Fetch external signals for all signal types
         external_signals = {}
-        
+
         try:
             # Fetch human signals
             human_changes = self.human_signals.fetch_human_state_changes(params=location_params)
             if human_changes:
                 external_signals["human"] = human_changes
-                
-            # Fetch environmental signals  
+
+            # Fetch environmental signals
             env_changes = self.environmental_signals.fetch_environmental_state_changes(location_params=location_params)
             if env_changes:
                 external_signals["environmental"] = env_changes
-                
+
             # Fetch AI system signals
             ai_changes = self.ai_signals.fetch_ai_state_changes(system_params=location_params)
             if ai_changes:
                 external_signals["ai"] = ai_changes
-                
+
         except Exception as e:
             logger.warning(f"Failed to fetch external signals: {e}")
-            
+
         # Process each node
         network_anxiety_sum = 0.0
         overwhelmed_nodes = []
-        
+
         for node in self.nodes:
             # Apply legacy external streams if provided
             if external_streams and node.node_id in external_streams:
@@ -232,28 +232,28 @@ class TunedAdaptiveFieldNetwork:
                     signal_type, strength = stream_data
                 else:
                     strength = stream_data
-                
+
                 node.energy = min(node.energy + strength * 0.1, node.energy * 1.2)
-            
+
             # Apply new external signals to node state variables
             self._apply_external_signals_to_node(node, external_signals)
-            
+
             # Process node step
             node.step_phase(self.time)
             node.move()
-            
+
             # Interact with nearby capacitors
             for capacitor in self.capacitors:
                 if hasattr(capacitor, 'position'):
                     distance = np.linalg.norm(node.position - capacitor.position)
                     if distance < node.radius * 2:
                         node.interact_with_capacitor(capacitor)
-            
+
             # Track anxiety and check for overwhelm
             network_anxiety_sum += node.anxiety
             if node.check_anxiety_overwhelm():
                 overwhelmed_nodes.append(node)
-                
+
             # Record time series data
             if self.enable_time_series:
                 try:
@@ -261,31 +261,31 @@ class TunedAdaptiveFieldNetwork:
                     track_node_automatically(self.time_series_tracker, node, self.time)
                 except (ImportError, NameError) as e:
                     logger.warning(f"Could not track node data: {e}")
-        
+
         # Calculate network-level metrics
         avg_network_anxiety = network_anxiety_sum / len(self.nodes) if self.nodes else 0.0
         self.performance_metrics["average_network_anxiety"] = avg_network_anxiety
-        
+
         # Handle anxiety overwhelm protocol
         if overwhelmed_nodes:
             self._handle_network_anxiety_overwhelm(overwhelmed_nodes)
-            
+
         # Handle inter-node communications
         for node in self.nodes:
             node.process_social_interactions()
-            
+
             # Occasionally share memories
             if self.time % 5 == 0:
                 other_nodes = [n for n in self.nodes if n.node_id != node.node_id]
                 node.share_valuable_memory(other_nodes)
-                
+
         # Network stability assessment
         self._assess_network_stability()
-        
+
     def _apply_external_signals_to_node(self, node, external_signals):
         """Apply external signal changes to node state variables"""
         from api_integration.signal_adapter import StateVariable
-        
+
         for signal_source, changes in external_signals.items():
             for state_var, value in changes.items():
                 try:
@@ -307,14 +307,14 @@ class TunedAdaptiveFieldNetwork:
                     elif state_var == StateVariable.ATTENTION_FOCUS:
                         # Modify attention focus direction
                         node.attention_focus = np.array([value, 0.0])
-                        
+
                 except Exception as e:
                     logger.warning(f"Failed to apply {state_var} change to node {node.node_id}: {e}")
-                    
+
     def _handle_network_anxiety_overwhelm(self, overwhelmed_nodes):
         """Handle anxiety overwhelm at the network level"""
         logger.info(f"Network anxiety overwhelm detected: {len(overwhelmed_nodes)} nodes affected")
-        
+
         for overwhelmed_node in overwhelmed_nodes:
             # Find nearby nodes that can help
             nearby_helpers = []
@@ -322,59 +322,59 @@ class TunedAdaptiveFieldNetwork:
                 if (other_node.node_id != overwhelmed_node.node_id and
                     other_node.anxiety < 6.0 and
                     other_node.energy >= 3.0):
-                    
+
                     distance = np.linalg.norm(overwhelmed_node.position - other_node.position)
                     if distance <= overwhelmed_node.communication_range:
                         nearby_helpers.append(other_node)
-            
+
             # Send help signal
             if nearby_helpers:
                 helped_by = overwhelmed_node.send_help_signal(nearby_helpers)
                 if helped_by:
                     self.performance_metrics["total_help_signals"] += 1
                     self.performance_metrics["successful_anxiety_reductions"] += 1
-                    
+
         # Record network-level anxiety event
         self.anxiety_alert_history.append({
             "timestamp": self.time,
             "affected_nodes": [n.node_id for n in overwhelmed_nodes],
             "average_anxiety": np.mean([n.anxiety for n in overwhelmed_nodes])
         })
-        
+
     def _assess_network_stability(self):
         """Assess overall network stability"""
         if not self.nodes:
             return
-            
+
         # Calculate various stability metrics
         anxiety_levels = [node.anxiety for node in self.nodes]
         energy_levels = [node.energy for node in self.nodes]
-        
+
         # Stability factors
         anxiety_stability = 1.0 - (np.std(anxiety_levels) / (np.mean(anxiety_levels) + 1e-6))
         energy_stability = 1.0 - (np.std(energy_levels) / (np.mean(energy_levels) + 1e-6))
-        
+
         # Communication health
         total_communications = sum(len(node.signal_history) for node in self.nodes)
         comm_health = min(1.0, total_communications / (len(self.nodes) * 10))  # Target 10 comms per node
-        
+
         # Trust network health
         trust_scores = []
         for node in self.nodes:
             if node.trust_network:
                 trust_scores.extend(node.trust_network.values())
         avg_trust = np.mean(trust_scores) if trust_scores else 0.5
-        
+
         # Overall stability score
         self.performance_metrics["network_stability_score"] = np.mean([
             anxiety_stability, energy_stability, comm_health, avg_trust
         ])
-        
+
     def get_network_status(self):
         """Get comprehensive network status"""
         if not self.nodes:
             return {"error": "No nodes in network"}
-            
+
         status = {
             "time": self.time,
             "node_count": len(self.nodes),
@@ -387,7 +387,7 @@ class TunedAdaptiveFieldNetwork:
                 "ai": self.ai_signals.get_ai_system_status() if hasattr(self.ai_signals, 'get_ai_system_status') else {}
             }
         }
-        
+
         # Add individual node status
         for node in self.nodes:
             if hasattr(node, 'get_anxiety_status'):
@@ -398,45 +398,45 @@ class TunedAdaptiveFieldNetwork:
                     "anxiety": node.anxiety,
                     "phase": node.phase
                 }
-        
+
         return status
-        
+
     def visualize_network_timeseries(self, time_range_hours=24, save_path=None):
         """Create comprehensive visualization of network time series data"""
         if not self.enable_time_series:
             logger.warning("Time series tracking is disabled")
             return None
-            
+
         # Create multi-panel visualization
         node_ids = [node.node_id for node in self.nodes[:4]]  # Limit to first 4 nodes for readability
-        
+
         fig = plt.figure(figsize=(15, 10))
-        
+
         # Individual node anxiety levels
         plt.subplot(2, 2, 1)
         for node_id in node_ids:
             figure = self.time_series_tracker.compare_nodes([node_id], "anxiety", time_range_hours)
-            
+
         # Network-wide energy comparison
         plt.subplot(2, 2, 2)
         figure = self.time_series_tracker.compare_nodes(node_ids, "energy", time_range_hours)
-        
+
         # Trust network evolution
         plt.subplot(2, 2, 3)
         figure = self.time_series_tracker.compare_nodes(node_ids, "avg_trust", time_range_hours)
-        
+
         # Communication activity
         plt.subplot(2, 2, 4)
         figure = self.time_series_tracker.compare_nodes(node_ids, "communication_count", time_range_hours)
-        
+
         plt.tight_layout()
-        
+
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             logger.info(f"Saved network visualization to {save_path}")
-            
+
         return fig
-        
+
     def export_network_data(self, format="json", output_path="network_export"):
         """Export comprehensive network data"""
         export_data = {
@@ -444,20 +444,20 @@ class TunedAdaptiveFieldNetwork:
             "performance_metrics": self.performance_metrics,
             "anxiety_alert_history": self.anxiety_alert_history
         }
-        
+
         if self.enable_time_series:
             # Export time series data for all nodes
             from core.time_series_tracker import TimeSeriesQuery
-            
+
             query = TimeSeriesQuery(
                 node_ids=[node.node_id for node in self.nodes],
                 start_time=self.time - 100,  # Last 100 time steps
                 end_time=self.time
             )
-            
+
             timeseries_path = self.time_series_tracker.export_data(query, format, f"{output_path}_timeseries")
             export_data["timeseries_file"] = timeseries_path
-            
+
         # Export main network data
         if format.lower() == "json":
             import json
@@ -466,22 +466,22 @@ class TunedAdaptiveFieldNetwork:
                 json.dump(export_data, f, indent=2, default=str)
         else:
             raise ValueError(f"Unsupported export format for network data: {format}")
-            
+
         logger.info(f"Exported network data to {file_path}")
         return file_path
-        
+
     def cleanup_resources(self):
         """Clean up network resources and old data"""
         if self.enable_time_series:
             self.time_series_tracker.cleanup_old_data()
-            
+
         # Clean up signal adapters
         self.human_signals.cleanup_private_data()
         self.environmental_signals.adapter.cleanup_expired_data()
         self.ai_signals.adapter.cleanup_expired_data()
-        
+
         logger.info("Cleaned up network resources")
-    
+
     def print_states(self):
         """Print current state of all nodes and capacitors"""
         print(f"=== Time {self.time} ===")
@@ -493,12 +493,12 @@ class TunedAdaptiveFieldNetwork:
 
 
 class AdaptiveClockNetwork:
-    def __init__(self, genome: Dict[str, Any], runtime_adapt: bool = True):
+    def __init__(self, genome: dict[str, Any], runtime_adapt: bool = True):
         self.genome = copy.deepcopy(genome)
         self.num_cells = int(genome["num_cells"])
         self.capacitor = Capacitor(capacity=genome.get("capacitor_capacity", 5.0))
         self.global_calm = genome.get("global_calm", 1.0)
-        self.cells: List[Cell] = []
+        self.cells: list[Cell] = []
         per_cell_genes = genome.get("per_cell", [])
         for i in range(self.num_cells):
             g = per_cell_genes[i] if i < len(per_cell_genes) else per_cell_genes[-1]
@@ -515,15 +515,15 @@ class AdaptiveClockNetwork:
             )
             self.cells.append(cell)
 
-    def network_tick(self, stimuli: List[float]) -> None:
+    def network_tick(self, stimuli: list[float]) -> None:
         """Network tick with centralized time management"""
         time_manager = get_time_manager()
         time_manager.start_performance_measurement()
-        
+
         anxieties = np.array([c.anxiety for c in self.cells], dtype=float)
         diffusivity = self.genome.get("diffusivity", 0.05)
         influences = diffusivity * (np.mean(anxieties) - anxieties)
-        for i, (cell, stim) in enumerate(zip(self.cells, stimuli)):
+        for i, (cell, stim) in enumerate(zip(self.cells, stimuli, strict=False)):
             influence = float(influences[i])
             cell.tick(external_stimulus=stim, capacitor=self.capacitor, influence=influence)
 
@@ -531,10 +531,10 @@ class AdaptiveClockNetwork:
         if avg_anxiety > self.genome.get("global_calm_trigger", 7.0):
             self.apply_global_calm()
         self.capacitor.recharge(self.genome.get("recharge_per_tick", 1.0))
-        
+
         # Advance simulation time
         time_manager.network_tick()
-        
+
         time_manager.end_performance_measurement()
 
     def apply_global_calm(self):
@@ -543,7 +543,7 @@ class AdaptiveClockNetwork:
             cell.anxiety = max(0.0, cell.anxiety - calm_effect)
             cell.calm += 0.2
 
-    def calculate_performance_and_stability(self, tick_duration: Optional[float] = None) -> Dict[str, float]:
+    def calculate_performance_and_stability(self, tick_duration: float | None = None) -> dict[str, float]:
         """Calculate performance metrics using centralized time management"""
         # Use centralized time stats if no tick_duration provided
         if tick_duration is None:
@@ -552,7 +552,7 @@ class AdaptiveClockNetwork:
             execution_time = stats["avg_real_time_per_tick"]
         else:
             execution_time = tick_duration
-            
+
         anxieties = np.array([cell.anxiety for cell in self.cells])
         energies = np.array([cell.energy for cell in self.cells])
         trusts = np.array([cell.trust for cell in self.cells])
@@ -571,7 +571,7 @@ class AdaptiveClockNetwork:
             "avg_anxiety": avg_anxiety,
         }
 
-    def get_network_status(self) -> List[Any]:
+    def get_network_status(self) -> list[Any]:
         return [cell.get_status() for cell in self.cells] + [repr(self.capacitor)]
 
     def serialize_genome_vector(self) -> np.ndarray:
@@ -588,7 +588,7 @@ class AdaptiveClockNetwork:
 
 # ------------- Evolutionary machinery -------------
 
-def random_genome(min_cells=3, max_cells=6) -> Dict[str, Any]:
+def random_genome(min_cells=3, max_cells=6) -> dict[str, Any]:
     num_cells = random.randint(min_cells, max_cells)
     genome = {
         "num_cells": num_cells,
@@ -610,7 +610,7 @@ def random_genome(min_cells=3, max_cells=6) -> Dict[str, Any]:
         genome["per_cell"].append(per)
     return genome
 
-def crossover(parent_a: Dict[str, Any], parent_b: Dict[str, Any]) -> Dict[str, Any]:
+def crossover(parent_a: dict[str, Any], parent_b: dict[str, Any]) -> dict[str, Any]:
     child = {}
     for k in parent_a.keys():
         if k == "per_cell":
@@ -636,7 +636,7 @@ def crossover(parent_a: Dict[str, Any], parent_b: Dict[str, Any]) -> Dict[str, A
         child["per_cell"] = child["per_cell"][: child["num_cells"]]
     return child
 
-def mutate(genome: Dict[str, Any], mutation_rate: float = 0.15, mutation_strength: float = 0.12) -> Dict[str, Any]:
+def mutate(genome: dict[str, Any], mutation_rate: float = 0.15, mutation_strength: float = 0.12) -> dict[str, Any]:
     g = copy.deepcopy(genome)
     for key in ["capacitor_capacity", "global_calm", "global_calm_trigger", "diffusivity", "recharge_per_tick"]:
         if random.random() < mutation_rate:
@@ -668,7 +668,7 @@ def mutate(genome: Dict[str, Any], mutation_rate: float = 0.15, mutation_strengt
     return g
 
 # ---------- Pareto + selection utilities ----------
-def dominates(a: Dict[str, float], b: Dict[str, float], metrics: List[str]) -> bool:
+def dominates(a: dict[str, float], b: dict[str, float], metrics: list[str]) -> bool:
     better_or_equal = True
     strictly_better = False
     for m in metrics:
@@ -679,7 +679,7 @@ def dominates(a: Dict[str, float], b: Dict[str, float], metrics: List[str]) -> b
             strictly_better = True
     return better_or_equal and strictly_better
 
-def non_dominated_sort(population_objs: List[Dict[str, float]], metrics: List[str]) -> List[int]:
+def non_dominated_sort(population_objs: list[dict[str, float]], metrics: list[str]) -> list[int]:
     n = len(population_objs)
     dominated = [False] * n
     for i in range(n):
@@ -692,7 +692,7 @@ def non_dominated_sort(population_objs: List[Dict[str, float]], metrics: List[st
     front = [i for i, d in enumerate(dominated) if not d]
     return front
 
-def compute_diversity(networks: List[AdaptiveClockNetwork]) -> float:
+def compute_diversity(networks: list[AdaptiveClockNetwork]) -> float:
     vecs = np.vstack([net.serialize_genome_vector() for net in networks])
     return float(np.mean(np.std(vecs, axis=0)))
 
@@ -709,7 +709,7 @@ class EvolutionEngine:
         min_cells: int = 3,
         max_cells: int = 6,
         diversity_threshold: float = 0.05,
-        random_seed: Optional[int] = None,
+        random_seed: int | None = None,
     ):
         self.pop_size = pop_size
         self.generations = generations
@@ -725,18 +725,18 @@ class EvolutionEngine:
             np.random.seed(random_seed)
             logging.info(f"Random seed set to {random_seed}")
 
-        self.population_genomes: List[Dict[str, Any]] = [random_genome(min_cells, max_cells) for _ in range(pop_size)]
-        self.population_networks: List[AdaptiveClockNetwork] = [AdaptiveClockNetwork(g) for g in self.population_genomes]
+        self.population_genomes: list[dict[str, Any]] = [random_genome(min_cells, max_cells) for _ in range(pop_size)]
+        self.population_networks: list[AdaptiveClockNetwork] = [AdaptiveClockNetwork(g) for g in self.population_genomes]
 
-    def evaluate(self, network: AdaptiveClockNetwork, ticks: int = 16, verbose=False) -> Dict[str, float]:
+    def evaluate(self, network: AdaptiveClockNetwork, ticks: int = 16, verbose=False) -> dict[str, float]:
         """Evaluate network performance using centralized time management"""
         time_manager = get_time_manager()
         time_manager.reset()  # Reset for clean evaluation
-        
+
         for t in range(ticks):
             stimuli = list(np.random.uniform(0.0, 9.0, size=network.num_cells))
             network.network_tick(stimuli)
-            
+
         # Get performance metrics from centralized time management
         metrics = network.calculate_performance_and_stability()
         speed = 1.0 / (metrics["execution_time"] + 1e-9)
@@ -827,7 +827,7 @@ class EvolutionEngine:
             logging.info(f"Best-of-gen {gen+1} (index {best_idx}): {best_obj}")
         return history
 
-    def tournament_selection(self, evaluated_objs: List[Dict[str, float]], k: int = 3) -> int:
+    def tournament_selection(self, evaluated_objs: list[dict[str, float]], k: int = 3) -> int:
         candidates = random.sample(range(len(evaluated_objs)), k)
         pareto_metrics = ["stability", "efficiency", "avg_trust", "speed", "stress_resilience"]
         scores = [(sum(evaluated_objs[i][m] for m in pareto_metrics), i) for i in candidates]

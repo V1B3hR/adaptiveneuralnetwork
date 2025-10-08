@@ -9,26 +9,29 @@ This script demonstrates:
 4. Enhanced phase controllers with sparsity metrics
 """
 
-import sys
 import os
+import sys
+
 # Add parent directory to path so we can import project modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import torch
+
 from adaptiveneuralnetwork.api.config import AdaptiveConfig
 from adaptiveneuralnetwork.api.model import AdaptiveModel
 from adaptiveneuralnetwork.training.continual import (
+    ablation_study_sleep_phases,
+    anxiety_restorative_analysis,
     split_mnist_benchmark,
-    ablation_study_sleep_phases, 
-    anxiety_restorative_analysis
 )
+
 
 def demo_split_mnist():
     """Demonstrate Split MNIST continual learning."""
     print("=" * 50)
     print("Split MNIST Continual Learning Demo")
     print("=" * 50)
-    
+
     config = AdaptiveConfig(
         num_nodes=4,  # Reduced to avoid tensor size issues
         hidden_dim=8,  # Reduced
@@ -38,18 +41,18 @@ def demo_split_mnist():
         batch_size=4,  # Reduced
         device="cpu"
     )
-    
+
     model = AdaptiveModel(config)
-    
+
     # Run Split MNIST benchmark with synthetic data
     print("Running Split MNIST benchmark with 2 tasks...")
     results = split_mnist_benchmark(model, config, num_tasks=2, use_synthetic=True)
-    
-    print(f"\nResults Summary:")
+
+    print("\nResults Summary:")
     print(f"Final Average Accuracy: {results['final_average_accuracy']:.4f}")
     print(f"Total Forgetting: {results['total_forgetting']:.4f}")
     print(f"Number of Tasks: {results['num_tasks']}")
-    
+
     for task_name, task_result in results['task_results'].items():
         print(f"\n{task_name.upper()}:")
         print(f"  Classes: {task_result['classes']}")
@@ -61,7 +64,7 @@ def demo_ablation_studies():
     print("\n" + "=" * 50)
     print("Sleep-Phase Ablation Studies Demo")
     print("=" * 50)
-    
+
     config = AdaptiveConfig(
         num_nodes=8,
         hidden_dim=12,
@@ -71,14 +74,14 @@ def demo_ablation_studies():
         batch_size=4,
         device="cpu"
     )
-    
+
     print("Running ablation study with different phase configurations...")
     results = ablation_study_sleep_phases(config)
-    
+
     print(f"\nBaseline Accuracy: {results['baseline_accuracy']:.4f}")
     print(f"Best Configuration: {results['summary']['best_config']}")
     print(f"Most Efficient Configuration: {results['summary']['most_efficient']}")
-    
+
     print("\nConfiguration Results:")
     for config_name, result in results['configurations'].items():
         print(f"\n{config_name.upper()}:")
@@ -93,7 +96,7 @@ def demo_anxiety_analysis():
     print("\n" + "=" * 50)
     print("Anxiety & Restorative Analysis Demo")
     print("=" * 50)
-    
+
     config = AdaptiveConfig(
         num_nodes=6,
         hidden_dim=10,
@@ -101,24 +104,24 @@ def demo_anxiety_analysis():
         output_dim=3,
         device="cpu"
     )
-    
+
     model = AdaptiveModel(config)
-    
+
     stress_conditions = {
         'high_loss_threshold': 2.0,
         'stress_duration': 5,
         'recovery_duration': 8
     }
-    
+
     print("Running anxiety analysis with different stress scenarios...")
     results = anxiety_restorative_analysis(model, stress_conditions)
-    
-    print(f"\nOverall Analysis:")
+
+    print("\nOverall Analysis:")
     print(f"Most Stressful Scenario: {results['overall_analysis']['most_stressful_scenario']}")
     print(f"Best Recovery Scenario: {results['overall_analysis']['best_recovery_scenario']}")
     print(f"Average Resilience: {results['overall_analysis']['average_resilience']:.4f}")
     print(f"Stress Sensitivity: {results['overall_analysis']['stress_sensitivity']:.4f}")
-    
+
     # Show details for one scenario
     scenario = 'high_loss'
     if scenario in results and 'summary' in results[scenario]:
@@ -134,43 +137,43 @@ def demo_enhanced_metrics():
     print("\n" + "=" * 50)
     print("Enhanced Phase Scheduler & Sparsity Metrics Demo")
     print("=" * 50)
-    
+
     config = AdaptiveConfig(
         num_nodes=8,
         hidden_dim=12,
         device="cpu"
     )
-    
+
     model = AdaptiveModel(config)
-    
+
     # Create sample input
     sample_input = torch.randn(4, config.input_dim)
-    
+
     # Forward pass to populate node states
     _ = model(sample_input)
-    
+
     # Get enhanced metrics
     metrics = model.get_metrics()
-    
+
     print("Standard Metrics:")
     print(f"  Active Node Ratio: {metrics['active_node_ratio']:.4f}")
     print(f"  Mean Energy: {metrics['mean_energy']:.4f}")
     print(f"  Mean Activity: {metrics['mean_activity']:.4f}")
-    
+
     # Show phase distribution
     print("\nPhase Distribution:")
     for phase in ['active', 'sleep', 'interactive', 'inspired']:
         key = f"{phase}_ratio"
         if key in metrics:
             print(f"  {phase.title()} Ratio: {metrics[key]:.4f}")
-    
+
     # Show anxiety metrics if available
     if 'mean_anxiety' in metrics:
         print("\nAnxiety Metrics:")
         print(f"  Mean Anxiety: {metrics['mean_anxiety']:.4f}")
         print(f"  Max Anxiety: {metrics['max_anxiety']:.4f}")
         print(f"  Anxious Nodes Ratio: {metrics['anxious_nodes_ratio']:.4f}")
-    
+
     # Show sparsity metrics if available
     if 'energy_sparsity' in metrics:
         print("\nSparsity Metrics:")
@@ -183,13 +186,13 @@ def main():
     """Run all demonstrations."""
     print("Adaptive Neural Network - Continual Learning Features Demo")
     print("Version 0.2.0 Implementation")
-    
+
     try:
         demo_split_mnist()
         demo_enhanced_metrics()
-        demo_ablation_studies()  
+        demo_ablation_studies()
         demo_anxiety_analysis()
-        
+
         print("\n" + "=" * 50)
         print("All demos completed successfully!")
         print("Features implemented:")
@@ -198,7 +201,7 @@ def main():
         print("✓ Energy/activity sparsity metrics")
         print("✓ Sleep-phase ablation studies")
         print("=" * 50)
-        
+
     except Exception as e:
         print(f"\nDemo failed with error: {e}")
         import traceback

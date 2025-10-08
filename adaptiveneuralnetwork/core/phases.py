@@ -41,7 +41,7 @@ class PhaseScheduler:
         self.current_step = 0
         self.anxiety_threshold = anxiety_threshold
         self.restorative_strength = restorative_strength
-        
+
         # Enhanced stochastic policy parameters
         self.stochastic_policy = stochastic_policy
         self.policy_temperature = policy_temperature
@@ -59,11 +59,11 @@ class PhaseScheduler:
 
         # Current phase for each node [num_nodes]
         self.node_phases = torch.zeros(num_nodes, dtype=torch.long, device=self.device)
-        
+
         # Anxiety tracking for enhanced phase control
         self.node_anxiety = torch.zeros(num_nodes, device=self.device)
         self.anxiety_history = torch.zeros(num_nodes, 10, device=self.device)  # Track last 10 steps
-        
+
         # Restorative state tracking
         self.restorative_needs = torch.zeros(num_nodes, device=self.device)
         self.sleep_quality = torch.ones(num_nodes, device=self.device)  # 0-1, quality of sleep phases
@@ -133,7 +133,7 @@ class PhaseScheduler:
                 current_phase = batch_phases[b, node].item()
                 energy = energy_levels[b, node, 0].item()
                 activity = activity_levels[b, node, 0].item()
-                
+
                 # Get anxiety and restorative factors for this node
                 node_anxiety = self.node_anxiety[node].item()
                 restorative_need = self.restorative_needs[node].item()
@@ -141,7 +141,7 @@ class PhaseScheduler:
 
                 # Enhanced phase transition logic with anxiety/restorative mechanics
                 new_phase = self._determine_phase_transition(
-                    current_phase, energy, activity, node_anxiety, 
+                    current_phase, energy, activity, node_anxiety,
                     restorative_need, sleep_qual, circadian_factor, node
                 )
 
@@ -149,7 +149,7 @@ class PhaseScheduler:
 
         # Update stored phases with last batch (for stateful behavior)
         self.node_phases = batch_phases[-1].clone()
-        
+
         # Update restorative needs based on current phases
         self._update_restorative_state()
 
@@ -160,23 +160,23 @@ class PhaseScheduler:
         # Shift anxiety history
         self.anxiety_history[:, 1:] = self.anxiety_history[:, :-1]
         self.anxiety_history[:, 0] = anxiety_levels
-        
+
         # Update current anxiety (exponential moving average)
         alpha = 0.3
         self.node_anxiety = alpha * anxiety_levels + (1 - alpha) * self.node_anxiety
-        
+
     def _handle_exploration_phase(self) -> int:
         """Handle stochastic exploration when enabled."""
         if not (self.stochastic_policy and np.random.random() < self.exploration_rate):
             return None  # No exploration
-            
+
         phase_probs = torch.tensor([
             self.phase_weights[Phase.ACTIVE],
-            self.phase_weights[Phase.SLEEP], 
+            self.phase_weights[Phase.SLEEP],
             self.phase_weights[Phase.INTERACTIVE],
             self.phase_weights[Phase.INSPIRED]
         ], device=self.device)
-        
+
         # Apply temperature scaling for exploration
         phase_probs = torch.softmax(phase_probs / self.policy_temperature, dim=0)
         return torch.multinomial(phase_probs, 1).item()
@@ -185,9 +185,9 @@ class PhaseScheduler:
         """Handle phase transitions for high anxiety states."""
         if anxiety <= self.anxiety_threshold:
             return None  # No anxiety override needed
-            
+
         anxiety_severity = min(1.0, anxiety / (self.anxiety_threshold * 2))
-        
+
         if self.stochastic_policy:
             anxiety_probs = torch.zeros(4, device=self.device)
             anxiety_probs[Phase.SLEEP.value] = anxiety_severity * 0.6
@@ -204,19 +204,19 @@ class PhaseScheduler:
             else:
                 # Reduce to lower activity phase
                 return Phase.INTERACTIVE.value  # Default for moderate anxiety
-        
+
         return None
 
     def _handle_restorative_need_phase(self, restorative_need: float, node_idx: int) -> int:
         """Handle phase transitions for high restorative needs."""
         if restorative_need <= 0.6:
             return None
-            
+
         # Check if we haven't had enough sleep recently
         recent_sleep = (self.node_phases[node_idx] == Phase.SLEEP.value).float()
         if recent_sleep >= 0.1:  # Had enough sleep recently
             return None
-            
+
         if self.stochastic_policy:
             rest_probs = torch.zeros(4, device=self.device)
             rest_probs[Phase.SLEEP.value] = 0.8
@@ -230,7 +230,7 @@ class PhaseScheduler:
         """Handle phase transitions for low energy states."""
         if energy >= 2.0:
             return None
-            
+
         if self.stochastic_policy:
             low_energy_probs = torch.zeros(4, device=self.device)
             base_sleep_prob = 0.7
@@ -247,7 +247,7 @@ class PhaseScheduler:
         """Handle phase transitions for high energy with low activity."""
         if not (energy > 20.0 and activity < 0.3):
             return None
-            
+
         if self.stochastic_policy:
             high_energy_probs = torch.zeros(4, device=self.device)
             if anxiety < self.anxiety_threshold * 0.3 and circadian_factor > 0.5:
@@ -271,7 +271,7 @@ class PhaseScheduler:
         """Handle phase transitions for high activity states."""
         if activity <= 0.7:
             return None
-            
+
         if self.stochastic_policy:
             high_activity_probs = torch.zeros(4, device=self.device)
             if anxiety > self.anxiety_threshold * 0.4:
@@ -294,33 +294,33 @@ class PhaseScheduler:
     def _handle_default_transition(self, current_phase: int, anxiety: float, restorative_need: float) -> int:
         """Handle default phase transitions using transition probabilities."""
         probs = self.transition_matrix[current_phase].clone()
-        
+
         # Modify probabilities based on anxiety and restorative needs
         if anxiety > self.anxiety_threshold * 0.5:
             probs[Phase.SLEEP.value] *= 1.5  # Increase sleep probability
             probs[Phase.INTERACTIVE.value] *= 1.3  # Increase social interaction
             probs[Phase.ACTIVE.value] *= 0.7  # Decrease pure activity
-        
+
         if restorative_need > 0.4:
             probs[Phase.SLEEP.value] *= 1.4
             probs[Phase.INSPIRED.value] *= 0.6  # Less likely to be inspired when tired
-        
+
         # Apply stochastic policy temperature scaling
         if self.stochastic_policy:
             probs = torch.softmax(probs / self.policy_temperature, dim=0)
         else:
             # Normalize probabilities
             probs = probs / probs.sum()
-        
+
         return torch.multinomial(probs, 1).item()
 
     def _determine_phase_transition(
-        self, current_phase: int, energy: float, activity: float, 
+        self, current_phase: int, energy: float, activity: float,
         anxiety: float, restorative_need: float, sleep_quality: float,
         circadian_factor: float, node_idx: int
     ) -> int:
         """Determine phase transition with enhanced anxiety/restorative mechanics and stochastic policy."""
-        
+
         # Check transition handlers in priority order
         transition_handlers = [
             lambda: self._handle_exploration_phase(),
@@ -330,42 +330,42 @@ class PhaseScheduler:
             lambda: self._handle_high_energy_low_activity_phase(energy, activity, anxiety, circadian_factor),
             lambda: self._handle_high_activity_phase(activity, anxiety),
         ]
-        
+
         # Execute handlers until one returns a phase
         for handler in transition_handlers:
             result = handler()
             if result is not None:
                 return result
-        
+
         # Default transition if no specific handler applies
         return self._handle_default_transition(current_phase, anxiety, restorative_need)
-    
+
     def _update_restorative_state(self) -> None:
         """Update restorative needs and sleep quality based on current phases."""
         # Increase restorative need for active phases
         active_mask = (self.node_phases == Phase.ACTIVE.value)
         interactive_mask = (self.node_phases == Phase.INTERACTIVE.value)
         sleep_mask = (self.node_phases == Phase.SLEEP.value)
-        
+
         # Active phases increase restorative need
         self.restorative_needs[active_mask] += 0.05
         self.restorative_needs[interactive_mask] += 0.03
-        
+
         # Sleep phases reduce restorative need and improve sleep quality
         sleep_effectiveness = torch.where(
             self.node_anxiety[sleep_mask] > self.anxiety_threshold,
             0.7,  # Reduced effectiveness when anxious
             1.0   # Full effectiveness when calm
         )
-        
+
         self.restorative_needs[sleep_mask] -= self.restorative_strength * sleep_effectiveness
         self.sleep_quality[sleep_mask] = torch.clamp(
             self.sleep_quality[sleep_mask] + 0.02 * sleep_effectiveness, 0.0, 1.0
         )
-        
+
         # Clamp restorative needs
         self.restorative_needs = torch.clamp(self.restorative_needs, 0.0, 1.0)
-        
+
         # Gradual sleep quality decay when not sleeping
         non_sleep_mask = ~sleep_mask
         self.sleep_quality[non_sleep_mask] *= 0.995
@@ -393,7 +393,7 @@ class PhaseScheduler:
             stats[f"{phase.name.lower()}_ratio"] = count / total_nodes
 
         return stats
-    
+
     def get_anxiety_stats(self) -> dict[str, float]:
         """Get anxiety-related statistics."""
         return {
@@ -403,7 +403,7 @@ class PhaseScheduler:
             'mean_restorative_need': self.restorative_needs.mean().item(),
             'mean_sleep_quality': self.sleep_quality.mean().item()
         }
-    
+
     def get_sparsity_metrics(self, energy_levels: torch.Tensor, activity_levels: torch.Tensor) -> dict[str, float]:
         """
         Calculate energy and activity sparsity metrics.
@@ -418,26 +418,26 @@ class PhaseScheduler:
         # Flatten to [batch_size * num_nodes]
         energy_flat = energy_levels.flatten()
         activity_flat = activity_levels.flatten()
-        
+
         # Energy sparsity metrics
         energy_sparsity = (energy_flat < 0.1).float().mean().item()  # Fraction with very low energy
         energy_l0_norm = (energy_flat > 0.01).float().sum().item()  # Count of non-zero energies
         energy_l1_norm = energy_flat.abs().sum().item()
         energy_l2_norm = torch.sqrt((energy_flat ** 2).sum()).item()
-        
-        # Activity sparsity metrics  
+
+        # Activity sparsity metrics
         activity_sparsity = (activity_flat < 0.1).float().mean().item()  # Fraction with very low activity
         activity_l0_norm = (activity_flat > 0.01).float().sum().item()  # Count of active nodes
         activity_l1_norm = activity_flat.abs().sum().item()
         activity_l2_norm = torch.sqrt((activity_flat ** 2).sum()).item()
-        
+
         # Combined sparsity (nodes with both low energy and activity)
         combined_sparse = ((energy_flat < 0.1) & (activity_flat < 0.1)).float().mean().item()
-        
+
         # Phase-based sparsity
         active_nodes = self.get_active_mask(self.node_phases.unsqueeze(0)).flatten()
         active_ratio = active_nodes.float().mean().item()
-        
+
         return {
             'energy_sparsity': energy_sparsity,
             'energy_l0_ratio': energy_l0_norm / len(energy_flat),
@@ -457,28 +457,28 @@ class PhaseScheduler:
         """Get metrics about stochastic policy performance."""
         if not self.stochastic_policy:
             return {'stochastic_policy_enabled': False}
-        
+
         # Calculate phase distribution entropy
         phase_counts = torch.zeros(4, device=self.device)
         for phase in Phase:
             phase_counts[phase.value] = (phases == phase.value).float().sum()
         phase_probs = phase_counts / phase_counts.sum()
-        
+
         # Shannon entropy of phase distribution
         phase_entropy = -torch.sum(phase_probs * torch.log(phase_probs + 1e-8)).item()
-        
+
         # Calculate diversity score (normalized entropy)
         max_entropy = np.log(len(Phase))
         diversity_score = phase_entropy / max_entropy
-        
+
         # Track entropy history
         self.policy_entropy_history.append(phase_entropy)
         if len(self.policy_entropy_history) > 100:  # Keep last 100 steps
             self.policy_entropy_history.pop(0)
-            
+
         # Calculate entropy stability (lower variance = more stable)
         entropy_variance = np.var(self.policy_entropy_history) if len(self.policy_entropy_history) > 1 else 0.0
-        
+
         return {
             'stochastic_policy_enabled': True,
             'phase_entropy': phase_entropy,
@@ -488,12 +488,12 @@ class PhaseScheduler:
             'exploration_rate': self.exploration_rate,
             'entropy_history_length': len(self.policy_entropy_history)
         }
-    
+
     def adjust_policy_parameters(self, performance_feedback: float):
         """Dynamically adjust stochastic policy parameters based on performance."""
         if not self.stochastic_policy:
             return
-            
+
         # Adjust temperature based on performance
         # Good performance -> reduce temperature (less exploration)
         # Poor performance -> increase temperature (more exploration)

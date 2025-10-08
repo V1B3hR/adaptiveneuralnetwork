@@ -271,10 +271,10 @@ def quick_train(
 
 
 def train_epoch(
-    model: nn.Module, 
-    train_loader: DataLoader, 
-    optimizer: optim.Optimizer, 
-    criterion: nn.Module, 
+    model: nn.Module,
+    train_loader: DataLoader,
+    optimizer: optim.Optimizer,
+    criterion: nn.Module,
     device: torch.device
 ) -> tuple[float, float]:
     """
@@ -294,34 +294,34 @@ def train_epoch(
     total_loss = 0.0
     correct = 0
     total = 0
-    
+
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
-        
+
         # Flatten data if needed for adaptive model
         if data.dim() > 2:
             data = data.view(data.shape[0], -1)
-        
+
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
-        
+
         total_loss += loss.item()
         pred = output.argmax(dim=1, keepdim=True)
         correct += pred.eq(target.view_as(pred)).sum().item()
         total += target.size(0)
-    
+
     avg_loss = total_loss / len(train_loader)
     accuracy = correct / total
-    
+
     return avg_loss, accuracy
 
 
 def evaluate_model(
-    model: nn.Module, 
-    test_loader: DataLoader, 
+    model: nn.Module,
+    test_loader: DataLoader,
     device: torch.device,
     criterion: nn.Module = None
 ) -> float:
@@ -340,19 +340,19 @@ def evaluate_model(
     model.eval()
     correct = 0
     total = 0
-    
+
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
-            
+
             # Flatten data if needed for adaptive model
             if data.dim() > 2:
                 data = data.view(data.shape[0], -1)
-            
+
             output = model(data)
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
             total += target.size(0)
-    
+
     accuracy = correct / total
     return accuracy

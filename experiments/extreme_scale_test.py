@@ -1,11 +1,14 @@
 import random
+
+from api_integrations.ai_api import fetch_ai_signal
+from api_integrations.human_api import fetch_human_signal
+from api_integrations.world_api import fetch_world_signal
+
 from config.network_config import load_network_config
 from core.alive_node import AliveLoopNode
 from core.capacitor import CapacitorInSpace
 from core.network import TunedAdaptiveFieldNetwork
-from api_integrations.human_api import fetch_human_signal
-from api_integrations.ai_api import fetch_ai_signal
-from api_integrations.world_api import fetch_world_signal
+
 
 def get_real_streams(api_endpoints, node_count):
     types = ["human", "AI", "world"]
@@ -33,11 +36,11 @@ def run_extreme_scale_test(steps=10000, node_count=9000, capacitor_count=600, sn
     cfg = load_network_config("config/network_config.yaml")
     spatial_dims = cfg.get("spatial_dims", 2)  # Get spatial dimensions from config, default to 2
     print(f"Initializing {node_count} nodes in {spatial_dims}D space...")
-    
+
     # Create position and velocity bounds based on spatial dimensions
     position_bounds = [(-10, 10)] * spatial_dims  # Same bounds for all dimensions
     velocity_bounds = [(-0.15, 0.15)] * spatial_dims
-    
+
     nodes = [
         AliveLoopNode(
             position=[random.uniform(-10, 10) for _ in range(spatial_dims)],

@@ -5,14 +5,14 @@ This module provides comprehensive decision logging, reasoning chain tracking,
 and visualization tools for audit trails and decision flows as required by Phase 3.1.
 """
 
-import time
 import json
-import uuid
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Optional, Any, Tuple
-from enum import Enum
-from collections import deque, defaultdict
 import logging
+import time
+import uuid
+from collections import defaultdict, deque
+from dataclasses import asdict, dataclass
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class DecisionType(Enum):
     """Types of decisions that can be logged"""
     ETHICAL_ASSESSMENT = "ethical_assessment"
-    RESOURCE_ALLOCATION = "resource_allocation"  
+    RESOURCE_ALLOCATION = "resource_allocation"
     COMMUNICATION = "communication"
     LEARNING_ACTION = "learning_action"
     CONSENSUS_BUILDING = "consensus_building"
@@ -46,13 +46,13 @@ class ReasoningTrace:
     step_type: ReasoningStep
     timestamp: float
     description: str
-    inputs: Dict[str, Any]
-    processing: Dict[str, Any]
-    outputs: Dict[str, Any]
+    inputs: dict[str, Any]
+    processing: dict[str, Any]
+    outputs: dict[str, Any]
     confidence: float
     processing_time: float
-    memory_references: List[str] = None
-    
+    memory_references: list[str] = None
+
     def __post_init__(self):
         if self.memory_references is None:
             self.memory_references = []
@@ -69,14 +69,14 @@ class EthicalFactor:
     rationale: str
 
 
-@dataclass 
+@dataclass
 class TrustCalculation:
     """Trust calculation details for transparency"""
     agent_id: int
     current_trust: float
     previous_trust: float
     trust_change: float
-    factors: Dict[str, float]  # factor_name -> contribution
+    factors: dict[str, float]  # factor_name -> contribution
     interaction_history_size: int
     calculation_method: str
     timestamp: float
@@ -89,55 +89,55 @@ class DecisionLog:
     decision_type: DecisionType
     timestamp: float
     agent_id: int
-    
+
     # Decision context
-    context: Dict[str, Any]
-    inputs: Dict[str, Any]
-    
+    context: dict[str, Any]
+    inputs: dict[str, Any]
+
     # Reasoning chain
-    reasoning_chain: List[ReasoningTrace]
-    
+    reasoning_chain: list[ReasoningTrace]
+
     # Ethical analysis
-    ethical_factors: List[EthicalFactor]
+    ethical_factors: list[EthicalFactor]
     overall_ethics_score: float
-    
+
     # Trust considerations
-    trust_calculations: List[TrustCalculation]
-    
+    trust_calculations: list[TrustCalculation]
+
     # Final decision
     decision: Any
     confidence: float
-    alternatives_considered: List[Any]
-    
+    alternatives_considered: list[Any]
+
     # Validation
-    validation_results: Dict[str, Any]
-    post_decision_monitoring: Dict[str, Any]
-    
+    validation_results: dict[str, Any]
+    post_decision_monitoring: dict[str, Any]
+
     # Metadata
     processing_duration: float
     memory_usage: int
-    dependencies: List[str]  # Other decision IDs this depends on
+    dependencies: list[str]  # Other decision IDs this depends on
 
 
 class ExplainableDecisionLogger:
     """System for logging and explaining AI decisions"""
-    
+
     def __init__(self, max_logs: int = 10000):
         self.decision_logs = deque(maxlen=max_logs)
         self.decision_index = {}  # decision_id -> DecisionLog
         self.agent_decisions = defaultdict(list)  # agent_id -> [decision_ids]
         self.decision_type_index = defaultdict(list)  # DecisionType -> [decision_ids]
-        
+
         # Analytics
         self.decision_statistics = defaultdict(int)
         self.ethics_violations = []
         self.trust_evolution = defaultdict(list)  # agent_id -> [(timestamp, trust_score)]
-        
+
     def start_decision_logging(self, agent_id: int, decision_type: DecisionType,
-                             context: Dict[str, Any], inputs: Dict[str, Any]) -> str:
+                             context: dict[str, Any], inputs: dict[str, Any]) -> str:
         """Start logging a new decision process"""
         decision_id = str(uuid.uuid4())
-        
+
         decision_log = DecisionLog(
             decision_id=decision_id,
             decision_type=decision_type,
@@ -158,27 +158,27 @@ class ExplainableDecisionLogger:
             memory_usage=0,
             dependencies=[]
         )
-        
+
         # Store in indexes
         self.decision_index[decision_id] = decision_log
         self.agent_decisions[agent_id].append(decision_id)
         self.decision_type_index[decision_type].append(decision_id)
-        
+
         logger.info(f"Started decision logging: {decision_id} for agent {agent_id}")
         return decision_id
-        
+
     def add_reasoning_step(self, decision_id: str, step_type: ReasoningStep,
-                          description: str, inputs: Dict[str, Any],
-                          processing: Dict[str, Any], outputs: Dict[str, Any],
+                          description: str, inputs: dict[str, Any],
+                          processing: dict[str, Any], outputs: dict[str, Any],
                           confidence: float) -> str:
         """Add a reasoning step to the decision chain"""
         if decision_id not in self.decision_index:
             raise ValueError(f"Decision {decision_id} not found")
-            
+
         step_start = time.time()
-        
+
         step_id = f"{decision_id}_{len(self.decision_index[decision_id].reasoning_chain)}"
-        
+
         reasoning_trace = ReasoningTrace(
             step_id=step_id,
             step_type=step_type,
@@ -190,17 +190,17 @@ class ExplainableDecisionLogger:
             confidence=confidence,
             processing_time=time.time() - step_start
         )
-        
+
         self.decision_index[decision_id].reasoning_chain.append(reasoning_trace)
         return step_id
-        
-    def add_ethical_factor(self, decision_id: str, factor_name: str, 
+
+    def add_ethical_factor(self, decision_id: str, factor_name: str,
                           law_reference: str, weight: float, assessment: str,
                           compliance_score: float, rationale: str):
         """Add an ethical consideration to the decision"""
         if decision_id not in self.decision_index:
             raise ValueError(f"Decision {decision_id} not found")
-            
+
         ethical_factor = EthicalFactor(
             factor_name=factor_name,
             law_reference=law_reference,
@@ -209,24 +209,24 @@ class ExplainableDecisionLogger:
             compliance_score=compliance_score,
             rationale=rationale
         )
-        
+
         self.decision_index[decision_id].ethical_factors.append(ethical_factor)
-        
+
         # Update overall ethics score
         decision_log = self.decision_index[decision_id]
         if decision_log.ethical_factors:
             weighted_scores = [f.compliance_score * f.weight for f in decision_log.ethical_factors]
             total_weight = sum(f.weight for f in decision_log.ethical_factors)
             decision_log.overall_ethics_score = sum(weighted_scores) / max(total_weight, 1.0)
-            
+
     def add_trust_calculation(self, decision_id: str, agent_id: int,
                             current_trust: float, previous_trust: float,
-                            factors: Dict[str, float], interaction_history_size: int,
+                            factors: dict[str, float], interaction_history_size: int,
                             calculation_method: str):
         """Add trust calculation details for transparency"""
         if decision_id not in self.decision_index:
             raise ValueError(f"Decision {decision_id} not found")
-            
+
         trust_calc = TrustCalculation(
             agent_id=agent_id,
             current_trust=current_trust,
@@ -237,45 +237,45 @@ class ExplainableDecisionLogger:
             calculation_method=calculation_method,
             timestamp=time.time()
         )
-        
+
         self.decision_index[decision_id].trust_calculations.append(trust_calc)
-        
+
         # Track trust evolution
         self.trust_evolution[agent_id].append((time.time(), current_trust))
-        
+
     def finalize_decision(self, decision_id: str, decision: Any, confidence: float,
-                         alternatives_considered: List[Any] = None,
-                         dependencies: List[str] = None):
+                         alternatives_considered: list[Any] = None,
+                         dependencies: list[str] = None):
         """Finalize a decision and complete the log"""
         if decision_id not in self.decision_index:
             raise ValueError(f"Decision {decision_id} not found")
-            
+
         decision_log = self.decision_index[decision_id]
         decision_log.decision = decision
         decision_log.confidence = confidence
         decision_log.alternatives_considered = alternatives_considered or []
         decision_log.dependencies = dependencies or []
         decision_log.processing_duration = time.time() - decision_log.timestamp
-        
+
         # Add to main log
         self.decision_logs.append(decision_log)
-        
+
         # Update statistics
         self.decision_statistics[decision_log.decision_type] += 1
-        
+
         # Check for ethics violations
         if decision_log.overall_ethics_score < 0.7:  # Threshold for violation
             self.ethics_violations.append(decision_id)
-            
+
         logger.info(f"Finalized decision: {decision_id} with confidence {confidence}")
-        
-    def get_decision_explanation(self, decision_id: str) -> Dict[str, Any]:
+
+    def get_decision_explanation(self, decision_id: str) -> dict[str, Any]:
         """Get comprehensive explanation of a decision"""
         if decision_id not in self.decision_index:
             raise ValueError(f"Decision {decision_id} not found")
-            
+
         decision_log = self.decision_index[decision_id]
-        
+
         explanation = {
             "decision_summary": {
                 "id": decision_log.decision_id,
@@ -285,7 +285,7 @@ class ExplainableDecisionLogger:
                 "decision": str(decision_log.decision),
                 "confidence": decision_log.confidence
             },
-            
+
             "reasoning_chain": [
                 {
                     "step": i + 1,
@@ -298,7 +298,7 @@ class ExplainableDecisionLogger:
                 }
                 for i, trace in enumerate(decision_log.reasoning_chain)
             ],
-            
+
             "ethical_analysis": {
                 "overall_score": decision_log.overall_ethics_score,
                 "factors": [
@@ -314,7 +314,7 @@ class ExplainableDecisionLogger:
                 ],
                 "compliant": decision_log.overall_ethics_score >= 0.7
             },
-            
+
             "trust_considerations": [
                 {
                     "agent": trust_calc.agent_id,
@@ -325,49 +325,49 @@ class ExplainableDecisionLogger:
                 }
                 for trust_calc in decision_log.trust_calculations
             ],
-            
+
             "alternatives": [
                 {"option": i + 1, "description": str(alt)}
                 for i, alt in enumerate(decision_log.alternatives_considered)
             ],
-            
+
             "metadata": {
                 "processing_time": decision_log.processing_duration,
                 "dependencies": decision_log.dependencies,
                 "context_keys": list(decision_log.context.keys())
             }
         }
-        
+
         return explanation
-        
-    def generate_audit_trail(self, agent_id: Optional[int] = None,
-                           decision_type: Optional[DecisionType] = None,
-                           time_range: Optional[Tuple[float, float]] = None) -> List[Dict[str, Any]]:
+
+    def generate_audit_trail(self, agent_id: int | None = None,
+                           decision_type: DecisionType | None = None,
+                           time_range: tuple[float, float] | None = None) -> list[dict[str, Any]]:
         """Generate audit trail for decisions"""
-        
+
         # Filter decisions based on criteria
         relevant_decisions = []
-        
+
         for decision_log in self.decision_logs:
             # Agent filter
             if agent_id is not None and decision_log.agent_id != agent_id:
                 continue
-                
+
             # Decision type filter
             if decision_type is not None and decision_log.decision_type != decision_type:
                 continue
-                
+
             # Time range filter
             if time_range is not None:
                 start_time, end_time = time_range
                 if not (start_time <= decision_log.timestamp <= end_time):
                     continue
-                    
+
             relevant_decisions.append(decision_log)
-            
+
         # Generate audit trail entries
         audit_trail = []
-        
+
         for decision_log in relevant_decisions:
             audit_entry = {
                 "timestamp": decision_log.timestamp,
@@ -383,25 +383,25 @@ class ExplainableDecisionLogger:
                 "processing_time": decision_log.processing_duration,
                 "dependencies": decision_log.dependencies
             }
-            
+
             audit_trail.append(audit_entry)
-            
+
         # Sort by timestamp
         audit_trail.sort(key=lambda x: x["timestamp"])
-        
+
         return audit_trail
-        
-    def get_decision_flow_graph(self, decision_id: str) -> Dict[str, Any]:
+
+    def get_decision_flow_graph(self, decision_id: str) -> dict[str, Any]:
         """Generate decision flow graph for visualization"""
         if decision_id not in self.decision_index:
             raise ValueError(f"Decision {decision_id} not found")
-            
+
         decision_log = self.decision_index[decision_id]
-        
+
         # Create nodes for each reasoning step
         nodes = []
         edges = []
-        
+
         for i, trace in enumerate(decision_log.reasoning_chain):
             node = {
                 "id": trace.step_id,
@@ -416,7 +416,7 @@ class ExplainableDecisionLogger:
                 }
             }
             nodes.append(node)
-            
+
             # Create edge to next step
             if i < len(decision_log.reasoning_chain) - 1:
                 edges.append({
@@ -424,7 +424,7 @@ class ExplainableDecisionLogger:
                     "to": decision_log.reasoning_chain[i + 1].step_id,
                     "type": "sequence"
                 })
-                
+
         # Add ethical factors as nodes
         for factor in decision_log.ethical_factors:
             node = {
@@ -440,7 +440,7 @@ class ExplainableDecisionLogger:
                 }
             }
             nodes.append(node)
-            
+
         # Add trust calculations as nodes
         for trust_calc in decision_log.trust_calculations:
             node = {
@@ -456,7 +456,7 @@ class ExplainableDecisionLogger:
                 }
             }
             nodes.append(node)
-            
+
         # Add final decision node
         decision_node = {
             "id": f"decision_{decision_id}",
@@ -470,7 +470,7 @@ class ExplainableDecisionLogger:
             }
         }
         nodes.append(decision_node)
-        
+
         # Connect reasoning chain to final decision
         if decision_log.reasoning_chain:
             edges.append({
@@ -478,7 +478,7 @@ class ExplainableDecisionLogger:
                 "to": f"decision_{decision_id}",
                 "type": "leads_to"
             })
-            
+
         graph = {
             "decision_id": decision_id,
             "nodes": nodes,
@@ -491,38 +491,38 @@ class ExplainableDecisionLogger:
                 "timestamp": decision_log.timestamp
             }
         }
-        
+
         return graph
-        
-    def get_analytics_dashboard(self) -> Dict[str, Any]:
+
+    def get_analytics_dashboard(self) -> dict[str, Any]:
         """Generate analytics dashboard data"""
-        
+
         total_decisions = len(self.decision_logs)
-        
+
         if total_decisions == 0:
             return {"message": "No decisions logged yet"}
-            
+
         # Decision type distribution
         type_distribution = dict(self.decision_statistics)
-        
+
         # Ethics compliance rate
         compliant_decisions = sum(1 for log in self.decision_logs if log.overall_ethics_score >= 0.7)
         ethics_compliance_rate = compliant_decisions / total_decisions
-        
+
         # Average confidence
         avg_confidence = sum(log.confidence for log in self.decision_logs) / total_decisions
-        
+
         # Average processing time
         avg_processing_time = sum(log.processing_duration for log in self.decision_logs) / total_decisions
-        
+
         # Agent activity
         agent_activity = {}
         for agent_id, decision_ids in self.agent_decisions.items():
             agent_activity[agent_id] = len(decision_ids)
-            
+
         # Recent violations
         recent_violations = self.ethics_violations[-10:] if self.ethics_violations else []
-        
+
         dashboard = {
             "summary": {
                 "total_decisions": total_decisions,
@@ -541,29 +541,29 @@ class ExplainableDecisionLogger:
                 for agent_id, evolution in self.trust_evolution.items()
             }
         }
-        
+
         return dashboard
-        
+
     def export_decision_logs(self, format: str = "json") -> str:
         """Export decision logs for external analysis"""
-        
+
         export_data = {
             "export_timestamp": time.time(),
             "total_decisions": len(self.decision_logs),
             "decisions": []
         }
-        
+
         for decision_log in self.decision_logs:
             # Convert to dictionary for serialization
             decision_dict = asdict(decision_log)
-            
+
             # Convert enums to strings
             decision_dict["decision_type"] = decision_log.decision_type.value
             for trace in decision_dict["reasoning_chain"]:
                 trace["step_type"] = trace["step_type"].value if hasattr(trace["step_type"], 'value') else trace["step_type"]
-                
+
             export_data["decisions"].append(decision_dict)
-            
+
         if format == "json":
             return json.dumps(export_data, indent=2, default=str)
         else:

@@ -13,12 +13,12 @@ Features:
 - Safe error handling (does not crash on one dataset).
 """
 
-import sys
 import argparse
-import logging
-from pathlib import Path
 import json
+import logging
+import sys
 import traceback
+from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -35,9 +35,9 @@ except ImportError:
 # --- Import project modules ---
 try:
     from training.scripts.train_new_datasets import (
-        train_dataset,
+        create_synthetic_dataset,
         save_results,
-        create_synthetic_dataset
+        train_dataset,
     )
 except ImportError as e:
     print(Fore.RED + "[ERROR] Could not import the core training components.\n"
@@ -76,7 +76,9 @@ def get_args():
 
 def set_seed(seed):
     try:
-        import random, numpy as np
+        import random
+
+        import numpy as np
         random.seed(seed)
         np.random.seed(seed)
         try:
@@ -120,7 +122,7 @@ def main():
     args = get_args()
 
     # Set logging
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, 
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s [%(levelname)s] %(message)s")
     logger = logging.getLogger(__name__)
 

@@ -7,15 +7,16 @@ capabilities of the Adaptive Neural Network library.
 Run each section independently to explore different features.
 """
 
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import torch
-import numpy as np
 import time
-import json
 from pathlib import Path
+
+import numpy as np
+import torch
 
 print("="*80)
 print("ADAPTIVE NEURAL NETWORK - VIDEO STREAMING AND TEMPORAL MODELS")
@@ -29,10 +30,7 @@ print()
 print("SECTION 1: Model Comparison and Benchmarking")
 print("-" * 50)
 
-from adaptiveneuralnetwork.models.video_models import (
-    create_video_model, 
-    VideoModelConfig
-)
+from adaptiveneuralnetwork.models.video_models import VideoModelConfig, create_video_model
 
 # Configure models
 config = VideoModelConfig(
@@ -46,7 +44,7 @@ config = VideoModelConfig(
     num_classes=1000
 )
 
-print(f"Model Configuration:")
+print("Model Configuration:")
 print(f"  Input size: {config.input_width}x{config.input_height}")
 print(f"  Sequence length: {config.sequence_length}")
 print(f"  Hidden dimension: {config.hidden_dim}")
@@ -55,7 +53,7 @@ print()
 
 # Create test data
 batch_size = 2
-test_data = torch.randn(batch_size, config.sequence_length, 3, 
+test_data = torch.randn(batch_size, config.sequence_length, 3,
                        config.input_height, config.input_width)
 print(f"Test data shape: {test_data.shape}")
 print()
@@ -63,7 +61,7 @@ print()
 # Compare different models
 models_to_compare = {
     'ConvLSTM': 'convlstm',
-    '3D CNN': 'conv3d', 
+    '3D CNN': 'conv3d',
     'Transformer': 'transformer'
 }
 
@@ -71,33 +69,33 @@ results = {}
 
 for model_name, model_type in models_to_compare.items():
     print(f"Testing {model_name}...")
-    
+
     # Create model
     model = create_video_model(model_type, config)
     model.eval()
-    
+
     # Count parameters
     num_params = sum(p.numel() for p in model.parameters())
-    
+
     # Warm up
     with torch.no_grad():
         for _ in range(3):
             _ = model(test_data)
-    
+
     # Benchmark
     start_time = time.time()
     with torch.no_grad():
         output = model(test_data)
     end_time = time.time()
-    
+
     latency_ms = (end_time - start_time) * 1000
-    
+
     results[model_name] = {
         'parameters': num_params,
         'latency_ms': latency_ms,
         'output_shape': list(output.shape)
     }
-    
+
     print(f"  Parameters: {num_params:,}")
     print(f"  Latency: {latency_ms:.2f}ms")
     print(f"  Output shape: {output.shape}")
@@ -136,7 +134,7 @@ for mode in fusion_modes:
     with torch.no_grad():
         output = hybrid_model(test_data, fusion_mode=mode)
     end_time = time.time()
-    
+
     latency_ms = (end_time - start_time) * 1000
     print(f"  {mode.capitalize():<10}: {latency_ms:.2f}ms, shape: {output.shape}")
 
@@ -160,11 +158,11 @@ print("-" * 50)
 def create_synthetic_video_sequence(num_frames=16, height=224, width=224):
     """Create a synthetic video sequence with some temporal structure."""
     frames = []
-    
+
     # Create a moving pattern
     for t in range(num_frames):
         frame = np.zeros((height, width, 3), dtype=np.float32)
-        
+
         # Moving diagonal pattern
         offset = int(t * 10) % min(height, width)
         for i in range(min(height, width)):
@@ -172,13 +170,13 @@ def create_synthetic_video_sequence(num_frames=16, height=224, width=224):
             x = i
             if x < width:
                 frame[y, x, :] = [0.8, 0.6, 0.4]  # Orange-ish color
-        
+
         # Add some noise
         frame += np.random.normal(0, 0.1, frame.shape)
         frame = np.clip(frame, 0, 1)
-        
+
         frames.append(frame)
-    
+
     return np.stack(frames, axis=0)  # Shape: (T, H, W, C)
 
 # Create synthetic video
@@ -201,14 +199,14 @@ print("Processing synthetic video with different models:")
 for model_name, model_type in models_to_compare.items():
     model = create_video_model(model_type, config)
     model.eval()
-    
+
     with torch.no_grad():
         output = model(video_tensor)
         probs = torch.softmax(output[0], dim=0)
         top_values, top_indices = torch.topk(probs, 3)
-        
+
         print(f"{model_name}:")
-        for i, (idx, prob) in enumerate(zip(top_indices, top_values)):
+        for i, (idx, prob) in enumerate(zip(top_indices, top_values, strict=False)):
             print(f"  {i+1}. Class {idx.item()}: {prob.item():.4f}")
         print()
 
@@ -243,18 +241,18 @@ for width, height, seq_len in input_configurations:
     test_config.input_width = width
     test_config.input_height = height
     test_config.sequence_length = seq_len
-    
+
     model = create_video_model('convlstm', test_config)
     model.eval()
-    
+
     # Create test input
     test_input = torch.randn(1, seq_len, 3, height, width)
-    
+
     # Warm up
     with torch.no_grad():
         for _ in range(3):
             _ = model(test_input)
-    
+
     # Measure
     times = []
     for _ in range(10):
@@ -263,10 +261,10 @@ for width, height, seq_len in input_configurations:
             _ = model(test_input)
         end_time = time.time()
         times.append((end_time - start_time) * 1000)
-    
+
     avg_latency = np.mean(times)
     std_latency = np.std(times)
-    
+
     print(f"{width:3d}x{height:3d} @ {seq_len:2d} frames -> {avg_latency:6.2f} ± {std_latency:5.2f}ms")
 
 print()
@@ -333,7 +331,7 @@ model_for_export = create_video_model('transformer', export_config)  # Transform
 model_for_export.eval()
 
 print("Model ready for deployment:")
-print(f"  Architecture: Video Transformer")
+print("  Architecture: Video Transformer")
 print(f"  Parameters: {sum(p.numel() for p in model_for_export.parameters()):,}")
 print(f"  Input shape: (batch_size, {export_config.sequence_length}, 3, {export_config.input_height}, {export_config.input_width})")
 print(f"  Output shape: (batch_size, {export_config.num_classes})")

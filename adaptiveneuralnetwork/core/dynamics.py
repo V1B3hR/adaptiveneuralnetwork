@@ -47,14 +47,14 @@ class AdaptiveDynamics(nn.Module):
         """
         # Fuse operations: compute energy_stress, activity_stress, and variance in one pass
         hidden_variance = node_state.hidden_state.var(dim=-1, keepdim=True)
-        
+
         # Fused: clamp + add + mul in single expression
         anxiety = (
             torch.clamp(5.0 - node_state.energy, min=0.0) +
             node_state.activity * 2.0 +
             hidden_variance
         )
-        
+
         return anxiety
 
     def _apply_phase_dependent_scaling(self, hidden_delta: torch.Tensor, phases: torch.Tensor) -> torch.Tensor:
@@ -93,7 +93,7 @@ class AdaptiveDynamics(nn.Module):
         return external_input
 
     def _update_hidden_state(
-        self, node_state: NodeState, hidden_delta: torch.Tensor, 
+        self, node_state: NodeState, hidden_delta: torch.Tensor,
         input_proj: torch.Tensor, active_mask: torch.Tensor
     ) -> None:
         """
@@ -127,11 +127,11 @@ class AdaptiveDynamics(nn.Module):
         """
         # Compute energy delta and apply anxiety in one fused operation
         energy_delta = self.energy_update(node_state.hidden_state)
-        
+
         # Fused: anxiety_factor calculation and energy_delta scaling
         anxiety_factor = 1.0 - 0.1 * torch.clamp(anxiety_levels / 10.0, 0.0, 1.0)
         energy_delta_scaled = energy_delta * anxiety_factor * active_mask
-        
+
         node_state.update_energy(energy_delta_scaled)
 
     def _update_activity_levels(self, node_state: NodeState, external_input: torch.Tensor) -> None:
@@ -151,16 +151,16 @@ class AdaptiveDynamics(nn.Module):
             if external_input.numel() > 0
             else torch.zeros_like(node_state.energy)
         )
-        
+
         # Concatenate and process in one pass (avoid redundant reshape)
         activity_input = torch.cat([hidden_mean, external_mean], dim=-1)
-        
+
         batch_size, num_nodes, input_dim = activity_input.shape
         # Use reshape instead of view for guaranteed contiguous output
         activity_input_flat = activity_input.reshape(-1, input_dim)
         activity_delta_flat = self.activity_update(activity_input_flat)
         activity_delta = activity_delta_flat.reshape(batch_size, num_nodes, -1)
-        
+
         # Apply sigmoid and clamp in one operation
         node_state.activity = torch.sigmoid(activity_delta)
         node_state.clamp_activity()

@@ -12,7 +12,6 @@ If you don't have the dataset, it will use synthetic data for demonstration.
 """
 
 import argparse
-import logging
 import sys
 from pathlib import Path
 
@@ -20,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from run_essay_benchmark import main as run_benchmark
+
 from adaptiveneuralnetwork.data import print_dataset_info
 
 
@@ -28,7 +28,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Train Adaptive Neural Network on Mental Health FAQs Dataset"
     )
-    
+
     parser.add_argument(
         "--data-path",
         type=str,
@@ -42,7 +42,7 @@ def main():
     )
     parser.add_argument(
         "--epochs",
-        type=int, 
+        type=int,
         default=100,
         help="Number of training epochs (default: 100)"
     )
@@ -86,15 +86,15 @@ def main():
         action="store_true",
         help="Enable verbose logging"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Print dataset information
     print("=" * 60)
     print("MENTAL HEALTH FAQs DATASET TRAINING")
     print("=" * 60)
     print_dataset_info()
-    
+
     if not args.data_path:
         print("\nWARNING: No dataset path provided.")
         print("Using synthetic data for demonstration.")
@@ -102,7 +102,7 @@ def main():
         print("1. Download from: https://www.kaggle.com/datasets/ragishehab/mental-healthfaqs")
         print("2. Run: python train_mental_health.py --data-path /path/to/dataset")
         print()
-    
+
     # Construct arguments for the main benchmark script
     benchmark_args = [
         "--dataset-type", "mental_health",
@@ -113,20 +113,20 @@ def main():
         "--num-nodes", str(args.num_nodes),
         "--device", args.device
     ]
-    
+
     if args.data_path:
         benchmark_args.extend(["--data-path", args.data_path])
     else:
         benchmark_args.append("--synthetic")
         benchmark_args.extend(["--samples", str(args.samples)])
-    
+
     if args.verbose:
         benchmark_args.append("--verbose")
-    
+
     # Override sys.argv to pass arguments to the benchmark script
     original_argv = sys.argv
     sys.argv = ["run_essay_benchmark.py"] + benchmark_args
-    
+
     try:
         run_benchmark()
     finally:

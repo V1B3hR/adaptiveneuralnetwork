@@ -13,12 +13,7 @@ This script demonstrates the complete implementation of Phase 5:
 - Community contribution system
 """
 
-import asyncio
 import tempfile
-from pathlib import Path
-import json
-import time
-import numpy as np
 
 print("🚀 Adaptive Neural Network Phase 5: Production & Scaling Demo")
 print("=" * 70)
@@ -28,7 +23,9 @@ print("\n1. ☁️ Kubernetes Deployment")
 print("-" * 40)
 
 from adaptiveneuralnetwork.production.deployment import (
-    KubernetesDeployment, AutoScaler, DeploymentConfig
+    AutoScaler,
+    DeploymentConfig,
+    KubernetesDeployment,
 )
 
 # Create deployment configuration
@@ -72,7 +69,7 @@ print(f"✓ Scaling recommendation: {scaling_recommendation} replicas")
 print("\n2. 🚀 Model Serving Infrastructure")
 print("-" * 40)
 
-from adaptiveneuralnetwork.production.serving import ServingConfig, ModelServer
+from adaptiveneuralnetwork.production.serving import ModelServer, ServingConfig
 
 # Create serving configuration
 serving_config = ServingConfig(
@@ -100,9 +97,7 @@ print("✓ Model server ready for predictions")
 print("\n3. 💾 Database Integration")
 print("-" * 40)
 
-from adaptiveneuralnetwork.production.database import (
-    DatabaseConfig, HybridDatabaseManager
-)
+from adaptiveneuralnetwork.production.database import DatabaseConfig, HybridDatabaseManager
 
 # Create database configuration
 db_config = DatabaseConfig(
@@ -115,7 +110,7 @@ db_config = DatabaseConfig(
 try:
     db_manager = HybridDatabaseManager(db_config)
     print("✓ Database manager initialized with SQL support")
-    
+
     # Mock prediction data storage
     prediction_data = {
         "model_name": "adaptive_nn_v1",
@@ -126,9 +121,9 @@ try:
         "user_id": "demo_user",
         "metadata": {"demo": True}
     }
-    
+
     print("✓ Database ready for prediction storage")
-    
+
 except Exception as e:
     print(f"⚠️  Database initialization failed: {e}")
     print("   This is expected in demo without full database setup")
@@ -138,7 +133,9 @@ print("\n4. 📨 Message Queue Integration")
 print("-" * 40)
 
 from adaptiveneuralnetwork.production.messaging import (
-    MessagingConfig, PredictionMessage, MetricsMessage
+    MessagingConfig,
+    MetricsMessage,
+    PredictionMessage,
 )
 
 # Create messaging configuration
@@ -169,9 +166,7 @@ print(f"  • Metrics message: {metrics_msg['type']}")
 print("\n5. 🔐 Authentication & Authorization")
 print("-" * 40)
 
-from adaptiveneuralnetwork.production.auth import (
-    AuthConfig, MultiAuthManager, User
-)
+from adaptiveneuralnetwork.production.auth import AuthConfig, MultiAuthManager
 
 # Create auth configuration
 auth_config = AuthConfig(
@@ -214,10 +209,13 @@ print(f"✓ Password authentication: {'Success' if auth_result else 'Failed'}")
 print("\n6. 🔌 Plugin Architecture")
 print("-" * 40)
 
-from adaptiveneuralnetwork.ecosystem.plugins import (
-    PluginManager, PluginRegistry, ExampleEnhancementPlugin, ExampleMetricsPlugin
-)
 from adaptiveneuralnetwork.api.config import AdaptiveConfig
+from adaptiveneuralnetwork.ecosystem.plugins import (
+    ExampleEnhancementPlugin,
+    ExampleMetricsPlugin,
+    PluginManager,
+    PluginRegistry,
+)
 
 # Create plugin registry and manager
 config = AdaptiveConfig()
@@ -270,10 +268,8 @@ print("✓ Batch predictor created for efficient processing")
 print("\n8. 🔗 Framework Integrations")
 print("-" * 40)
 
-from adaptiveneuralnetwork.ecosystem.integrations import (
-    PyTorchIntegration, TensorFlowIntegration
-)
 from adaptiveneuralnetwork.api.model import AdaptiveModel
+from adaptiveneuralnetwork.ecosystem.integrations import PyTorchIntegration, TensorFlowIntegration
 
 # Create sample model
 model = AdaptiveModel(config)
@@ -312,29 +308,27 @@ except ImportError:
 print("\n9. 👥 Community Contribution System")
 print("-" * 40)
 
-from adaptiveneuralnetwork.ecosystem.contrib import (
-    ContributionManager, ContributionType, ContributionStatus
-)
+from adaptiveneuralnetwork.ecosystem.contrib import ContributionManager, ContributionType
 
 # Initialize contribution manager
 with tempfile.TemporaryDirectory() as temp_dir:
     contrib_manager = ContributionManager(temp_dir)
-    
+
     # Register contributors
     contributor1_id = contrib_manager.register_contributor(
         name="Alice Developer",
         email="alice@example.com",
         github_username="alice_dev"
     )
-    
+
     contributor2_id = contrib_manager.register_contributor(
-        name="Bob Researcher", 
+        name="Bob Researcher",
         email="bob@example.com",
         affiliation="AI Research Lab"
     )
-    
+
     print(f"✓ Registered contributors: {len(contrib_manager.contributors)}")
-    
+
     # Submit contributions
     plugin_contribution_id = contrib_manager.submit_contribution(
         title="Advanced Attention Plugin",
@@ -345,7 +339,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         tags=["attention", "transformer", "enhancement"],
         dependencies=["torch>=1.9.0", "numpy>=1.20.0"]
     )
-    
+
     model_contribution_id = contrib_manager.submit_contribution(
         title="Optimized CNN Architecture",
         description="A convolutional neural network architecture optimized for edge deployment",
@@ -359,16 +353,16 @@ with tempfile.TemporaryDirectory() as temp_dir:
             "performance_metrics": {"accuracy": 0.94, "latency_ms": 15.2}
         }
     )
-    
+
     print(f"✓ Submitted contributions: {len(contrib_manager.contributions)}")
-    
+
     # Validate contributions
     plugin_validation = contrib_manager.validate_contribution(plugin_contribution_id)
     model_validation = contrib_manager.validate_contribution(model_contribution_id)
-    
+
     print(f"✓ Plugin validation score: {plugin_validation['score']:.1f}/100")
     print(f"✓ Model validation score: {model_validation['score']:.1f}/100")
-    
+
     # Review contributions
     contrib_manager.review_contribution(
         plugin_contribution_id,
@@ -376,23 +370,23 @@ with tempfile.TemporaryDirectory() as temp_dir:
         approved=True,
         comments="Excellent implementation with good documentation"
     )
-    
+
     contrib_manager.review_contribution(
         model_contribution_id,
-        reviewer_id="admin", 
+        reviewer_id="admin",
         approved=True,
         comments="Great optimization work, performance metrics are impressive"
     )
-    
+
     # Get statistics
     stats = contrib_manager.get_contribution_stats()
-    print(f"✓ Community stats:")
+    print("✓ Community stats:")
     print(f"  • Total contributions: {stats['total_contributions']}")
     print(f"  • Total contributors: {stats['total_contributors']}")
     print(f"  • Status distribution: {stats['status_distribution']}")
 
 # 10. Production Deployment Example
-print("\n10. 🏭 Production Deployment Example")  
+print("\n10. 🏭 Production Deployment Example")
 print("-" * 40)
 
 # Create production configuration
