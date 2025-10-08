@@ -6,6 +6,30 @@
 
 **New to Adaptive Neural Network?** Get started in 5 minutes with our [Quick Start Guide](QUICKSTART.md)!
 
+### Unified Training Interface (NEW)
+
+We now provide a consolidated, configuration-driven training interface:
+
+```bash
+# Train with configuration file
+python train.py --config config/training/mnist.yaml
+
+# Train with dataset name and custom parameters
+python train.py --dataset mnist --epochs 20 --batch-size 128
+
+# List available datasets
+python train.py --list-datasets
+
+# Evaluate a trained model
+python eval.py --checkpoint checkpoints/model.pt --dataset mnist
+```
+
+**Available datasets:** mnist, cifar10, annomi, mental_health, vr_driving, autvi, digakust, and more.
+
+📖 **[Read the Script Consolidation Guide](docs/SCRIPT_CONSOLIDATION.md)** for complete documentation.
+
+### Legacy Training Interface
+
 ```bash
 # Install with NLP support
 pip install 'adaptiveneuralnetwork[nlp]'
@@ -18,6 +42,8 @@ python -m adaptiveneuralnetwork.training.scripts.run_bitext_training --mode benc
 ```
 
 **Key Features:**
+- ✅ Configuration-driven workflows (YAML/JSON)
+- ✅ Unified CLI for all datasets
 - ✅ Run smoke tests for quick validation
 - ✅ Run benchmarks for full evaluation
 - ✅ Use local CSV files or Kaggle datasets
