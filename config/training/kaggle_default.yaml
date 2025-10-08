@@ -1,0 +1,63 @@
+# Training Configuration for Kaggle Datasets (ANNOMI, etc.)
+# This configuration is designed for text/NLP datasets
+
+dataset:
+  name: "annomi"
+  data_path: "data/annomi"  # Path to dataset
+  batch_size: 32
+  num_workers: 2
+  shuffle: true
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  seed: 42
+  augmentation: false
+  augmentation_params: {}
+
+model:
+  name: "adaptive"
+  input_dim: 512  # Embedding dimension
+  hidden_dim: 256
+  output_dim: 2  # Binary classification
+  num_nodes: 128
+  dropout: 0.2
+  activation: "relu"
+  model_params:
+    use_attention: true
+    num_layers: 3
+
+optimizer:
+  name: "adam"
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  momentum: 0.9
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+  scheduler: "step"
+  scheduler_params:
+    step_size: 5
+    gamma: 0.5
+
+training:
+  epochs: 20
+  max_steps: null
+  gradient_accumulation_steps: 2
+  max_grad_norm: 1.0
+  use_amp: true
+  checkpoint_dir: "checkpoints/kaggle"
+  save_every_n_epochs: 2
+  keep_last_n_checkpoints: 3
+  log_every_n_steps: 20
+  log_dir: "logs/kaggle"
+  verbose: true
+  device: "cuda"
+  seed: 42
+  early_stopping: true
+  early_stopping_patience: 5
+  early_stopping_metric: "val_accuracy"
+
+evaluation:
+  metrics: ["accuracy", "loss", "precision", "recall", "f1"]
+  batch_size: 64
+  save_predictions: true
+  output_dir: "outputs/kaggle"

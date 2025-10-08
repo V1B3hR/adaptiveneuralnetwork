@@ -159,3 +159,10 @@ examples/outputs/
 # AliveNode training results
 *training_results.json
 alive_node_training*.json
+
+# Training artifacts
+checkpoints/
+logs/
+*.pt
+*.pth
+*.ckpt
