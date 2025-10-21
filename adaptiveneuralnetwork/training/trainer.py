@@ -1,35 +1,36 @@
 """
-Trainer class for training neural networks with callbacks and advanced features.
+Enhanced Trainer class for advanced neural network training with extensibility, monitoring, and robust features.
 
-This module provides a flexible Trainer class that supports:
-- Callback system for extensibility
-- Automatic Mixed Precision (AMP) training
-- Gradient accumulation
-- Deterministic seed initialization
-- Checkpoint saving and loading
+Key Features:
+- Extensible callback system for custom training hooks
+- Automatic Mixed Precision (AMP) training with device auto-detection
+- Gradient accumulation for effective large-batch training
+- Deterministic seed initialization for reproducibility
+- Checkpoint saving/loading for resuming training
+- Progress bar support via tqdm (optional)
+- Early stopping and learning rate scheduling support via callbacks
+- Custom metrics extensibility
 """
 
 import random
-from typing import Any
+from typing import Any, Callable, Optional
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = lambda x, *args, **kwargs: x  # fallback to no progress bar
+
 from .callbacks import Callback, CallbackList
 
 
 class Trainer:
     """
-    Trainer class for training neural networks with advanced features.
-    
-    Features:
-    - Callback system for extensible training logic
-    - Automatic Mixed Precision (AMP) support
-    - Gradient accumulation for larger effective batch sizes
-    - Deterministic seed initialization
-    - Checkpoint saving and loading
+    Enhanced Trainer for neural network training with advanced features and extensibility.
     """
 
     def __init__(
@@ -37,16 +38,18 @@ class Trainer:
         model: nn.Module,
         optimizer: torch.optim.Optimizer,
         criterion: nn.Module,
-        device: torch.device | None = None,
-        callbacks: list[Callback] | None = None,
+        device: Optional[torch.device] = None,
+        callbacks: Optional[list[Callback]] = None,
         use_amp: bool = False,
         gradient_accumulation_steps: int = 1,
-        max_grad_norm: float | None = None,
-        seed: int | None = None,
+        max_grad_norm: Optional[float] = None,
+        seed: Optional[int] = None,
+        metrics: Optional[dict[str, Callable]] = None,
+        progress_bar: bool = True,
     ):
         """
         Initialize the Trainer.
-        
+
         Args:
             model: Neural network model to train
             optimizer: Optimizer for updating model parameters
@@ -57,14 +60,17 @@ class Trainer:
             gradient_accumulation_steps: Number of steps to accumulate gradients
             max_grad_norm: Maximum gradient norm for clipping (None to disable)
             seed: Random seed for reproducibility (None to disable)
+            metrics: Custom metrics functions {'name': fn(outputs, targets) -> float}
+            progress_bar: Show tqdm progress bar during training/validation
         """
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
-        self.device = device or torch.device('cpu')
+        self.device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.use_amp = use_amp
         self.gradient_accumulation_steps = gradient_accumulation_steps
         self.max_grad_norm = max_grad_norm
+        self.progress_bar = progress_bar
 
         # Move model to device
         self.model.to(self.device)
@@ -72,17 +78,15 @@ class Trainer:
         # Initialize callbacks
         self.callbacks = CallbackList(callbacks)
 
-        # Initialize AMP scaler if needed
+        # AMP scaler initialization
         self.scaler = None
         if self.use_amp:
-            # Create scaler for AMP
-            # Try new API first (torch.amp), fall back to old API for compatibility
             try:
-                # New API (PyTorch >= 2.0)
+                # PyTorch >= 2.0
                 device_type = 'cuda' if torch.cuda.is_available() else 'cpu'
                 self.scaler = torch.amp.GradScaler(device_type)
             except AttributeError:
-                # Old API fallback
+                # PyTorch < 2.0 fallback
                 self.scaler = torch.cuda.amp.GradScaler()
 
         # Set random seed for reproducibility
@@ -94,6 +98,9 @@ class Trainer:
         self.current_epoch = 0
         self.metrics_history = []
 
+        # Custom metrics
+        self.metrics = metrics or {}
+
     def _set_seed(self, seed: int) -> None:
         """Set random seed for reproducibility."""
         random.seed(seed)
@@ -102,7 +109,6 @@ class Trainer:
         if torch.cuda.is_available():
             torch.cuda.manual_seed(seed)
             torch.cuda.manual_seed_all(seed)
-            # Ensure deterministic behavior
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
 
@@ -110,29 +116,34 @@ class Trainer:
         self,
         train_loader: DataLoader,
         num_epochs: int,
-        val_loader: DataLoader | None = None,
+        val_loader: Optional[DataLoader] = None,
+        scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
+        early_stopping: Optional[Callback] = None,
     ) -> list[dict[str, Any]]:
         """
         Train the model for a specified number of epochs.
-        
+
         Args:
             train_loader: DataLoader for training data
             num_epochs: Number of epochs to train
             val_loader: Optional DataLoader for validation data
-        
+            scheduler: Optional LR scheduler
+            early_stopping: Optional early stopping callback
+
         Returns:
             List of metrics dictionaries, one per epoch
         """
         self.num_epochs = num_epochs
         self.metrics_history = []
 
+        if early_stopping is not None:
+            self.callbacks.append(early_stopping)
+
         # Call on_train_begin callbacks
         self.callbacks.on_train_begin(self)
 
         for epoch in range(num_epochs):
             self.current_epoch = epoch
-
-            # Call on_epoch_begin callbacks
             self.callbacks.on_epoch_begin(epoch, self)
 
             # Train for one epoch
@@ -147,22 +158,35 @@ class Trainer:
             epoch_metrics = {**train_metrics, **val_metrics}
             self.metrics_history.append(epoch_metrics)
 
-            # Call on_epoch_end callbacks
+            # Scheduler step
+            if scheduler is not None:
+                if val_loader is not None and hasattr(scheduler, "step"):
+                    # For ReduceLROnPlateau, pass val_loss
+                    if "val_loss" in val_metrics:
+                        scheduler.step(val_metrics["val_loss"])
+                    else:
+                        scheduler.step()
+                else:
+                    scheduler.step()
+
             self.callbacks.on_epoch_end(epoch, self, logs=epoch_metrics)
 
-        # Call on_train_end callbacks
-        self.callbacks.on_train_end(self)
+            # Early stopping check
+            if early_stopping is not None and getattr(early_stopping, "stop_training", False):
+                print(f"Early stopping at epoch {epoch + 1}")
+                break
 
+        self.callbacks.on_train_end(self)
         return self.metrics_history
 
     def _train_epoch(self, train_loader: DataLoader, epoch: int) -> dict[str, float]:
         """
         Train for one epoch.
-        
+
         Args:
             train_loader: DataLoader for training data
             epoch: Current epoch number
-        
+
         Returns:
             Dictionary of training metrics
         """
@@ -171,19 +195,18 @@ class Trainer:
         total_loss = 0.0
         correct = 0
         total = 0
+        metric_sums = {name: 0.0 for name in self.metrics}
 
-        for batch_idx, (data, target) in enumerate(train_loader):
-            # Move data to device
+        batch_iter = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Train Epoch {epoch+1}") if self.progress_bar else enumerate(train_loader)
+        for batch_idx, (data, target) in batch_iter:
             data = data.to(self.device)
             target = target.to(self.device)
 
-            # Call on_batch_begin callbacks
             batch_logs = {'batch_size': data.size(0)}
             self.callbacks.on_batch_begin(batch_idx, self, logs=batch_logs)
 
-            # Forward pass with optional AMP
+            # Forward pass with AMP
             if self.use_amp and self.scaler is not None:
-                # Try new API first, fall back to old API
                 try:
                     device_type = 'cuda' if torch.cuda.is_available() else 'cpu'
                     with torch.amp.autocast(device_type):
@@ -191,7 +214,6 @@ class Trainer:
                         loss = self.criterion(output, target)
                         loss = loss / self.gradient_accumulation_steps
                 except AttributeError:
-                    # Old API fallback
                     with torch.cuda.amp.autocast():
                         output = self.model(data)
                         loss = self.criterion(output, target)
@@ -207,12 +229,10 @@ class Trainer:
             else:
                 loss.backward()
 
-            # Call on_backward_end callbacks
             self.callbacks.on_backward_end(batch_idx, self, logs=batch_logs)
 
             # Update weights after accumulating gradients
-            if (batch_idx + 1) % self.gradient_accumulation_steps == 0:
-                # Gradient clipping
+            if (batch_idx + 1) % self.gradient_accumulation_steps == 0 or (batch_idx + 1) == len(train_loader):
                 if self.max_grad_norm is not None:
                     if self.use_amp and self.scaler is not None:
                         self.scaler.unscale_(self.optimizer)
@@ -220,14 +240,12 @@ class Trainer:
                         self.model.parameters(), self.max_grad_norm
                     )
 
-                # Optimizer step
                 if self.use_amp and self.scaler is not None:
                     self.scaler.step(self.optimizer)
                     self.scaler.update()
                 else:
                     self.optimizer.step()
 
-                # Zero gradients
                 self.optimizer.zero_grad()
 
             # Track metrics
@@ -236,67 +254,75 @@ class Trainer:
             correct += pred.eq(target.view_as(pred)).sum().item()
             total += target.size(0)
 
-            # Update batch logs
+            # Custom metrics
+            for name, fn in self.metrics.items():
+                metric_sums[name] += fn(output, target)
+
             batch_logs['loss'] = loss.item() * self.gradient_accumulation_steps
             batch_logs['accuracy'] = correct / total if total > 0 else 0.0
+            for name, fn in self.metrics.items():
+                batch_logs[name] = fn(output, target)
 
-            # Call on_batch_end callbacks
             self.callbacks.on_batch_end(batch_idx, self, logs=batch_logs)
 
-        return {
+        metrics_dict = {
             'train_loss': total_loss / len(train_loader),
             'train_accuracy': correct / total if total > 0 else 0.0,
         }
+        for name in self.metrics:
+            metrics_dict[f'train_{name}'] = metric_sums[name] / len(train_loader)
+
+        return metrics_dict
 
     def evaluate(self, val_loader: DataLoader) -> dict[str, float]:
         """
         Evaluate the model on validation data.
-        
+
         Args:
             val_loader: DataLoader for validation data
-        
+
         Returns:
             Dictionary of validation metrics
         """
         self.model.eval()
-
-        # Call on_evaluate_begin callbacks
         self.callbacks.on_evaluate_begin(self)
 
         total_loss = 0.0
         correct = 0
         total = 0
+        metric_sums = {name: 0.0 for name in self.metrics}
 
         with torch.no_grad():
-            for data, target in val_loader:
-                # Move data to device
+            batch_iter = tqdm(val_loader, desc="Validating") if self.progress_bar else val_loader
+            for data, target in batch_iter:
                 data = data.to(self.device)
                 target = target.to(self.device)
 
-                # Forward pass
                 output = self.model(data)
                 loss = self.criterion(output, target)
 
-                # Track metrics
                 total_loss += loss.item()
                 pred = output.argmax(dim=1, keepdim=True)
                 correct += pred.eq(target.view_as(pred)).sum().item()
                 total += target.size(0)
 
+                for name, fn in self.metrics.items():
+                    metric_sums[name] += fn(output, target)
+
         val_metrics = {
             'val_loss': total_loss / len(val_loader),
             'val_accuracy': correct / total if total > 0 else 0.0,
         }
+        for name in self.metrics:
+            val_metrics[f'val_{name}'] = metric_sums[name] / len(val_loader)
 
-        # Call on_evaluate_end callbacks
         self.callbacks.on_evaluate_end(self, logs=val_metrics)
-
         return val_metrics
 
     def save_checkpoint(self, path: str) -> None:
         """
         Save a checkpoint of the current training state.
-        
+
         Args:
             path: Path to save the checkpoint
         """
@@ -306,30 +332,26 @@ class Trainer:
             'optimizer_state_dict': self.optimizer.state_dict(),
             'metrics_history': self.metrics_history,
         }
-
         if self.scaler is not None:
             checkpoint['scaler_state_dict'] = self.scaler.state_dict()
-
         torch.save(checkpoint, path)
 
-    def load_checkpoint(self, path: str) -> dict[str, Any]:
+    def load_checkpoint(self, path: str, strict: bool = True) -> dict[str, Any]:
         """
         Load a checkpoint and restore training state.
-        
+
         Args:
             path: Path to the checkpoint file
-        
+            strict: Strictly enforce that the keys in state_dict match the model
+
         Returns:
             Dictionary containing checkpoint data
         """
         checkpoint = torch.load(path, map_location=self.device)
-
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.model.load_state_dict(checkpoint['model_state_dict'], strict=strict)
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.current_epoch = checkpoint.get('epoch', 0)
         self.metrics_history = checkpoint.get('metrics_history', [])
-
         if 'scaler_state_dict' in checkpoint and self.scaler is not None:
             self.scaler.load_state_dict(checkpoint['scaler_state_dict'])
-
         return checkpoint
