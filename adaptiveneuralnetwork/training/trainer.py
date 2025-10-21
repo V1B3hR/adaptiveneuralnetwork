@@ -13,7 +13,8 @@ Key Features:
 """
 
 import random
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import torch
@@ -25,7 +26,15 @@ try:
 except ImportError:
     tqdm = lambda x, *args, **kwargs: x  # fallback to no progress bar
 
-from .callbacks import Callback, CallbackList
+# Handle relative imports for both module use and direct execution
+if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    # Add parent directory to path to enable imports when run as script
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+    from adaptiveneuralnetwork.training.callbacks import Callback, CallbackList
+else:
+    from .callbacks import Callback, CallbackList
 
 
 class Trainer:
@@ -38,13 +47,13 @@ class Trainer:
         model: nn.Module,
         optimizer: torch.optim.Optimizer,
         criterion: nn.Module,
-        device: Optional[torch.device] = None,
-        callbacks: Optional[list[Callback]] = None,
+        device: torch.device | None = None,
+        callbacks: list[Callback] | None = None,
         use_amp: bool = False,
         gradient_accumulation_steps: int = 1,
-        max_grad_norm: Optional[float] = None,
-        seed: Optional[int] = None,
-        metrics: Optional[dict[str, Callable]] = None,
+        max_grad_norm: float | None = None,
+        seed: int | None = None,
+        metrics: dict[str, Callable] | None = None,
         progress_bar: bool = True,
     ):
         """
@@ -116,9 +125,9 @@ class Trainer:
         self,
         train_loader: DataLoader,
         num_epochs: int,
-        val_loader: Optional[DataLoader] = None,
-        scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
-        early_stopping: Optional[Callback] = None,
+        val_loader: DataLoader | None = None,
+        scheduler: torch.optim.lr_scheduler._LRScheduler | None = None,
+        early_stopping: Callback | None = None,
     ) -> list[dict[str, Any]]:
         """
         Train the model for a specified number of epochs.
@@ -195,7 +204,7 @@ class Trainer:
         total_loss = 0.0
         correct = 0
         total = 0
-        metric_sums = {name: 0.0 for name in self.metrics}
+        metric_sums = dict.fromkeys(self.metrics, 0.0)
 
         batch_iter = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Train Epoch {epoch+1}") if self.progress_bar else enumerate(train_loader)
         for batch_idx, (data, target) in batch_iter:
@@ -290,7 +299,7 @@ class Trainer:
         total_loss = 0.0
         correct = 0
         total = 0
-        metric_sums = {name: 0.0 for name in self.metrics}
+        metric_sums = dict.fromkeys(self.metrics, 0.0)
 
         with torch.no_grad():
             batch_iter = tqdm(val_loader, desc="Validating") if self.progress_bar else val_loader
@@ -355,3 +364,98 @@ class Trainer:
         if 'scaler_state_dict' in checkpoint and self.scaler is not None:
             self.scaler.load_state_dict(checkpoint['scaler_state_dict'])
         return checkpoint
+
+
+if __name__ == "__main__":
+    """
+    Demonstration of the Trainer class usage.
+    This simple example shows how to train a basic neural network using the Trainer.
+    """
+    import torch.optim as optim
+    from torch.utils.data import DataLoader, TensorDataset
+
+    from adaptiveneuralnetwork.training.callbacks import LoggingCallback
+
+    print("=" * 70)
+    print("Trainer Demo: Simple Neural Network Training")
+    print("=" * 70)
+
+    # Create a simple model
+    class SimpleClassifier(nn.Module):
+        """Simple feedforward classifier for demonstration."""
+        def __init__(self, input_dim=784, hidden_dim=128, output_dim=10):
+            super().__init__()
+            self.network = nn.Sequential(
+                nn.Linear(input_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Dropout(0.2),
+                nn.Linear(hidden_dim, output_dim)
+            )
+
+        def forward(self, x):
+            return self.network(x)
+
+    # Create dummy dataset
+    print("\n1. Creating dummy dataset...")
+    num_samples = 500
+    input_dim = 784
+    num_classes = 10
+    batch_size = 32
+
+    X_train = torch.randn(num_samples, input_dim)
+    y_train = torch.randint(0, num_classes, (num_samples,))
+    train_dataset = TensorDataset(X_train, y_train)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+    X_val = torch.randn(num_samples // 5, input_dim)
+    y_val = torch.randint(0, num_classes, (num_samples // 5,))
+    val_dataset = TensorDataset(X_val, y_val)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    print(f"   - Training samples: {num_samples}")
+    print(f"   - Validation samples: {num_samples // 5}")
+    print(f"   - Batch size: {batch_size}")
+
+    # Create model, optimizer, and loss
+    print("\n2. Initializing model and trainer...")
+    model = SimpleClassifier(input_dim=input_dim, hidden_dim=128, output_dim=num_classes)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    criterion = nn.CrossEntropyLoss()
+
+    # Create trainer with logging
+    trainer = Trainer(
+        model=model,
+        optimizer=optimizer,
+        criterion=criterion,
+        callbacks=[LoggingCallback(log_interval=5, verbose=True)],
+        seed=42,  # For reproducibility
+        progress_bar=True,
+    )
+
+    print(f"   - Device: {trainer.device}")
+    print("   - Seed: 42")
+
+    # Train the model
+    print("\n3. Training model...")
+    num_epochs = 3
+    metrics_history = trainer.fit(
+        train_loader=train_loader,
+        num_epochs=num_epochs,
+        val_loader=val_loader,
+    )
+
+    # Display results
+    print("\n" + "=" * 70)
+    print("Training Results")
+    print("=" * 70)
+    for epoch, metrics in enumerate(metrics_history):
+        print(f"Epoch {epoch + 1}/{num_epochs}:")
+        print(f"  Train Loss: {metrics['train_loss']:.4f}, Train Acc: {metrics['train_accuracy']:.2%}")
+        print(f"  Val Loss:   {metrics['val_loss']:.4f}, Val Acc:   {metrics['val_accuracy']:.2%}")
+
+    print("\n" + "=" * 70)
+    print("Demo completed successfully! ✓")
+    print("=" * 70)
+    print("\nFor more advanced examples, see:")
+    print("  - examples/phase4_trainer_examples.py")
+    print("  - tests/test_trainer_callbacks.py")
