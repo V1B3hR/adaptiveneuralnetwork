@@ -2,7 +2,8 @@
 Advanced 3rd generation neuron models with enhanced biological realism.
 
 This module implements sophisticated neuron models including multi-compartment
-neurons, adaptive thresholds, burst firing patterns, and stochastic dynamics.
+neurons, adaptive thresholds, burst firing patterns, stochastic dynamics, and
+organ-inspired data preprocessing (liver and lung functions).
 """
 
 import logging
@@ -15,6 +16,53 @@ import torch.nn as nn
 from ..neuromorphic import NeuromorphicConfig
 
 logger = logging.getLogger(__name__)
+
+
+# --- Organ-Inspired Preprocessing Modules ---
+
+class LiverFilter(nn.Module):
+    """
+    Simulates a biological 'liver' by filtering and cleaning input data before neural processing.
+    """
+    def __init__(self, method='gaussian', kernel_size=5, std=1.0):
+        super().__init__()
+        self.method = method
+        self.kernel_size = kernel_size
+        self.std = std
+
+    def forward(self, x):
+        # Gaussian filtering
+        if self.method == 'gaussian':
+            kernel = torch.exp(-0.5 * (torch.arange(self.kernel_size) - self.kernel_size // 2)**2 / self.std**2)
+            kernel = kernel / kernel.sum()
+            kernel = kernel.to(x.device)
+            x_padded = torch.nn.functional.pad(x, (self.kernel_size // 2, self.kernel_size // 2), mode='reflect')
+            filtered = torch.nn.functional.conv1d(x_padded.unsqueeze(1), kernel.unsqueeze(0).unsqueeze(0))
+            return filtered.squeeze(1)
+        # Simple normalization
+        elif self.method == 'normalize':
+            return (x - x.mean(dim=0)) / (x.std(dim=0) + 1e-6)
+        else:
+            return x  # No filtering
+
+class LungIntake(nn.Module):
+    """
+    Simulates a biological 'lung' by controlling and preprocessing incoming data.
+    """
+    def __init__(self, amplify_factor=1.0, sample_rate=1.0):
+        super().__init__()
+        self.amplify_factor = amplify_factor
+        self.sample_rate = sample_rate
+
+    def forward(self, x):
+        # Amplify weak signals
+        x_amplified = x * self.amplify_factor
+        # Downsample if sample_rate < 1.0
+        if self.sample_rate < 1.0 and x.size(0) > 1:
+            idx = torch.arange(0, x.size(0), int(1/self.sample_rate)).long()
+            x_sampled = x_amplified[idx]
+            return x_sampled
+        return x_amplified
 
 
 @dataclass
@@ -55,13 +103,15 @@ class NeuronV3Config:
     channel_noise: bool = True
     thermal_noise: bool = True
 
+    # Organ settings (optional)
+    liver_params: dict = None
+    lung_params: dict = None
+
 
 class MultiCompartmentNeuron(nn.Module):
     """
     Multi-compartment neuron model with dendritic processing.
-    
-    Implements a neuron with separate soma and dendritic compartments,
-    allowing for complex dendritic computation and integration.
+    Combines with optional organ-inspired preprocessing modules.
     """
 
     def __init__(
@@ -75,6 +125,10 @@ class MultiCompartmentNeuron(nn.Module):
         self.config = config
         self.num_dendrites = num_dendrites
         self.num_compartments = num_dendrites + 1  # dendrites + soma
+
+        # Organ modules
+        self.lung = LungIntake(**(config.lung_params or {}))
+        self.liver = LiverFilter(**(config.liver_params or {}))
 
         # Set up compartment configurations
         if compartment_configs is None:
@@ -105,20 +159,19 @@ class MultiCompartmentNeuron(nn.Module):
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """
         Simulate multi-compartment neuron dynamics.
-        
-        Args:
-            dendritic_inputs: Input currents to dendrites [batch_size, num_dendrites]
-            somatic_input: Input current to soma [batch_size, 1]
-            dt: Time step (uses config default if None)
-            
-        Returns:
-            Tuple of (spike_output, compartment_states)
+        Preprocess inputs using organ modules before neural processing.
         """
         if dt is None:
             dt = self.config.base_config.dt
 
         batch_size = dendritic_inputs.size(0)
         device = dendritic_inputs.device
+
+        # Organ preprocessing
+        dendritic_inputs = self.lung(dendritic_inputs)
+        dendritic_inputs = self.liver(dendritic_inputs)
+        somatic_input = self.lung(somatic_input)
+        somatic_input = self.liver(somatic_input)
 
         # Initialize states for batch if needed
         if self.v_mem.size(0) != batch_size:
@@ -174,7 +227,9 @@ class MultiCompartmentNeuron(nn.Module):
         states = {
             'compartment_voltages': self.v_mem.clone(),
             'all_spikes': spikes,
-            'coupling_currents': coupling_currents
+            'coupling_currents': coupling_currents,
+            'input_after_lung': self.lung(dendritic_inputs).clone(),
+            'input_after_liver': self.liver(dendritic_inputs).clone(),
         }
 
         return somatic_spikes, states
@@ -183,15 +238,17 @@ class MultiCompartmentNeuron(nn.Module):
 class AdaptiveThresholdNeuron(nn.Module):
     """
     Leaky integrate-and-fire neuron with adaptive spike threshold.
-    
-    Implements homeostatic plasticity through threshold adaptation,
-    maintaining target firing rates.
+    Now supports optional organ-inspired preprocessing modules.
     """
 
     def __init__(self, config: NeuronV3Config):
         super().__init__()
 
         self.config = config
+
+        # Organ modules
+        self.lung = LungIntake(**(config.lung_params or {}))
+        self.liver = LiverFilter(**(config.liver_params or {}))
 
         # Neuron state variables
         self.register_buffer('v_mem', torch.tensor(config.base_config.v_rest))
@@ -210,14 +267,7 @@ class AdaptiveThresholdNeuron(nn.Module):
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """
         Simulate adaptive threshold neuron dynamics.
-        
-        Args:
-            input_current: Input current [batch_size, 1]
-            current_time: Current simulation time
-            dt: Time step
-            
-        Returns:
-            Tuple of (spike_output, neuron_states)
+        Preprocess input using organ modules before neural processing.
         """
         if dt is None:
             dt = self.config.base_config.dt
@@ -225,6 +275,10 @@ class AdaptiveThresholdNeuron(nn.Module):
             current_time = 0.0
 
         batch_size = input_current.size(0)
+
+        # Organ preprocessing
+        input_current = self.lung(input_current)
+        input_current = self.liver(input_current)
 
         # Expand state for batch processing
         if self.v_mem.dim() == 0:
@@ -309,7 +363,9 @@ class AdaptiveThresholdNeuron(nn.Module):
             'membrane_potential': self.v_mem.clone(),
             'threshold': self.threshold.clone(),
             'spike_count': self.spike_count.clone(),
-            'firing_rate': self.spike_count / (window_duration.clamp(min=1e-6))
+            'firing_rate': self.spike_count / (window_duration.clamp(min=1e-6)),
+            'input_after_lung': self.lung(input_current).clone(),
+            'input_after_liver': self.liver(input_current).clone(),
         }
 
         return spikes, states
@@ -318,15 +374,19 @@ class AdaptiveThresholdNeuron(nn.Module):
 class BurstingNeuron(nn.Module):
     """
     Neuron model capable of generating burst firing patterns.
-    
     Implements burst generation through afterhyperpolarization
     and adaptive burst threshold mechanisms.
+    Supports organ-inspired preprocessing.
     """
 
     def __init__(self, config: NeuronV3Config):
         super().__init__()
 
         self.config = config
+
+        # Organ modules
+        self.lung = LungIntake(**(config.lung_params or {}))
+        self.liver = LiverFilter(**(config.liver_params or {}))
 
         # Neuron state variables
         self.register_buffer('v_mem', torch.tensor(config.base_config.v_rest))
@@ -346,14 +406,7 @@ class BurstingNeuron(nn.Module):
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """
         Simulate bursting neuron dynamics.
-        
-        Args:
-            input_current: Input current [batch_size, 1]
-            current_time: Current simulation time
-            dt: Time step
-            
-        Returns:
-            Tuple of (spike_output, neuron_states)
+        Preprocess input using organ modules before neural processing.
         """
         if dt is None:
             dt = self.config.base_config.dt
@@ -361,6 +414,10 @@ class BurstingNeuron(nn.Module):
             current_time = 0.0
 
         batch_size = input_current.size(0)
+
+        # Organ preprocessing
+        input_current = self.lung(input_current)
+        input_current = self.liver(input_current)
 
         # Expand states for batch processing
         if self.v_mem.dim() == 0:
@@ -472,7 +529,9 @@ class BurstingNeuron(nn.Module):
             'ahp_current': self.ahp_current.clone(),
             'in_burst': self.in_burst.clone(),
             'burst_spike_count': self.burst_spike_count.clone(),
-            'burst_threshold': self.burst_threshold.clone()
+            'burst_threshold': self.burst_threshold.clone(),
+            'input_after_lung': self.lung(input_current).clone(),
+            'input_after_liver': self.liver(input_current).clone(),
         }
 
         return spikes, states
@@ -481,17 +540,21 @@ class BurstingNeuron(nn.Module):
 class StochasticNeuron(nn.Module):
     """
     Leaky integrate-and-fire neuron with stochastic dynamics.
-    
     Includes various noise sources for robustness:
     - Thermal noise in membrane potential
     - Channel noise in conductances  
     - Stochastic threshold
+    Supports organ-inspired preprocessing.
     """
 
     def __init__(self, config: NeuronV3Config):
         super().__init__()
 
         self.config = config
+
+        # Organ modules
+        self.lung = LungIntake(**(config.lung_params or {}))
+        self.liver = LiverFilter(**(config.liver_params or {}))
 
         # Neuron state
         self.register_buffer('v_mem', torch.tensor(config.base_config.v_rest))
@@ -511,14 +574,7 @@ class StochasticNeuron(nn.Module):
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """
         Simulate stochastic neuron dynamics.
-        
-        Args:
-            input_current: Input current [batch_size, 1]
-            current_time: Current simulation time
-            dt: Time step
-            
-        Returns:
-            Tuple of (spike_output, neuron_states)
+        Preprocess input using organ modules before neural processing.
         """
         if dt is None:
             dt = self.config.base_config.dt
@@ -527,6 +583,10 @@ class StochasticNeuron(nn.Module):
 
         batch_size = input_current.size(0)
         device = input_current.device
+
+        # Organ preprocessing
+        input_current = self.lung(input_current)
+        input_current = self.liver(input_current)
 
         # Expand states for batch
         if self.v_mem.dim() == 0:
@@ -589,7 +649,119 @@ class StochasticNeuron(nn.Module):
             'membrane_potential': self.v_mem.clone(),
             'stochastic_threshold': stochastic_threshold,
             'thermal_noise_level': self.thermal_noise_std,
-            'channel_noise_level': self.channel_noise_std
+            'channel_noise_level': self.channel_noise_std,
+            'input_after_lung': self.lung(input_current).clone(),
+            'input_after_liver': self.liver(input_current).clone(),
         }
 
         return spikes, states
+
+
+class OrganismNeuron(nn.Module):
+    """
+    A 'single cell' organism that integrates lung (data intake), liver (filtering), and neuron (processing) functions.
+    Simplified LIF neuron with organ-inspired preprocessing.
+    """
+    def __init__(self, 
+                 neuron_type='lif', 
+                 lung_params=None, 
+                 liver_params=None, 
+                 neuron_params=None):
+        super().__init__()
+        # Organs
+        self.lung = LungIntake(**(lung_params or {}))
+        self.liver = LiverFilter(**(liver_params or {}))
+        # Neuron params
+        self.v_rest = neuron_params.get('v_rest', -70e-3) if neuron_params else -70e-3
+        self.v_reset = neuron_params.get('v_reset', -70e-3) if neuron_params else -70e-3
+        self.v_threshold = neuron_params.get('v_threshold', -50e-3) if neuron_params else -50e-3
+        self.tau_mem = neuron_params.get('tau_mem', 20e-3) if neuron_params else 20e-3
+        self.refractory_period = neuron_params.get('refractory_period', 2e-3) if neuron_params else 2e-3
+        self.neuron_type = neuron_type
+        # State
+        self.register_buffer('v_mem', torch.tensor(self.v_rest))
+        self.register_buffer('last_spike_time', torch.tensor(-float('inf')))
+
+    def forward(self, input_data, current_time=0.0, dt=1e-3):
+        """
+        Simulate the full organism's signal processing.
+        Args:
+            input_data: Tensor [batch, 1] or [time, 1]
+            current_time: Simulation time
+            dt: Time step
+        Returns:
+            spikes, states
+        """
+        # Lungs: Intake & amplify
+        x = self.lung(input_data)
+        # Liver: Filter/clean
+        x = self.liver(x)
+        batch_size = x.size(0)
+        device = x.device
+        # Expand state if needed
+        if self.v_mem.dim() == 0:
+            self.v_mem = self.v_mem.unsqueeze(0).expand(batch_size).clone()
+            self.last_spike_time = self.last_spike_time.unsqueeze(0).expand(batch_size).clone()
+        # Check refractory mask
+        time_since_spike = current_time - self.last_spike_time
+        refractory_mask = time_since_spike > self.refractory_period
+        # Neuron membrane dynamics (LIF)
+        leak_current = -(self.v_mem - self.v_rest) / self.tau_mem
+        dv_dt = (x.squeeze() + leak_current) / self.tau_mem
+        self.v_mem = torch.where(
+            refractory_mask,
+            self.v_mem + dv_dt * dt,
+            torch.tensor(self.v_reset, device=device)
+        )
+        # Spike detection
+        spike_mask = (self.v_mem > self.v_threshold) & refractory_mask
+        spikes = spike_mask.float().unsqueeze(-1)
+        # Reset membrane on spike
+        self.v_mem = torch.where(
+            spike_mask,
+            torch.tensor(self.v_reset, device=device),
+            self.v_mem
+        )
+        # Update spike time
+        self.last_spike_time = torch.where(
+            spike_mask,
+            torch.tensor(current_time, device=device),
+            self.last_spike_time
+        )
+        states = {
+            'membrane_potential': self.v_mem.clone(),
+            'spikes': spikes.clone(),
+            'input_after_lung': self.lung(input_data).clone(),
+            'input_after_liver': x.clone(),
+        }
+        return spikes, states
+
+# Example usage:
+if __name__ == "__main__":
+    # Simulate time series input data for one cell
+    time_steps = 100
+    dt = 1e-3
+    t = torch.arange(0, time_steps * dt, dt)
+    input_current = 0.04 * torch.sin(2 * 3.1415 * t * 5) + 0.05  # simple oscillatory input
+    input_current = input_current.unsqueeze(1)  # [time, 1]
+
+    cell = OrganismNeuron(
+        neuron_type='lif',
+        lung_params={'amplify_factor': 2.0, 'sample_rate': 1.0},
+        liver_params={'method': 'gaussian', 'kernel_size': 7, 'std': 1.5},
+        neuron_params={
+            'v_rest': -70e-3,
+            'v_reset': -70e-3,
+            'v_threshold': -50e-3,
+            'tau_mem': 20e-3,
+            'refractory_period': 2e-3
+        }
+    )
+    spikes = []
+    v_mems = []
+    for i in range(time_steps):
+        spike, state = cell(input_current[i].unsqueeze(0), current_time=i*dt, dt=dt)
+        spikes.append(spike.item())
+        v_mems.append(state['membrane_potential'].item())
+    print("Spike times:", [i*dt for i, s in enumerate(spikes) if s > 0])
+    print("Final membrane potential:", v_mems[-1])
